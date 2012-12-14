@@ -380,7 +380,7 @@ mono_mprotect (void *addr, size_t length, int flags)
 
 	if (flags & MONO_MMAP_DISCARD) {
 		/* on non-linux the pages are not guaranteed to be zeroed (*bsd, osx at least) */
-#ifdef __linux__
+#if defined(__linux__) || defined(__native_client__)
 		if (madvise (addr, length, MADV_DONTNEED))
 			memset (addr, 0, length);
 #else
@@ -393,7 +393,15 @@ mono_mprotect (void *addr, size_t length, int flags)
 #endif
 #endif
 	}
+#if defined(__native_client__)
+	{
+		void *new_addr = mmap(addr, length, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+		if (new_addr == addr) return 0;
+		return -1;
+	}
+#else
 	return mprotect (addr, length, prot);
+#endif
 }
 
 #else

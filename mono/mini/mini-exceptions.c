@@ -2476,4 +2476,3 @@ mono_set_cast_details (MonoClass *from, MonoClass *to)
 		jit_tls->class_cast_to = to;
 	}
 }
-

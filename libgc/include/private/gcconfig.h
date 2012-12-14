@@ -1213,8 +1213,10 @@
 #   endif /* DGUX */
 #   ifdef NACL
 #	define OS_TYPE "NACL"
-	extern int etext[];
-#	define DATASTART ((ptr_t)((((word) (etext)) + 0xfff) & ~0xfff))
+#       if defined(__GLIBC__)
+#         define DYNAMIC_LOADING
+#       endif
+#       define DATASTART ((ptr_t)0x10020000)
 	extern int _end[];
 #	define DATAEND (_end)
 #	ifdef STACK_GRAN
@@ -1222,15 +1224,9 @@
 #	endif /* STACK_GRAN */
 #	define STACK_GRAN 0x10000
 #	define HEURISTIC1
-#	ifdef USE_MMAP
-#	  undef USE_MMAP
-#	endif
-#	ifdef USE_MUNMAP
-#	  undef USE_MUNMAP
-#	endif
-#	ifdef USE_MMAP_ANON
-#	  undef USE_MMAP_ANON
-#	endif
+#	define USE_MMAP
+#	define USE_MUNMAP
+#	define USE_MMAP_ANON
 #	ifdef USE_MMAP_FIXED
 #	  undef USE_MMAP_FIXED
 #	endif

@@ -1,0 +1,125 @@
+#!/bin/bash
+
+set -o nounset
+set -o errexit
+set -o verbose
+
+source ../common.sh
+
+MONO_RUNTIME_BASE=${NACL_SDK_USR}
+MONO_BASE=${NACL_SDK_USR}
+CC=$NACLCC
+AS=$NACLAS
+MODE=nacl
+COMPILE_AOT=0
+AOT_OBJS=
+CC_DEFINES=
+MONO_SNAPSHOT=mono-normal-build
+RELOCATE_RODATA="-Wl,--section-start=.rodata=0x10020000"
+
+if [ $# -gt 0 ]; then
+  while [ -n "$*" ]
+  do
+    if [ $1 == "normal" ]; then
+      MONO_RUNTIME_BASE=../normal-mono
+      MONO_BASE=../normal-mono
+      CC=gcc
+      AS=as
+      MODE=normal
+    elif [ $1 == "aot" ]; then
+      COMPILE_AOT=1
+      CC_DEFINES=-DAOT_VERSION
+      #RELOCATE_RODATA=
+    else
+      echo "Unrecognized option '$1'"
+      exit -1
+    fi
+    shift
+  done
+fi
+
+MONO="${MONO_BASE}/bin/mono"
+readonly MONO_NORMAL_BASE=${MONO_BASE}
+readonly NCVAL=ncval_x86_${TARGET_BITSIZE}
+
+readonly IRT=${NACL_BIN_PATH}/../runtime/irt_core_x86_${TARGET_BITSIZE}.nexe
+
+if [ $NACL_NEWLIB = "1" ]; then
+  readonly SEL_LDR_ARGS=
+  readonly LD_FLAGS="-static"
+  if [ $COMPILE_AOT = "1" ]; then
+    MONO="${MONO_BASE}/bin/nacl${TARGET_BIT_PREFIX}-mono"
+  fi
+else
+  readonly SEL_LDR_ARGS="${NACL_BIN_PATH}/../x86_64-nacl/lib${TARGET_BITSIZE}/runnable-ld.so --library-path ${NACL_BIN_PATH}/../x86_64-nacl/lib${TARGET_BITSIZE}:${NACL_SDK_USR_LIB}"
+  readonly LD_FLAGS="-ldl -lrt"
+  RELOCATE_RODATA=
+fi
+
+# add nacl-gcc to path (from NaCl SDK)
+export PATH=${NACL_BIN_PATH}:$PATH
+
+# add mono/gmcs to path
+export PATH=${MONO_NORMAL_BASE}/bin:$PATH
+
+# echo version of nacl-gcc
+$CC --version
+
+echo $PATH
+SEL_LDR=sel_ldr_x86_${TARGET_BITSIZE}
+which ${SEL_LDR}
+
+# echo version of gmcs 
+which gmcs
+${MONO_NORMAL_BASE}/bin/gmcs --version
+
+# echo version of nacl-mono
+if [ $COMPILE_AOT = "1" -o $MODE = "normal" ]; then
+  ${MONO} --version
+fi
+
+# add MONO_PATH so mono can crank on local directory
+#export MONO_PATH=$(pwd)
+#echo ${MONO_PATH}
+
+#-----
+# enable the appropriate set of AOT options below.
+
+readonly AOT_OPTIONS=full,static,nodebug,ntrampolines=4096
+#-----
+
+# make a temp copy of mscorlib.dll in this directory
+cp ${MONO_NORMAL_BASE}/lib/mono/4.0/mscorlib.dll .
+
+# compile c-sharp file with gmcs
+${MONO_NORMAL_BASE}/bin/gmcs -lib:. -warn:0 hw.cs
+
+# convert .exe to .exe.o assembly files
+# convert mscorlib to a .dll.o file
+if [ $COMPILE_AOT = "1" ]; then
+  MONO_PATH=. ${MONO} --aot=${AOT_OPTIONS} mscorlib.dll
+  MONO_PATH=. ${MONO} --aot=${AOT_OPTIONS} hw.exe
+  AOT_OBJS="hw.exe.o mscorlib.dll.o"
+fi
+
+# compile c and assembly into a.out, all statically linked
+# different options for normal and nacl-mono
+if [ $MODE = "normal" ]; then
+  $CC -g -static my.c ${CC_DEFINES} ${AOT_OBJS} -o hw-test -lmono-2.0 -lpthread -lm -ldl -lrt -I${MONO_RUNTIME_BASE}/include -I${MONO_RUNTIME_BASE}/include/mono-2.0 -L${MONO_RUNTIME_BASE}/lib
+elif [ $MODE = "nacl" ]; then
+  $CC my.c ${CC_DEFINES} ${AOT_OBJS} -finstrument-for-thread-suspension -o hw-test.nexe -lmono-2.0 -lpthread -lm -lnacl_dyncode -lg -lnosys -I${MONO_RUNTIME_BASE}/include -I${MONO_RUNTIME_BASE}/include/mono-2.0 -L${MONO_RUNTIME_BASE}/lib ${RELOCATE_RODATA} ${LD_FLAGS}
+fi
+
+
+export MONO_PATH=$(pwd)
+# run generated test(select one or more below)
+if [ $MODE = "normal" ]; then
+  ./hw-test
+else
+  ${NCVAL} --local_cpuid hw-test.nexe 2> validator_out || echo "hw-test.nexe invalid: continuing anyway"
+  ${NACL_CROSS_PREFIX_DASH}objdump -d hw-test.nexe > hw-test.disasm
+  ${SEL_LDR} -S -a -B ${IRT} ${SEL_LDR_ARGS} ./hw-test.nexe
+fi
+
+exit 0
+

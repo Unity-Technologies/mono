@@ -9,6 +9,7 @@
 #include <glib.h>
 #include <mono/metadata/mono-gc.h>
 #include <mono/metadata/gc-internal.h>
+#include <mono/metadata/runtime.h>
 
 #ifdef HAVE_NULL_GC
 

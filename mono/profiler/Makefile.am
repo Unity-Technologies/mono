@@ -52,7 +52,11 @@ MCS = $(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/gmcs.exe -unsafe -nowarn:0162 -
 testlog: $(PLOG_TESTS)
 	$(with_mono_path) perl $(srcdir)/ptestrunner.pl $(top_builddir)
 
+if NACL_CODEGEN
+check-local:
+else
 check-local: testlog
+endif
 
 EXTRA_DIST=utils.c utils.h proflog.h log-profiler.txt perf_event.h \
 	$(PLOG_TESTS_SRC) ptestrunner.pl

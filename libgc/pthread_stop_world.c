@@ -24,13 +24,13 @@
 #endif
 
 #ifdef NACL
-int nacl_park_threads_now = 0;
+volatile int __nacl_thread_suspension_needed = 0;
 pthread_t nacl_thread_parker = -1;
 
-int nacl_thread_parked[MAX_NACL_GC_THREADS];
-int nacl_thread_used[MAX_NACL_GC_THREADS];
-int nacl_thread_parking_inited = 0;
-int nacl_num_gc_threads = 0;
+volatile int nacl_thread_parked[MAX_NACL_GC_THREADS];
+volatile int nacl_thread_used[MAX_NACL_GC_THREADS];
+volatile int nacl_thread_parking_inited = 0;
+volatile int nacl_num_gc_threads = 0;
 pthread_mutex_t nacl_thread_alloc_lock = PTHREAD_MUTEX_INITIALIZER;
 __thread int nacl_thread_idx = -1;
 __thread GC_thread nacl_gc_thread_self = NULL;
@@ -465,15 +465,17 @@ static void pthread_stop_world()
 #else /* NACL */
     GC_thread p;
     int i;
+    int num_sleeps = 0;
 
     #if DEBUG_THREADS
     GC_printf1("pthread_stop_world: num_threads %d\n", nacl_num_gc_threads - 1);
     #endif
     nacl_thread_parker = pthread_self();
-    nacl_park_threads_now = 1;
+    __nacl_thread_suspension_needed = 1;
     
     while (1) {
 	#define NACL_PARK_WAIT_NANOSECONDS 100000
+        #define NANOS_PER_SECOND 1000000000
         int num_threads_parked = 0;
         struct timespec ts;
         int num_used = 0;
@@ -495,6 +497,10 @@ static void pthread_stop_world()
         GC_printf1("sleeping waiting for %d threads to park...\n", nacl_num_gc_threads - num_threads_parked - 1);
         #endif
         nanosleep(&ts, 0);
+        if (++num_sleeps > NANOS_PER_SECOND / NACL_PARK_WAIT_NANOSECONDS) {
+            GC_printf1("GC appears stalled waiting for %d threads to park...\n", nacl_num_gc_threads - num_threads_parked - 1);
+            num_sleeps = 0;
+        }
     }
 
 #endif /* NACL */
@@ -507,29 +513,28 @@ static void pthread_stop_world()
 
 #define NACL_STORE_REGS()  \
     do {                  \
-	asm("push %rbx");\
-	asm("push %rbp");\
-	asm("push %r12");\
-	asm("push %r13");\
-	asm("push %r14");\
-	asm("push %r15");\
-	asm("mov %%esp, %0" : "=m" (nacl_gc_thread_self->stop_info.stack_ptr));\
+	__asm__ __volatile__ ("push %rbx");\
+	__asm__ __volatile__ ("push %rbp");\
+	__asm__ __volatile__ ("push %r12");\
+	__asm__ __volatile__ ("push %r13");\
+	__asm__ __volatile__ ("push %r14");\
+	__asm__ __volatile__ ("push %r15");\
+	__asm__ __volatile__ ("mov %%esp, %0" : "=m" (nacl_gc_thread_self->stop_info.stack_ptr));\
         memcpy(nacl_gc_thread_self->stop_info.reg_storage, nacl_gc_thread_self->stop_info.stack_ptr, NACL_GC_REG_STORAGE_SIZE * sizeof(ptr_t));\
-	asm("add $48, %esp");\
-        asm("add %r15, %rsp");\
+        __asm__ __volatile__ ("naclasp $48, %r15");\
     } while (0)
 
 #elif __i386__
 
 #define NACL_STORE_REGS()  \
     do {                  \
-	asm("push %ebx");\
-	asm("push %ebp");\
-	asm("push %esi");\
-	asm("push %edi");\
-	asm("mov %%esp, %0" : "=m" (nacl_gc_thread_self->stop_info.stack_ptr));\
+	__asm__ __volatile__ ("push %ebx");\
+	__asm__ __volatile__ ("push %ebp");\
+	__asm__ __volatile__ ("push %esi");\
+	__asm__ __volatile__ ("push %edi");\
+	__asm__ __volatile__ ("mov %%esp, %0" : "=m" (nacl_gc_thread_self->stop_info.stack_ptr));\
         memcpy(nacl_gc_thread_self->stop_info.reg_storage, nacl_gc_thread_self->stop_info.stack_ptr, NACL_GC_REG_STORAGE_SIZE * sizeof(ptr_t));\
-	asm("add $16, %esp");\
+	__asm__ __volatile__ ("add $16, %esp");\
     } while (0)
 
 #endif
@@ -554,7 +559,7 @@ void nacl_post_syscall_hook()
 }
 
 void __nacl_suspend_thread_if_needed() {
-    if (nacl_park_threads_now) {
+    if (__nacl_thread_suspension_needed) {
         pthread_t self = pthread_self();
         int local_dummy = 0;
         /* Don't try to park the thread parker. */
@@ -573,7 +578,7 @@ void __nacl_suspend_thread_if_needed() {
             nacl_gc_thread_self->stop_info.stack_ptr = (ptr_t)(&local_dummy);
         }
         nacl_thread_parked[nacl_thread_idx] = 1;
-        while (nacl_park_threads_now)
+        while (__nacl_thread_suspension_needed)
             ; /* spin */
         nacl_thread_parked[nacl_thread_idx] = 0;
 
@@ -678,10 +683,14 @@ static void pthread_start_world()
       GC_printf0("World started\n");
     #endif
 #else /* NACL */
+    if (GC_notify_event)
+        GC_notify_event (GC_EVENT_PRE_START_WORLD);
 #   if DEBUG_THREADS
     GC_printf0("World starting\n");
 #   endif
-    nacl_park_threads_now = 0;
+    __nacl_thread_suspension_needed = 0;
+    if (GC_notify_event)
+        GC_notify_event (GC_EVENT_POST_START_WORLD);
 #endif /* NACL */
 }
 

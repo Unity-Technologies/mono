@@ -664,6 +664,7 @@ mono_x86_tail_call_supported (MonoMethodSignature *caller_sig, MonoMethodSignatu
 	return res;
 }
 
+#if !defined(__native_client__)
 static const guchar cpuid_impl [] = {
 	0x55,                   	/* push   %ebp */
 	0x89, 0xe5,                	/* mov    %esp,%ebp */
@@ -684,6 +685,28 @@ static const guchar cpuid_impl [] = {
 	0xc9,                   	/* leave   */
 	0xc3,                   	/* ret     */
 };
+#else
+static const guchar cpuid_impl [] = {
+	0x55,                   		/* push   %ebp */
+	0x89, 0xe5,                		/* mov    %esp,%ebp */
+	0x53,                   		/* push   %ebx */
+	0x8b, 0x45, 0x08,             		/* mov    0x8(%ebp),%eax */
+	0x0f, 0xa2,                		/* cpuid   */
+	0x50,                   		/* push   %eax */
+	0x8b, 0x45, 0x10,             		/* mov    0x10(%ebp),%eax */
+	0x89, 0x18,                		/* mov    %ebx,(%eax) */
+	0x8b, 0x45, 0x14,             		/* mov    0x14(%ebp),%eax */
+	0x89, 0x08,                		/* mov    %ecx,(%eax) */
+	0x8b, 0x45, 0x18,             		/* mov    0x18(%ebp),%eax */
+	0x89, 0x10,                		/* mov    %edx,(%eax) */
+	0x58,                   		/* pop    %eax */
+	0x8b, 0x55, 0x0c,             		/* mov    0xc(%ebp),%edx */
+	0x89, 0x02,                		/* mov    %eax,(%edx) */
+	0x5b,                   		/* pop    %ebx */
+	0xc9,                   		/* leave   */
+	0x59, 0x83, 0xe1, 0xe0, 0xff, 0xe1	/* naclret */
+};
+#endif
 
 typedef void (*CpuidFunc) (int id, int* p_eax, int* p_ebx, int* p_ecx, int* p_edx);
 
@@ -691,12 +714,16 @@ static int
 cpuid (int id, int* p_eax, int* p_ebx, int* p_ecx, int* p_edx)
 {
 #if defined(__native_client__)
-	/* Taken from below, the bug listed in the comment is */
-	/* only valid for non-static cases.                   */
-	__asm__ __volatile__ ("cpuid"
-		: "=a" (*p_eax), "=b" (*p_ebx), "=c" (*p_ecx), "=d" (*p_edx)
-		: "a" (id));
-	return 1;
+	static CpuidFunc func = NULL;
+	void *ptr, *end_ptr;
+	if (!func) {
+		ptr = mono_global_codeman_reserve (sizeof (cpuid_impl));
+		memcpy(ptr, cpuid_impl, sizeof(cpuid_impl));
+		end_ptr = ptr + sizeof(cpuid_impl);
+		nacl_global_codeman_validate (&ptr, sizeof(cpuid_impl), &end_ptr);
+		func = (CpuidFunc)ptr;
+	}
+	func (id, p_eax, p_ebx, p_ecx, p_edx);
 #else
 	int have_cpuid = 0;
 #ifndef _MSC_VER
@@ -1810,9 +1837,11 @@ emit_call (MonoCompile *cfg, guint8 *code, guint32 patch_type, gconstpointer dat
 	/*The address must be 4 bytes aligned to avoid spanning multiple cache lines.
 	This is required for code patching to be safe on SMP machines.
 	*/
+#ifndef __native_client_codegen__
 	guint32 pad_size = (guint32)(code + 1 - cfg->native_code) & 0x3;
 	if (pad_size)
 		x86_padding (code, pad_size);
+#endif
 
 	mono_add_patch_info (cfg, code - cfg->native_code, patch_type, data);
 	x86_call_code (code, 0);
@@ -2337,6 +2366,7 @@ x86_pop_reg (code, X86_EAX);
 #ifndef DISABLE_JIT
 
 #if defined(__native_client__) || defined(__native_client_codegen__)
+extern volatile int __nacl_thread_suspension_needed;
 void
 mono_nacl_gc()
 {
@@ -2674,6 +2704,10 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			break;
 		case OP_IDIV:
 		case OP_IREM:
+#if defined( __native_client_codegen__ )
+			x86_alu_reg_imm (code, X86_CMP, ins->sreg2, 0);
+			EMIT_COND_SYSTEM_EXCEPTION (X86_CC_EQ, TRUE, "DivideByZeroException");
+#endif
 			/* 
 			 * The code is the same for div/rem, the allocator will allocate dreg
 			 * to RAX/RDX as appropriate.
@@ -2691,6 +2725,10 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			break;
 		case OP_IDIV_UN:
 		case OP_IREM_UN:
+#if defined( __native_client_codegen__ )
+			x86_alu_reg_imm (code, X86_CMP, ins->sreg2, 0);
+			EMIT_COND_SYSTEM_EXCEPTION (X86_CC_EQ, TRUE, "DivideByZeroException");
+#endif
 			if (ins->sreg2 == X86_EDX) {
 				x86_push_reg (code, ins->sreg2);
 				x86_alu_reg_reg (code, X86_XOR, X86_EDX, X86_EDX);
@@ -2702,6 +2740,13 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			}
 			break;
 		case OP_DIV_IMM:
+#if defined( __native_client_codegen__ )
+			if (ins->inst_imm == 0) {
+				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_EXC, "DivideByZeroException");
+				x86_jump32 (code, 0);
+				break;
+			}
+#endif
 			x86_mov_reg_imm (code, ins->sreg2, ins->inst_imm);
 			x86_cdq (code);
 			x86_div_reg (code, ins->sreg2, TRUE);
@@ -4742,8 +4787,17 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			break;
 		}
 		case OP_NACL_GC_SAFE_POINT: {
-#if defined(__native_client_codegen__)
-			code = emit_call (cfg, code, MONO_PATCH_INFO_ABS, (gpointer)mono_nacl_gc);
+#if defined(__native_client_codegen__) && defined(__native_client_gc__)
+			if (cfg->compile_aot)
+				code = emit_call (cfg, code, MONO_PATCH_INFO_ABS, (gpointer)mono_nacl_gc);
+			else {
+				guint8 *br [1];
+
+				x86_test_mem_imm8 (code, (gpointer)&__nacl_thread_suspension_needed, 0xFFFFFFFF);
+				br[0] = code; x86_branch8 (code, X86_CC_EQ, 0, FALSE);
+				code = emit_call (cfg, code, MONO_PATCH_INFO_ABS, (gpointer)mono_nacl_gc);
+				x86_patch (br[0], code);
+			}
 #endif
 			break;
 		}
@@ -5142,19 +5196,38 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 				max_offset += LOOP_ALIGNMENT;
 #ifdef __native_client_codegen__
 			/* max alignment for native client */
-			max_offset += kNaClAlignment;
+			if (bb->flags & BB_INDIRECT_JUMP_TARGET || bb->flags & BB_EXCEPTION_HANDLER)
+				max_offset += kNaClAlignment;
 #endif
 			MONO_BB_FOR_EACH_INS (bb, ins) {
 				if (ins->opcode == OP_LABEL)
 					ins->inst_c1 = max_offset;
 #ifdef __native_client_codegen__
+				switch (ins->opcode)
 				{
-					int space_in_block = kNaClAlignment -
-						((max_offset + cfg->code_len) & kNaClAlignmentMask);
-					int max_len = ((guint8 *)ins_get_spec (ins->opcode))[MONO_INST_LEN];
-					if (space_in_block < max_len && max_len < kNaClAlignment) {
-						max_offset += space_in_block;
-					}
+					case OP_FCALL:
+					case OP_LCALL:
+					case OP_VCALL:
+					case OP_VCALL2:
+					case OP_VOIDCALL:
+					case OP_CALL:
+					case OP_FCALL_REG:
+					case OP_LCALL_REG:
+					case OP_VCALL_REG:
+					case OP_VCALL2_REG:
+					case OP_VOIDCALL_REG:
+					case OP_CALL_REG:
+					case OP_FCALL_MEMBASE:
+					case OP_LCALL_MEMBASE:
+					case OP_VCALL_MEMBASE:
+					case OP_VCALL2_MEMBASE:
+					case OP_VOIDCALL_MEMBASE:
+					case OP_CALL_MEMBASE:
+						max_offset += kNaClAlignment;
+						break;
+				        default:
+						max_offset += ((guint8 *)ins_get_spec (ins->opcode))[MONO_INST_LEN] - 1;
+						break;
 				}
 #endif  /* __native_client_codegen__ */
 				max_offset += ((guint8 *)ins_get_spec (ins->opcode))[MONO_INST_LEN];
@@ -6549,4 +6622,3 @@ mono_arch_get_seq_point_info (MonoDomain *domain, guint8 *code)
 }
 
 #endif
-

@@ -1,0 +1,5 @@
+Building NaCl Mono with glibc (newlib support is eliminated but should still be buildable with small effort) is complex and there are no instructions written up for it yet.  These will come Real Soon now.
+
+
+If you are looking for NaCl Mono statically linked with newlib for embedding purposes, look at commit aa7c8d85c7cfe7a9bf4c69df1fe921a807984695.  You can try syncing before that and using whatever is there, or you could try undoing the changes that make newlib unhappy.
+
