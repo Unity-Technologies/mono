@@ -9,6 +9,8 @@ my $skipbuild=0;
 my $debug = 0;
 my $minimal = 0;
 my $iphone_simulator = 0;
+my $jobs = 4;
+my $xcodePath = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform';
 
 GetOptions(
    "skipbuild=i"=>\$skipbuild,
@@ -30,6 +32,7 @@ if ($ENV{UNITY_THISISABUILDMACHINE})
 		print "\n\nARE YOU SURE YOU DONT WANT TO MAKE A DEBUG BUILD?!?!?!!!!!\n\n\n";
 	}
 }
+$ENV{'LIBTOOLIZE'} = 'glibtoolize';
 
 my @arches = ('x86_64','i386');
 if ($iphone_simulator || $minimal) {
@@ -40,11 +43,10 @@ for my $arch (@arches)
 {
 	print "Building for architecture: $arch\n";
 
-	my $macversion = '10.4';
-	my $sdkversion = '10.4u';
+	my $macversion = '10.5';
+	my $sdkversion = '10.6';
 	if ($arch eq 'x86_64') {
 		$macversion = '10.6';
-		$sdkversion = '10.6';
 	}
 
 	# Make architecture-specific targets and lipo at the end
@@ -63,21 +65,6 @@ for my $arch (@arches)
 
 	if (not $skipbuild)
 	{
-		#rmtree($bintarget);
-		#rmtree($libtarget);
-
-		#we need to manually set the compiler to gcc4, because the 10.4 sdk only shipped with the gcc4 headers
-		#their setup is a bit broken as they dont autodetect this, but basically the gist is if you want to copmile
-		#against the 10.4 sdk, you better use gcc4, otherwise things go boink.
-		unless ($ENV{CC})
-		{
-			$ENV{CC} = "gcc-4.0";
-		}
-		unless ($ENV{CXX})
-		{
-			$ENV{CXX} = "gcc-4.0";
-		}
-
 		if ($debug)
 		{
 			$ENV{CFLAGS} = "-arch $arch -g -O0 -D_XOPEN_SOURCE=1 -DMONO_DISABLE_SHM=1 -DDISABLE_SHARED_HANDLES=1";
@@ -95,6 +82,8 @@ for my $arch (@arches)
 			$ENV{CFLAGS} = "-D_XOPEN_SOURCE=1 -DTARGET_IPHONE_SIMULATOR -g -O0";
 			$macversion = "10.6";
 			$sdkversion = "10.6";
+		} else {
+			$ENV{'MACSDKOPTIONS'} = "-mmacosx-version-min=$macversion -isysroot $xcodePath/Developer/SDKs/MacOSX$sdkversion.sdk";
 		}
 		
 		#this will fail on a fresh working copy, so don't die on it.
@@ -115,10 +104,6 @@ for my $arch (@arches)
 		unshift(@autogenparams, "--cache-file=osx.cache");
 		unshift(@autogenparams, "--disable-mcs-build");
 		unshift(@autogenparams, "--with-glib=embedded");
-		if (!$iphone_simulator)
-		{
-			unshift(@autogenparams, "--with-macversion=$macversion");
-		}
 		unshift(@autogenparams, "--disable-nls");  #this removes the dependency on gettext package
 
 		# From Massi: I was getting failures in install_name_tool about space
@@ -156,7 +141,7 @@ for my $arch (@arches)
 
 	if (!$iphone_simulator)
 	{
-		my $cmdline = "gcc -arch $arch -bundle -reexport_library mono/mini/.libs/libmono.a -isysroot /Developer/SDKs/MacOSX$sdkversion.sdk -mmacosx-version-min=$macversion -all_load -liconv -o $libtarget/MonoBundleBinary";
+		my $cmdline = "gcc -arch $arch -bundle -reexport_library mono/mini/.libs/libmono.a -isysroot $xcodePath/Developer/SDKs/MacOSX$sdkversion.sdk -mmacosx-version-min=$macversion -all_load -liconv -o $libtarget/MonoBundleBinary";
 		print "About to call this cmdline to make a bundle:\n$cmdline\n";
 		system($cmdline) eq 0 or die("failed to link libmono.a into mono bundle");
 
