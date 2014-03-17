@@ -480,7 +480,7 @@ namespace System.Net.NetworkInformation {
 							MacOsStructs.sockaddr_dl sockaddrdl = (MacOsStructs.sockaddr_dl) Marshal.PtrToStructure (addr.ifa_addr, typeof (MacOsStructs.sockaddr_dl));
 
 							macAddress = new byte [(int) sockaddrdl.sdl_alen];
-							Array.Copy (sockaddrdl.sdl_data, sockaddrdl.sdl_nlen, macAddress, 0, macAddress.Length);
+							Marshal.Copy(new IntPtr(addr.ifa_addr.ToInt64() + 8 + sockaddrdl.sdl_nlen), macAddress, 0, macAddress.Length);
 							index = sockaddrdl.sdl_index;
 
 							int hwtype = (int) sockaddrdl.sdl_type;

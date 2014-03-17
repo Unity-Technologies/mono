@@ -55,8 +55,10 @@ namespace System.Net.NetworkInformation {
 			public byte   sdl_alen;
 			public byte   sdl_slen;
 
-			[MarshalAs (UnmanagedType.ByValArray, SizeConst=12)]
-			public byte[] sdl_data;
+			// In the sockaddr_dl definition sdl_data is given as size 12, but this
+			// is the MINIMUM size - it may be longer if it needs to be. We can't
+			// marshal variable-length buffers automatically.
+			// public byte[] sdl_data;
 		}
 
 	}
