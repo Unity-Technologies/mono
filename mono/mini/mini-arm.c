@@ -1917,8 +1917,10 @@ mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolea
 		save_mode = SAVE_TWO;
 		break;
 	case MONO_TYPE_R4:
+		save_mode = SAVE_ONE;
+		break;
 	case MONO_TYPE_R8:
-		save_mode = SAVE_FP;
+		save_mode = SAVE_TWO;
 		break;
 	case MONO_TYPE_VALUETYPE:
 		save_mode = SAVE_STRUCT;
@@ -1930,23 +1932,16 @@ mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolea
 
 	switch (save_mode) {
 	case SAVE_TWO:
-		ARM_STR_IMM (code, ARMREG_R0, cfg->frame_reg, save_offset);
-		ARM_STR_IMM (code, ARMREG_R1, cfg->frame_reg, save_offset + 4);
+		ARM_PUSH (code, ((1 << ARMREG_R0 | (1 << ARMREG_R1))));
 		if (enable_arguments) {
 			ARM_MOV_REG_REG (code, ARMREG_R2, ARMREG_R1);
 			ARM_MOV_REG_REG (code, ARMREG_R1, ARMREG_R0);
 		}
 		break;
 	case SAVE_ONE:
-		ARM_STR_IMM (code, ARMREG_R0, cfg->frame_reg, save_offset);
+		ARM_PUSH (code, (1 << ARMREG_R0));
 		if (enable_arguments) {
 			ARM_MOV_REG_REG (code, ARMREG_R1, ARMREG_R0);
-		}
-		break;
-	case SAVE_FP:
-		/* FIXME: what reg?  */
-		if (enable_arguments) {
-			/* FIXME: what reg?  */
 		}
 		break;
 	case SAVE_STRUCT:
@@ -1966,14 +1961,10 @@ mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolea
 
 	switch (save_mode) {
 	case SAVE_TWO:
-		ARM_LDR_IMM (code, ARMREG_R0, cfg->frame_reg, save_offset);
-		ARM_LDR_IMM (code, ARMREG_R1, cfg->frame_reg, save_offset + 4);
+		ARM_POP (code, ((1 << ARMREG_R0 | (1 << ARMREG_R1))));
 		break;
 	case SAVE_ONE:
-		ARM_LDR_IMM (code, ARMREG_R0, cfg->frame_reg, save_offset);
-		break;
-	case SAVE_FP:
-		/* FIXME */
+		ARM_POP (code, (1 << ARMREG_R0 ));
 		break;
 	case SAVE_NONE:
 	default:
