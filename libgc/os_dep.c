@@ -2101,6 +2101,16 @@ void GC_default_push_other_roots GC_PROTO((void))
 
 void (*GC_push_other_roots) GC_PROTO((void)) = GC_default_push_other_roots;
 
+GC_API void GC_set_push_other_roots(GC_push_other_roots_proc fn)
+{
+    GC_push_other_roots = fn;
+}
+
+GC_API GC_push_other_roots_proc GC_get_push_other_roots(void)
+{
+    return GC_push_other_roots;
+}
+
 #endif /* THREADS */
 
 /*

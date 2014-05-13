@@ -20,7 +20,9 @@ mono_assembly_name_parse
 mono_assembly_loaded
 mono_loader_get_last_error
 mono_loader_error_prepare_exception
-
+GC_set_push_other_roots
+GC_get_push_other_roots
+GC_push_all
 ;Unity Exports that add new functions created by Unity
 unity_mono_install_memory_callbacks
 unity_mono_redirect_output

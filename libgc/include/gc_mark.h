@@ -199,5 +199,16 @@ void GC_register_describe_type_fn GC_PROTO((int kind, GC_describe_type_fn knd));
 				/* to be used when printing objects	*/
 				/* of a particular kind.		*/
 
+
+
+// Lucas backported these api from upstream boehm.
+/* Set and get the client push-other-roots procedure.  A client         */
+/* supplied procedure should also call the original procedure.          */
+/* Note that both the setter and getter require some external           */
+/* synchronization to avoid data race.                                  */
+typedef void (* GC_push_other_roots_proc)(void);
+GC_API void GC_set_push_other_roots(GC_push_other_roots_proc);
+GC_API GC_push_other_roots_proc GC_get_push_other_roots(void);
+
 #endif  /* GC_MARK_H */
 
