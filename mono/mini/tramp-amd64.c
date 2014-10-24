@@ -75,20 +75,12 @@ mono_arch_get_static_rgctx_trampoline (MonoMethod *m, MonoMethodRuntimeGenericCo
 
 	MonoDomain *domain = mono_domain_get ();
 
-#ifdef MONO_ARCH_NOMAP32BIT
-	buf_len = 32;
-#else
-	/* AOTed code could still have a non-32 bit address */
-	if ((((guint64)addr) >> 32) == 0)
-		buf_len = 16;
-	else
-		buf_len = 30;
-#endif
+	buf_len = 10 + 16;
 
 	start = code = mono_domain_code_reserve (domain, buf_len);
 
-	amd64_mov_reg_imm (code, MONO_ARCH_RGCTX_REG, mrgctx);
-	amd64_jump_code (code, addr);
+	amd64_mov_reg_imm (code, MONO_ARCH_RGCTX_REG, mrgctx); // up to 10 bytes
+	amd64_jump_code (code, addr); // up to 16 bytes
 	g_assert ((code - start) < buf_len);
 
 	mono_arch_flush_icache (start, code - start);
@@ -626,19 +618,34 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 {
 	guint8 *code, *buf, *tramp;
 	int size;
+	gboolean far_addr = FALSE;
+	gboolean arg1bit32 = FALSE;
 
 	tramp = mono_get_trampoline_code (tramp_type);
 
-	if ((((guint64)arg1) >> 32) == 0)
-		size = 5 + 1 + 4;
+	if ((((guint64)arg1) >> 32) == 0) {
+		arg1bit32 = TRUE;
+	}
+
+	if (arg1bit32)
+		size = 7 + 5 + 8;
 	else
-		size = 5 + 1 + 8;
+		size = 7 + 9 + 8;
 
 	code = buf = mono_domain_code_reserve_align (domain, size, 1);
+	if (!amd64_is_imm32((gint64)(tramp) - (gint64)(code))) {
+		far_addr = TRUE;
+	}
 
-	amd64_call_code (code, tramp);
+	if (far_addr) {
+		// call into the trampoline at absolute address (stored at the end of this trampoline)
+		amd64_call_membase(code, AMD64_RIP,  (arg1bit32 ? 4 : 8) + 1);
+	} else {
+		amd64_call_code (code, tramp);
+	}
+
 	/* The trampoline code will obtain the argument from the instruction stream */
-	if ((((guint64)arg1) >> 32) == 0) {
+	if (arg1bit32) {
 		*code = 0x4;
 		*(guint32*)(code + 1) = (gint64)arg1;
 		code += 5;
@@ -647,6 +654,9 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 		*(guint64*)(code + 1) = (gint64)arg1;
 		code += 9;
 	}
+
+	// absolute address of the (generic) trampoline
+	x86_imm_emit64(code, tramp);
 
 	g_assert ((code - buf) <= size);
 
