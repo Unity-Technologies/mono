@@ -5062,13 +5062,13 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke)
 {
 	guint8 *p = invoke->p;
 	guint8 *end = invoke->endp;
+	MonoDomain *domain = tls->domain;
 	MonoMethod *m;
 	int i, err, nargs;
 	MonoMethodSignature *sig;
 	guint8 **arg_buf;
 	void **args;
 	MonoObject *this, *res, *exc;
-	MonoDomain *domain;
 	guint8 *this_buf;
 #ifdef MONO_ARCH_HAVE_FIND_JIT_INFO_EXT
 	MonoLMFExt ext;
@@ -5084,7 +5084,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke)
 		g_assert_not_reached ();
 	}
 
-	m = decode_methodid (p, &p, end, &domain, &err);
+	m = decode_methodid (p, &p, end, NULL, &err);
 	if (err)
 		return err;
 	
