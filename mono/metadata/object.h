@@ -66,6 +66,7 @@ typedef struct {
 typedef MonoObject* (*MonoInvokeFunc)	     (MonoMethod *method, void *obj, void **params, MonoObject **exc);
 typedef gpointer    (*MonoCompileFunc)	     (MonoMethod *method);
 typedef void	    (*MonoMainThreadFunc)    (gpointer user_data);
+typedef void		(*MonoUnhandledExceptionHandler)	(MonoException* exception);
 
 #define mono_object_class(obj) (((MonoObject*)(obj))->vtable->klass)
 #define mono_object_domain(obj) (((MonoObject*)(obj))->vtable->domain)
@@ -281,10 +282,16 @@ void
 mono_store_remote_field_new (MonoObject *this_obj, MonoClass *klass, MonoClassField *field, MonoObject *arg);
 
 void
-mono_unhandled_exception    (MonoObject *exc);
+mono_unhandled_exception    (MonoObject *exc, gboolean executedManagedHandlers);
 
 void
 mono_print_unhandled_exception (MonoObject *exc);
+
+MonoUnhandledExceptionHandler 
+mono_runtime_unhandled_exception_handler_get ();
+
+void
+mono_runtime_unhandled_exception_handler_set (MonoUnhandledExceptionHandler handler);
 
 gpointer 
 mono_compile_method	   (MonoMethod *method);

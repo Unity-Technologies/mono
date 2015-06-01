@@ -3930,7 +3930,7 @@ array_constructed:
 		}
 die_on_ex:
 		ex_obj = (MonoObject*)frame->ex;
-		mono_unhandled_exception (ex_obj);
+		mono_unhandled_exception (ex_obj, TRUE);
 		exit (1);
 	}
 	handle_finally:
@@ -4047,7 +4047,7 @@ ves_exec_method (MonoInvocation *frame)
 	frame->ex = NULL;
 
 	if (setjmp(env)) {
-		mono_unhandled_exception ((MonoObject*)frame->ex);
+		mono_unhandled_exception ((MonoObject*)frame->ex, TRUE);
 		return;
 	}
 	if (context == NULL) {
@@ -4073,7 +4073,7 @@ ves_exec_method (MonoInvocation *frame)
 			longjmp (*context->current_env, 1);
 		}
 		else
-			mono_unhandled_exception ((MonoObject*)frame->ex);
+			mono_unhandled_exception ((MonoObject*)frame->ex, TRUE);
 	}
 	if (context->base_frame == frame)
 		TlsSetValue (thread_context_id, NULL);
@@ -4095,7 +4095,7 @@ ves_exec (MonoDomain *domain, MonoAssembly *assembly, int argc, char *argv[])
 
 	rval = mono_runtime_run_main (method, argc, argv, &exc);
 	if (exc != NULL)
-		mono_unhandled_exception (exc);
+		mono_unhandled_exception (exc, TRUE);
 
 	return rval;
 }

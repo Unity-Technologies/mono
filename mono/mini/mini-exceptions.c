@@ -1207,7 +1207,7 @@ mono_handle_exception_internal (MonoContext *ctx, gpointer obj, gpointer origina
 			mono_debugger_agent_handle_exception (obj, ctx, NULL);
 			// FIXME: This runs managed code so it might cause another stack overflow when
 			// we are handling a stack overflow
-			mono_unhandled_exception (obj);
+			mono_unhandled_exception (obj, TRUE);
 		} else {
 			mono_debugger_agent_handle_exception (obj, ctx, &ctx_cp);
 		}
