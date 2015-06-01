@@ -3475,6 +3475,26 @@ mono_runtime_unhandled_exception_policy_get (void) {
 	return runtime_unhandled_exception_policy;
 }
 
+static MonoUnhandledExceptionHandler unhandledExceptionHandler = NULL;
+
+/**
+ * mono_runtime_unhandled_exception_handler_set:
+ *
+ * Sets the callback to be called when the runtime recieves an unhandled managed exception.
+ */
+void mono_runtime_unhandled_exception_handler_set (MonoUnhandledExceptionHandler handler) {
+	unhandledExceptionHandler = handler;
+}
+
+/**
+ * mono_runtime_unhandled_exception_handler_get:
+ *
+ * Gets the callback to be called when the runtime recieves an unhandled managed exception.
+ */
+MonoUnhandledExceptionHandler mono_runtime_unhandled_exception_handler_get () {
+	return unhandledExceptionHandler;
+}
+
 /**
  * mono_unhandled_exception:
  * @exc: exception thrown
@@ -3484,17 +3504,19 @@ mono_runtime_unhandled_exception_policy_get (void) {
  * We call this function when we detect an unhandled exception
  * in the default domain.
  *
- * It invokes the * UnhandledException event in AppDomain or prints
+ * It calls the registered unhandled exception handler (if one is present) and then 
+ * invokes the UnhandledException event in AppDomain or prints
  * a warning to the console 
  */
 void
-mono_unhandled_exception (MonoObject *exc)
+mono_unhandled_exception (MonoObject *exc, gboolean executeManagedHandlers)
 {
 	MonoDomain *current_domain = mono_domain_get ();
 	MonoDomain *root_domain = mono_get_root_domain ();
 	MonoClassField *field;
 	MonoObject *current_appdomain_delegate;
 	MonoObject *root_appdomain_delegate;
+	MonoUnhandledExceptionHandler handler = mono_runtime_unhandled_exception_handler_get();
 
 	field=mono_class_get_field_from_name(mono_defaults.appdomain_class, 
 					     "UnhandledException");
@@ -3510,10 +3532,13 @@ mono_unhandled_exception (MonoObject *exc)
 			current_appdomain_delegate = NULL;
 		}
 
+		if (handler != NULL)
+			handler(exc);
+
 		/* set exitcode only if we will abort the process */
 		if (abort_process)
 			mono_environment_exitcode_set (1);
-		if ((current_appdomain_delegate == NULL) && (root_appdomain_delegate == NULL)) {
+		if (!executeManagedHandlers || (current_appdomain_delegate == NULL) && (root_appdomain_delegate == NULL)) {
 			mono_print_unhandled_exception (exc);
 		} else {
 			if (root_appdomain_delegate) {
