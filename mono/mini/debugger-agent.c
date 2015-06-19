@@ -1713,6 +1713,26 @@ mono_debugger_agent_free_domain_info (MonoDomain *domain)
 	mono_loader_unlock ();
 }
 
+static void
+emit_type_load_image_equal (gpointer key, gpointer value, gpointer user_data)
+{
+	MonoClass *klass = value;
+	MonoImage* *image = user_data;
+
+	if(klass->image == image)
+		emit_type_load (NULL, klass, NULL);
+}
+
+static void
+emit_type_load_image_not_equal (gpointer key, gpointer value, gpointer user_data)
+{
+	MonoClass *klass = value;
+	MonoImage* *image = user_data;
+	
+	if(klass->image != image)
+		emit_type_load (NULL, klass, NULL);
+}
+
 /*
  * Called when deferred debugger session is attached, 
  * after the VM start event has been sent successfully
@@ -1720,12 +1740,25 @@ mono_debugger_agent_free_domain_info (MonoDomain *domain)
 static void
 mono_debugger_agent_on_attach (void)
 {
+	MonoDomain *old_domain = mono_domain_get ();
+	MonoImage *corlib = mono_get_corlib ();
+
 	/* Emit load events for currently loaded appdomains, assemblies, and types */
 	mono_loader_lock ();
+	
 	g_hash_table_foreach (domains, emit_appdomain_load, NULL);
 	mono_g_hash_table_foreach (tid_to_thread, emit_thread_start, NULL);
 	mono_assembly_foreach (emit_assembly_load, NULL);
-	g_hash_table_foreach (loaded_classes, emit_type_load, NULL);
+	
+	/* Associate type ids from corlib with the root domain, to avoid them getting 
+	   marked as unloaded in mono_debugger_agent_free_domain_info when associated
+	   with a child domain that gets unloaded. */
+	mono_domain_set (mono_get_root_domain(), TRUE);
+	g_hash_table_foreach (loaded_classes, emit_type_load_image_equal, corlib);
+	
+	mono_domain_set (old_domain, TRUE);
+	g_hash_table_foreach (loaded_classes, emit_type_load_image_not_equal, corlib);
+	
 	mono_loader_unlock ();
 }
 
@@ -2963,24 +2996,6 @@ process_event (EventKind event, gpointer arg, gint32 il_offset, MonoContext *ctx
 	if (disconnected) {
 		DEBUG (2, fprintf (log_file, "Debugger client is not connected: dropping %s\n", event_to_string (event)));
 		return;
-	}
-	
-	if(event == EVENT_KIND_APPDOMAIN_CREATE && arg)
-	{
-		/* 
-		   The debugger client requires System.Int64 to be loaded in the domain
-		   in order to be able to inspect enums, otherwise you get an 
-		   "The requested item has been unloaded" error (the item being System.Int64)
-		   instead of the enum value.
-
-		   Here we are forcing the type load of System.Int64 when a domain is created. 
-		*/
-		MonoDomain *domain = arg;
-		MonoDomain *old_domain = mono_domain_get ();
-		
-		mono_domain_set (domain, TRUE);
-		emit_type_load (NULL, mono_get_int64_class(), NULL);
-		mono_domain_set (old_domain, TRUE);
 	}
 	
 	if (events == NULL) {
