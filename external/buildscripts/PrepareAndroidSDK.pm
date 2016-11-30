@@ -446,8 +446,8 @@ sub PrepareNDK
 		my $current = $content[0];
 		print "\tCurrently installed = " . $current . "\n";
 
-		# remove the possible '(64-bit)' from the end
-		my @curr_arr = split(' ', $current);
+		# remove the possible '-nightly builds' and '(64-bit)' string
+		my @curr_arr = split(/\-|\s/, $current);
 		$current = $curr_arr[0];
 		
 		if ($ndk eq $current)
