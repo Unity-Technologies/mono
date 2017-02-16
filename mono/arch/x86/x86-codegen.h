@@ -1589,10 +1589,14 @@ typedef union {
 		x86_membase_emit ((inst), 2, (basereg), (disp));	\
 	} while (0)
 
+#define x86_can_call_code(inst,target)	\
+	((unsigned char*)(inst) + 5 + ((int)((unsigned char*)(target) - (inst)) - 5) == (target))
+
 #define x86_call_code(inst,target)	\
 	do {	\
 		int _x86_offset = (unsigned char*)(target) - (inst);	\
 		_x86_offset -= 5;	\
+		assert ((unsigned char*)(inst) + 5 + _x86_offset == (target) && "Unable to encode CALL offset in int32"); \
 		x86_call_imm ((inst), _x86_offset);	\
 	} while (0)
 

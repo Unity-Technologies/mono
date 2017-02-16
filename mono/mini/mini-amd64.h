@@ -45,6 +45,8 @@ void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler);
 
 LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 
+#define MONO_ARCH_NOMAP32BIT
+
 #endif /* PLATFORM_WIN32 */
 
 #ifdef sun    // Solaris x86
@@ -346,10 +348,10 @@ typedef struct {
 #define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
 #define MONO_ARCH_HAVE_IMT 1
 #define MONO_ARCH_HAVE_TLS_GET 1
-#define MONO_ARCH_IMT_REG AMD64_R11
+#define MONO_ARCH_IMT_REG AMD64_R10
 #define MONO_ARCH_VTABLE_REG MONO_AMD64_ARG_REG1
 /*
- * We use r10 for the rgctx register rather than r11 because r11 is
+ * We use r10 for the imt/rgctx register rather than r11 because r11 is
  * used by the trampoline as a scratch register and hence might be
  * clobbered across method call boundaries.
  */

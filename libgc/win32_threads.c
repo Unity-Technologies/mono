@@ -417,6 +417,10 @@ ptr_t GC_current_stackbottom()
 	}
 # endif
 
+#define PUSH1(reg) GC_push_one((word)context.reg)
+#define PUSH2(r1,r2) PUSH1(r1), PUSH1(r2)
+#define PUSH4(r1,r2,r3,r4) PUSH2(r1,r2), PUSH2(r3,r4)
+
 void GC_push_all_stacks()
 {
   DWORD thread_id = GetCurrentThreadId();
@@ -431,7 +435,14 @@ void GC_push_all_stacks()
     thread = thread_table + i;
     if (thread -> in_use && thread->should_scan && thread -> stack_base) {
       if (thread -> id == thread_id) {
-	sp = (ptr_t) &dummy;
+#if defined(X86_64)
+        CONTEXT context;
+        RtlCaptureContext(&context);
+        // push non-volatile registers only (excl. rsp)
+        PUSH4(Rbx, Rbp, Rdi, Rsi), PUSH4(R12, R13, R14, R15);
+#endif
+        sp = (ptr_t) &dummy;
+
 	found_me = TRUE;
       } else if (!thread->suspended) {
 		  continue;
@@ -445,9 +456,6 @@ void GC_push_all_stacks()
         /* Push all registers that might point into the heap.  Frame	*/
         /* pointer registers are included in case client code was	*/
         /* compiled with the 'omit frame pointer' optimisation.		*/
-#       define PUSH1(reg) GC_push_one((word)context.reg)
-#       define PUSH2(r1,r2) PUSH1(r1), PUSH1(r2)
-#       define PUSH4(r1,r2,r3,r4) PUSH2(r1,r2), PUSH2(r3,r4)
 #       if defined(I386)
           PUSH4(Edi,Esi,Ebx,Edx), PUSH2(Ecx,Eax), PUSH1(Ebp);
 	  sp = (ptr_t)context.Esp;
