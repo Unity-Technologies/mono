@@ -1208,6 +1208,7 @@ static MonoDl*
 cached_module_load (const char *name, int flags, char **err)
 {
 	MonoDl *res;
+	gboolean remapped = mono_file_remap_path(&name);
 	mono_loader_lock ();
 	if (!global_module_map)
 		global_module_map = g_hash_table_new (g_str_hash, g_str_equal);
@@ -1221,6 +1222,8 @@ cached_module_load (const char *name, int flags, char **err)
 	if (res)
 		g_hash_table_insert (global_module_map, g_strdup (name), res);
 	mono_loader_unlock ();
+	if (remapped)
+		g_free(name);
 	return res;
 }
 
