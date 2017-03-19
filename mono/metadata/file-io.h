@@ -258,6 +258,11 @@ mono_filesize_from_fd (int fd);
 void
 ves_icall_System_IO_MonoIO_DumpHandles (void);
 
+extern MonoBoolean
+ves_icall_System_IO_MonoIO_RemapPath  (MonoString *path, MonoString **new_path);
+
+gboolean mono_file_remap_path(const char** path);
+
 G_END_DECLS
 
 #endif /* _MONO_METADATA_FILEIO_H_ */
