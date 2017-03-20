@@ -1117,6 +1117,8 @@ cached_module_load (const char *name, int flags, char **err)
 	res = (MonoDl *)g_hash_table_lookup (global_module_map, name);
 	if (res) {
 		global_loader_data_unlock ();
+		if (remapped)
+			g_free((void*)name);
 		return res;
 	}
 	res = mono_dl_open (name, flags, err);
@@ -1124,7 +1126,7 @@ cached_module_load (const char *name, int flags, char **err)
 		g_hash_table_insert (global_module_map, g_strdup (name), res);
 	global_loader_data_unlock ();
 	if (remapped)
-		g_free(name);
+		g_free((void*)name);
 	return res;
 }
 
