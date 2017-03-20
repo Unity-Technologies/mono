@@ -1216,6 +1216,8 @@ cached_module_load (const char *name, int flags, char **err)
 	if (res) {
 		*err = NULL;
 		mono_loader_unlock ();
+		if (remapped)
+			g_free((void*)name);
 		return res;
 	}
 	res = mono_dl_open (name, flags, err);
