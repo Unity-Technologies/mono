@@ -985,7 +985,7 @@ do_mono_image_open (const char *fname, MonoImageOpenStatus *status,
 	
 	mono_file_map_close (filed);
 	if (remapped)
-		g_free(fname);
+		g_free((void*)fname);
 	return do_mono_image_load (image, status, care_about_cli, care_about_pecoff);
 }
 

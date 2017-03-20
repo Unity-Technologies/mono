@@ -1223,7 +1223,7 @@ cached_module_load (const char *name, int flags, char **err)
 		g_hash_table_insert (global_module_map, g_strdup (name), res);
 	mono_loader_unlock ();
 	if (remapped)
-		g_free(name);
+		g_free((void*)name);
 	return res;
 }
 

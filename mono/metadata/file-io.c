@@ -1153,11 +1153,13 @@ static RemapPathFunction g_RemapPathFunc = NULL;
 static inline size_t
 call_remapper(const char* path, char** buf)
 {
+	size_t len;
+
 	if (!g_RemapPathFunc)
 		return FALSE;
 
 	*buf = NULL;
-	size_t len = g_RemapPathFunc(path, *buf, 0);
+	len = g_RemapPathFunc(path, *buf, 0);
 
 	if (len == 0)
 		return 0;
@@ -1198,7 +1200,7 @@ remap_path (MonoString *path, MonoString** new_path)
 	g_free(utf8_path);
 	g_free (buf);
 
-	mono_gc_wbarrier_generic_store(new_path, str);
+	mono_gc_wbarrier_generic_store(new_path, (MonoObject*)str);
 
 	return *new_path ? TRUE : FALSE;
 }
