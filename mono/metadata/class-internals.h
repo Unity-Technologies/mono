@@ -258,6 +258,7 @@ typedef struct {
 #define MONO_RGCTX_SLOT_INDEX(s)	((s) & 0x7fffffff)
 #define MONO_RGCTX_SLOT_IS_MRGCTX(s)	(((s) & 0x80000000) ? TRUE : FALSE)
 
+#define MONO_CLASS_USERDATA_SIZE (sizeof(void*) + 4)
 
 #define MONO_CLASS_PROP_EXCEPTION_DATA 0
 
@@ -421,7 +422,7 @@ struct _MonoClass {
 	/* Rarely used fields of classes */
 	MonoClassExt *ext;
 
-	void *user_data;
+	guint8 user_data[MONO_CLASS_USERDATA_SIZE];
 };
 
 #define MONO_CLASS_IMPLEMENTS_INTERFACE(k,uiid) (((uiid) <= (k)->max_interface_id) && ((k)->interface_bitmap [(uiid) >> 3] & (1 << ((uiid)&7))))
