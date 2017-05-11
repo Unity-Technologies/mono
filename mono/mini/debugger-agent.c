@@ -6756,7 +6756,9 @@ thread_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		mono_loader_lock ();
 		tls = mono_g_hash_table_lookup (thread_to_tls, thread);
 		mono_loader_unlock ();
-		g_assert (tls);
+
+		if(!tls)
+			return ERR_INVALID_ARGUMENT;
 
 		compute_frame_info (thread, tls);
 
