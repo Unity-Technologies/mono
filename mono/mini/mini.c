@@ -272,7 +272,7 @@ mono_print_method_from_ip (void *ip)
 
 	g_print ("IP %p at offset 0x%x of method %s (%p %p)[domain %p - %s]\n", ip, (int)((char*)ip - (char*)ji->code_start), method, ji->code_start, (char*)ji->code_start + ji->code_size, target_domain, target_domain->friendly_name);
 
-	if (source)mo
+	if (source)
 		g_print ("%s:%d\n", source->source_file, source->row);
 
 	mono_debug_free_source_location (source);
