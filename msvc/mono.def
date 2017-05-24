@@ -843,3 +843,5 @@ mono_debugger_agent_set_breakpoint
 mono_debugger_agent_clear_breakpoint
 mono_unity_get_stack_frames
 mono_unity_free_stack_frames
+mono_unity_get_local_vars
+mono_unity_free_local_vars

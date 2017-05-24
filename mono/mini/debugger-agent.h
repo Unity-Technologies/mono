@@ -46,8 +46,55 @@ typedef struct UnityStackFrames
     int length;
 } UnityStackFrames;
 
+typedef enum UnityVariableGroup
+{
+    Unity_Local = 0,
+    Unity_Arg = 1
+} UnityVariableGroup;
+
+typedef enum UnityVariableType
+{
+    Unity_Integer = 0,
+    Unity_Float = 1,
+    Unity_Double = 2,
+    Unity_Pointer = 3,
+    Unity_String = 4,
+    Unity_Object = 5,
+    Unity_Unknown = 6,
+    Unity_Array = 7,
+    Unity_Valuetype = 8,
+    Unity_Referencetype = 9,
+    Unity_Reftype = 10,
+} UnityVariableType;
+
+typedef struct UnityVariable
+{
+    UnityVariableGroup group;
+    char* name;
+    MonoType* type;
+
+    UnityVariableType varType;
+    union
+    {
+        double doubleVar;
+        float floatVar;
+        long longVar;
+        void* pointerVar;
+    };
+} UnityVariable;
+
+typedef struct UnityVariables
+{
+    UnityVariable* variables;
+    int length;
+} UnityVariables;
+
 void mono_unity_get_stack_frames(UnityStackFrames* frames, MonoContext* ctx);
 
 void mono_unity_free_stack_frames(UnityStackFrames* frames);
+
+void mono_unity_get_local_vars(UnityVariables* locals, MonoContext* ctx);
+
+void mono_unity_free_local_vars(UnityVariables* locals);
 
 #endif

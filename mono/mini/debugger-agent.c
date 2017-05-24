@@ -81,6 +81,8 @@ int WSAAPI getnameinfo(const struct sockaddr*,socklen_t,char*,DWORD,
 #include <mono/utils/mono-semaphore.h>
 #include "debugger-agent.h"
 #include "mini.h"
+#include <private/pthread_support.h>
+#include "support/zutil.h"
 
 #ifndef MONO_ARCH_SOFT_DEBUG_SUPPORTED
 #define DISABLE_DEBUGGER_AGENT 1
@@ -481,7 +483,7 @@ typedef struct {
 	int last_line;
 	MonoMethod *stepover_frame_method;
 	int stepover_frame_count;
-	/* Whenever single stepping is performed using start/stop_single_stepping () */
+	/* Wheneveur single stepping is performed using start/stop_single_stepping () */
 	gboolean global;
 	/* The list of breakpoints used to implement step-over */
 	GSList *bps;
@@ -7676,6 +7678,226 @@ void mono_unity_get_stack_frames(UnityStackFrames* frames, MonoContext* ctx)
 void mono_unity_free_stack_frames(UnityStackFrames* frames)
 {
     g_free(frames->frames);
+}
+
+void unity_var_assign_value_and_type(UnityVariable* unityvar, MonoType* t, void* addr)
+{
+    MonoError err;
+    switch(t->type)
+    {
+        case MONO_TYPE_CHAR:
+            unityvar->longVar = *(gunichar2*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_BOOLEAN:
+        case MONO_TYPE_I1:
+            unityvar->longVar = *(gint8*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_U1:
+            unityvar->longVar = *(guint8*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_I2:
+            unityvar->longVar = *(gint16*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_U2:
+            unityvar->longVar = *(guint16*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_I4:
+            unityvar->longVar = *(gint32*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_U4:
+            unityvar->longVar = *(guint32*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_I8:
+            unityvar->longVar = *(gint64*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_U8:
+            unityvar->longVar = *(guint64*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_R4:
+            unityvar->longVar = *(guint32*)addr;
+            unityvar->varType = Unity_Float;
+            break;
+        case MONO_TYPE_R8:
+            unityvar->longVar = *(guint64*)addr;
+            unityvar->varType = Unity_Double;
+            break;
+        case MONO_TYPE_ENUM:
+            unityvar->longVar = *(char*)addr;
+            unityvar->varType = Unity_Integer;
+            break;
+        case MONO_TYPE_PTR:
+            unityvar->longVar = *(gssize*)addr;
+            unityvar->varType = Unity_Pointer;
+            break;
+        case MONO_TYPE_VOID:
+            unityvar->pointerVar = *(gint8*)addr;
+            unityvar->varType = Unity_Pointer;
+            break;
+        case MONO_TYPE_BYREF:
+            unityvar->pointerVar = *(void**)addr;
+            unityvar->varType = Unity_Pointer;
+            break;
+        case MONO_TYPE_STRING:
+            unityvar->pointerVar = mono_string_to_utf8_checked(*(MonoString**)addr, &err);
+            unityvar->varType = Unity_String;
+            break;
+        case MONO_TYPE_FNPTR:
+            unityvar->pointerVar = addr;
+            unityvar->varType = Unity_Pointer;
+            break;
+        case MONO_TYPE_OBJECT:
+        case MONO_TYPE_CLASS:
+            unityvar->pointerVar = *(MonoObject**)addr;
+            unityvar->varType = Unity_Object;
+            break;
+        case MONO_TYPE_SZARRAY:
+        case MONO_TYPE_ARRAY:
+            unityvar->pointerVar = mono_array_addr(*(MonoArray**)addr, void*, 0);
+            unityvar->varType = Unity_Array;
+            break;
+        case MONO_TYPE_VAR:
+        case MONO_TYPE_MVAR:
+            unityvar->pointerVar = *(MonoObject**)addr;
+            unityvar->varType = Unity_Pointer;
+            break;
+        case MONO_TYPE_GENERICINST:
+            if (mono_type_generic_inst_is_valuetype(t)) {
+                goto handle_vtype;
+            }
+            else {
+                goto handle_ref;
+            }
+            break;
+        case MONO_TYPE_I:
+        case MONO_TYPE_U:
+        case MONO_TYPE_VALUETYPE:
+            handle_vtype:
+            unityvar->pointerVar = addr;
+            unityvar->varType = Unity_Valuetype;
+        case MONO_TYPE_TYPEDBYREF:
+        handle_ref:
+            unityvar->pointerVar = addr;
+            unityvar->varType = Unity_Reftype;
+        case MONO_TYPE_CMOD_REQD:
+        case MONO_TYPE_CMOD_OPT:
+        case MONO_TYPE_INTERNAL:
+        case MONO_TYPE_MODIFIER:
+        case MONO_TYPE_SENTINEL:
+        case MONO_TYPE_PINNED:
+        case MONO_TYPE_END:
+        default:
+            //Todo Fixme Deal With This Later
+            unityvar->pointerVar = addr;
+            unityvar->varType = Unity_Unknown;
+    }
+}
+
+void fill_unityvariable_value(UnityVariable* unityvar, MonoContext* ctx, MonoDebugVarInfo* var)
+{
+    guint32 flags;
+    int reg;
+    guint8 *addr;
+    gpointer reg_val;
+
+    flags = var->index & MONO_DEBUG_VAR_ADDRESS_MODE_FLAGS;
+    reg = var->index & ~MONO_DEBUG_VAR_ADDRESS_MODE_FLAGS;
+
+    switch (flags) {
+    case MONO_DEBUG_VAR_ADDRESS_MODE_REGISTER:
+        reg_val = mono_arch_context_get_int_reg(ctx, reg);
+        unity_var_assign_value_and_type(unityvar, var->type, reg_val);
+        break;
+    case MONO_DEBUG_VAR_ADDRESS_MODE_REGOFFSET:
+        addr = mono_arch_context_get_int_reg(ctx, reg);
+        addr += (gint32)var->offset;
+        unity_var_assign_value_and_type(unityvar, var->type, addr);
+        break;
+    case MONO_DEBUG_VAR_ADDRESS_MODE_DEAD:
+        NOT_IMPLEMENTED;
+        break;
+    default:
+        g_assert_not_reached();
+    }
+}
+
+void mono_unity_get_local_vars(UnityVariables* localVariableList, MonoContext* ctx)
+{
+    MonoMethodSignature *signature = NULL;
+    MonoMethodHeader *header = NULL;
+    MonoDomain* domain = NULL;
+    MonoMethod* method = NULL;
+    DebuggerTlsData *tls = NULL;
+    MonoInternalThread *thread;
+    MonoThread *thread_obj;
+    MonoDebugMethodJitInfo* jit = NULL;
+    MonoJitInfo* ji = NULL;
+    gpointer ip = NULL;
+    MonoDebugLocalsInfo *locals = NULL;
+    int i = 0;
+    char **names;
+
+    domain = mono_domain_get();
+    ip = MONO_CONTEXT_GET_IP(ctx);
+    ji = mini_jit_info_table_find(domain, ip, domain);
+    method = ji->method;
+
+    signature = mono_method_signature(method);
+    header = mono_method_get_header(method);
+
+    jit = mono_debug_find_method(method, domain);
+
+    localVariableList->length = jit->num_params + jit->num_locals;
+    localVariableList->variables = g_new0(UnityVariable, localVariableList->length);
+
+    //Fill the arguments
+    names = g_new(char *, jit->num_params);
+    mono_method_get_param_names(method, (const char **)names);
+    for (i = 0; i < jit->num_params; ++i) {
+        UnityVariable* current = &localVariableList->variables[i];
+        MonoDebugVarInfo *var = &jit->params[i];
+        MonoType* type = signature->params[i];
+        current->name = g_strdup(names[i]);
+        g_free(names);
+        current->group = Unity_Arg;
+        current->type = type;
+        
+        fill_unityvariable_value(current, ctx, var);
+    }
+
+    locals = mono_debug_lookup_locals(method);
+    for (i = 0; i < jit->num_locals; ++i) {
+        UnityVariable* current = &localVariableList->variables[jit->num_params + i];
+        MonoDebugVarInfo *var = &jit->locals[i];
+        MonoType* type = header->locals[i];
+        current->name = g_strdup(locals->locals[i].name);
+        current->group = Unity_Local;
+        current->type = type;
+
+        fill_unityvariable_value(current, ctx, var);
+    }
+
+}
+
+void mono_unity_free_local_vars(UnityVariables* locals)
+{
+    int idx = 0;
+    for (idx = 0; idx < locals->length; idx++)
+    {
+        UnityVariable* current = &locals->variables[idx];
+        g_free(current->name);
+        if (current->varType == Unity_String)
+            g_free(current->pointerVar);
+    }
+    g_free(locals->variables);
 }
 
 #else /* DISABLE_DEBUGGER_AGENT */
