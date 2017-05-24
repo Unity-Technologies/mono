@@ -7847,7 +7847,7 @@ void mono_unity_get_local_vars(UnityVariables* localVariableList, MonoContext* c
 
     domain = mono_domain_get();
     ip = MONO_CONTEXT_GET_IP(ctx);
-    ji = mini_jit_info_table_find(domain, ip, domain);
+    ji = mini_jit_info_table_find(domain, ip, &domain);
     method = ji->method;
 
     signature = mono_method_signature(method);
@@ -7859,6 +7859,9 @@ void mono_unity_get_local_vars(UnityVariables* localVariableList, MonoContext* c
     localVariableList->variables = g_new0(UnityVariable, localVariableList->length);
 
     //Fill the arguments
+
+    g_assert(signature->param_count == jit->num_params);
+
     names = g_new(char *, jit->num_params);
     mono_method_get_param_names(method, (const char **)names);
     for (i = 0; i < jit->num_params; ++i) {
@@ -7866,12 +7869,12 @@ void mono_unity_get_local_vars(UnityVariables* localVariableList, MonoContext* c
         MonoDebugVarInfo *var = &jit->params[i];
         MonoType* type = signature->params[i];
         current->name = g_strdup(names[i]);
-        g_free(names);
         current->group = Unity_Arg;
         current->type = type;
         
         fill_unityvariable_value(current, ctx, var);
     }
+    g_free(names);
 
     locals = mono_debug_lookup_locals(method);
     for (i = 0; i < jit->num_locals; ++i) {

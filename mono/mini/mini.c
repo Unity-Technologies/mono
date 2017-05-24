@@ -272,7 +272,7 @@ mono_print_method_from_ip (void *ip)
 
 	g_print ("IP %p at offset 0x%x of method %s (%p %p)[domain %p - %s]\n", ip, (int)((char*)ip - (char*)ji->code_start), method, ji->code_start, (char*)ji->code_start + ji->code_size, target_domain, target_domain->friendly_name);
 
-	if (source)
+	if (source)mo
 		g_print ("%s:%d\n", source->source_file, source->row);
 
 	mono_debug_free_source_location (source);
@@ -4712,24 +4712,33 @@ mono_install_debugger_callback(MonoDebuggerCallback callback)
 	mono_debugger_callback = callback;
 }
 
+static MonoContext debugger_callback_ctx;
+
+static void mono_invoke_debugger_callback2()
+{
+    static void(*restore_context) (void*);
+
+    mono_debugger_callback(&debugger_callback_ctx);
+
+    mono_arch_skip_breakpoint(&debugger_callback_ctx);
+    if (!restore_context)
+        restore_context = mono_get_restore_context();
+
+    restore_context(&debugger_callback_ctx);
+}
+
 static int mono_invoke_debugger_callback(void* sigctx)
 {
     MonoContext ctx;
-    static void(*restore_context) (void*);
 
 	if (!mono_debugger_callback)
 		return 0;
 
     mono_arch_sigctx_to_monoctx(sigctx, &ctx);
+    memcpy(&debugger_callback_ctx, &ctx, sizeof(MonoContext));
 
-    if (!mono_debugger_callback(&ctx))
-        return 0;
-
-    mono_arch_skip_breakpoint(&ctx);
-    if (!restore_context)
-        restore_context = mono_get_restore_context();
-
-    restore_context(&ctx);
+    mono_arch_setup_resume_sighandler_ctx(&ctx, mono_invoke_debugger_callback2);
+    mono_arch_monoctx_to_sigctx(&ctx, sigctx);
 	return 1;
 }
 
