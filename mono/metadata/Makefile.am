@@ -243,6 +243,8 @@ common_sources = \
 	seq-points-data.c	\
 	handle.c	\
 	handle.h	\
+	unity-memory-info.c \
+	unity-memory-info.h \
 	unity-utils.c   \
 	unity-utils.h   \
 	unity-liveness.c
