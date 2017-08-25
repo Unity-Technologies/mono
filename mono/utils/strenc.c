@@ -41,7 +41,7 @@ static const char trailingBytesForUTF8[256] = {
  * of bytes in the returned string, not including the terminator.
  */
 gunichar2 *
-mono_unicode_from_external (const gchar *in, gsize *bytes)
+mono_unicode_from_external (const gchar *in, glong *bytes)
 {
 	gchar *res=NULL;
 	gchar **encodings;
