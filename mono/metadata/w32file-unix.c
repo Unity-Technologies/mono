@@ -3757,7 +3757,7 @@ mono_w32file_get_cwd (guint32 length, gunichar2 *buffer)
 {
 	gunichar2 *utf16_path;
 	glong count;
-	gsize bytes;
+	glong bytes;
 
 #ifdef __native_client__
 	gchar *path = g_get_current_dir ();

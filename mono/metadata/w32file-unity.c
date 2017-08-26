@@ -500,7 +500,7 @@ mono_w32file_get_cwd (guint32 length, gunichar2 *buffer)
 	/* count is the number of characters in the current directory, including the null terminator */
 	gunichar2 *utf16_path;
 	glong count;
-	uintptr_t bytes;
+	glong bytes;
 	int error = 0;
 
 	const char* palPath = UnityPalDirectoryGetCurrent(&error);

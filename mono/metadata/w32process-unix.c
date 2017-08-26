@@ -1143,7 +1143,7 @@ guint32
 mono_w32process_module_get_filename (gpointer process, gpointer module, gunichar2 *basename, guint32 size)
 {
 	gint pid, len;
-	gsize bytes;
+	glong bytes;
 	gchar *path;
 	gunichar2 *proc_path;
 
@@ -1815,7 +1815,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 	 */
 	if (is_managed_binary (prog)) {
 		gunichar2 *newapp, *newcmd;
-		gsize bytes_ignored;
+		glong bytes_ignored;
 
 		newapp = mono_unicode_from_external (cli_launcher ? cli_launcher : "mono", &bytes_ignored);
 		if (newapp) {
