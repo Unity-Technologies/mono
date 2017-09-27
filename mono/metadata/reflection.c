@@ -8565,6 +8565,26 @@ mono_custom_attrs_has_attr (MonoCustomAttrInfo *ainfo, MonoClass *attr_klass)
 	return FALSE;
 }
 
+/* Style inspired by mono_class_get_interfaces */
+MonoClass*
+mono_custom_attrs_get_attrs(MonoCustomAttrInfo *ainfo, gpointer *iter)
+{
+	int index = -1;
+	if (!iter)
+		return NULL;
+	if (!*iter)
+	{
+		*iter = 1;
+		return ainfo->attrs[0].ctor->klass;
+	}
+
+	index = (int)*iter;
+	if (index >= ainfo->num_attrs)
+		return NULL;
+	*iter = index + 1;
+	return ainfo->attrs[index].ctor->klass;
+}
+
 MonoObject*
 mono_custom_attrs_get_attr (MonoCustomAttrInfo *ainfo, MonoClass *attr_klass)
 {
