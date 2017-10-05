@@ -8578,10 +8578,10 @@ mono_custom_attrs_get_attrs(MonoCustomAttrInfo *ainfo, gpointer *iter)
 		return ainfo->attrs[0].ctor->klass;
 	}
 
-	index = (int)*iter;
+	index = GPOINTER_TO_INT(*iter);
 	if (index >= ainfo->num_attrs)
 		return NULL;
-	*iter = index + 1;
+	*iter = GINT_TO_POINTER(index + 1);
 	return ainfo->attrs[index].ctor->klass;
 }
 
