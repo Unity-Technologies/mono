@@ -34,4 +34,7 @@
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MonoSourceLocation)\eglib\src\gunicode-win32.c" />
+  </ItemGroup>
 </Project>

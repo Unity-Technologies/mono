@@ -33,21 +33,21 @@ namespace Mono.Mbedtls
 			DATATYPE_FILE = 2
 		}
 
-		[MethodImpl (MethodImplOptions.InternalCall)]
-		static extern bool EnumSystemCertificates(IntPtr certStore, ref IntPtr iter, out CertDataFormat format, out int size, out IntPtr data);
-		[MethodImpl (MethodImplOptions.InternalCall)]
-		static extern IntPtr OpenSystemRootStore();
-		[MethodImpl (MethodImplOptions.InternalCall)]
-		static extern void CloseSystemRootStore(IntPtr cStore);
+		[DllImport ("__Internal")]
+		static extern bool UnityPalSystemCertificatesEnumSystemCertificates(IntPtr certStore, ref IntPtr iter, out CertDataFormat format, out int size, out IntPtr data);
+		[DllImport ("__Internal")]
+		static extern IntPtr UnityPalSystemCertificatesOpenSystemRootStore();
+		[DllImport ("__Internal")]
+		static extern void UnityPalSystemCertificatesCloseSystemRootStore(IntPtr cStore);
 
 		public static void AddSystemCertificates(Mbedtls.mbedtls_x509_crt* chain)
 		{
-			IntPtr store = OpenSystemRootStore();
+			IntPtr store = UnityPalSystemCertificatesOpenSystemRootStore();
 			CertDataFormat format;
 			int size;
 			IntPtr data;
 			IntPtr iter = IntPtr.Zero;
-			while (EnumSystemCertificates(store, ref iter, out format, out size, out data)) {
+			while (UnityPalSystemCertificatesEnumSystemCertificates(store, ref iter, out format, out size, out data)) {
 				if (format == CertDataFormat.DATATYPE_INTPTR)
 				{
 					AddToChain(chain, data, size);
@@ -70,7 +70,7 @@ namespace Mono.Mbedtls
 				}
 			}
 
-			CloseSystemRootStore(store);
+			UnityPalSystemCertificatesCloseSystemRootStore(store);
 		}
 
 		public static void AddToChain (Mbedtls.mbedtls_x509_crt* chain, X509Certificate crt)

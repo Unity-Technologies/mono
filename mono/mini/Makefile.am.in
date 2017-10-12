@@ -20,37 +20,37 @@ boehm_libs=	\
 	$(monodir)/mono/metadata/libmonoruntime.la	\
 	$(monodir)/mono/utils/libmonoutils.la \
 	$(GLIB_LIBS) $(LIBICONV) \
-	$(libgc_libs)
+	$(libgc_libs) $(UNITY_PAL_LIBS)
 
 bdwgc_libs=	\
 	$(monodir)/mono/metadata/libmonoruntimebdwgc.la	\
 	$(monodir)/mono/utils/libmonoutils.la \
 	$(GLIB_LIBS) $(LIBICONV) \
-	$(libbdwgc_libs)
+	$(libbdwgc_libs) $(UNITY_PAL_LIBS)
 
 sgen_libs = \
 	$(monodir)/mono/metadata/libmonoruntimesgen.la	\
 	$(monodir)/mono/sgen/libmonosgen.la	\
 	$(monodir)/mono/utils/libmonoutils.la \
-	$(GLIB_LIBS) $(LIBICONV)
+	$(GLIB_LIBS) $(LIBICONV) $(UNITY_PAL_LIBS)
 
 boehm_static_libs=	\
 	$(monodir)/mono/metadata/libmonoruntime-static.la	\
 	$(monodir)/mono/utils/libmonoutils.la \
 	$(GLIB_LIBS) $(LIBICONV) \
-	$(libgc_static_libs)
+	$(libgc_static_libs) $(UNITY_PAL_LIBS)
 
 bdwgc_static_libs=	\
 	$(monodir)/mono/metadata/libmonoruntimebdwgc-static.la	\
 	$(monodir)/mono/utils/libmonoutils.la \
 	$(GLIB_LIBS) $(LIBICONV) \
-	$(libbdwgc_static_libs)
+	$(libbdwgc_static_libs) $(UNITY_PAL_LIBS)
 
 sgen_static_libs = \
 	$(monodir)/mono/metadata/libmonoruntimesgen-static.la	\
 	$(monodir)/mono/sgen/libmonosgen-static.la	\
 	$(monodir)/mono/utils/libmonoutils.la \
-	$(GLIB_LIBS) $(LIBICONV)
+	$(GLIB_LIBS) $(LIBICONV) $(UNITY_PAL_LIBS)
 
 CLASS=$(mcs_topdir)/class/lib/$(DEFAULT_PROFILE)
 

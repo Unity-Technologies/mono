@@ -21,6 +21,7 @@
     <top_srcdir>$(MSBuildProjectDirectory)/$(MonoSourceLocation)</top_srcdir>
     <MONO_DIR>$(top_srcdir)</MONO_DIR>
     <MONO_INCLUDE_DIR>$(MONO_DIR)/mono</MONO_INCLUDE_DIR>
+    <UNITY_PAL_INCLUDE_DIR>$(MONO_DIR)/../../il2cpp/build/libil2cpp</UNITY_PAL_INCLUDE_DIR>
     <MONO_EGLIB_INCLUDE_DIR>$(MONO_DIR)/eglib;$(MONO_DIR)/eglib/include;$(MONO_DIR)/eglib/test</MONO_EGLIB_INCLUDE_DIR>
     <MONO_EGLIB_SOURCE_DIR>$(MONO_DIR)/eglib/src</MONO_EGLIB_SOURCE_DIR>
     <MONO_MBEDTLS_INCLUDE_DIR>$(MONO_DIR)/external/mbedtls/include</MONO_MBEDTLS_INCLUDE_DIR>
@@ -83,7 +84,7 @@
   <PropertyGroup Label="Static-Mono-Libraries">
     <EMBEDTLS_LIBS>crypt32.lib;mbedTLS.lib</EMBEDTLS_LIBS>
     <EMBEDTLS_LIB_DIR>$(MSBuildProjectDirectory)/./build\$(Platform)\lib\$(Configuration)\</EMBEDTLS_LIB_DIR>
-    <MONO_RUNTIME_LIBS>libmonoutils.lib;libmonoruntime$(MONO_TARGET_SUFFIX).lib;$(GC_LIB)</MONO_RUNTIME_LIBS>
+    <MONO_RUNTIME_LIBS>libunity-pal.lib;libmonoutils.lib;libmonoruntime$(MONO_TARGET_SUFFIX).lib;$(GC_LIB)</MONO_RUNTIME_LIBS>
     <MONO_STATIC_LIBMONO_LIB>libmono-static$(MONO_TARGET_SUFFIX).lib;$(MONO_RUNTIME_LIBS)</MONO_STATIC_LIBMONO_LIB>
     <MONO_DYNAMIC_LIBMONO_LIB>mono-2.0$(MONO_TARGET_SUFFIX).lib</MONO_DYNAMIC_LIBMONO_LIB>
   </PropertyGroup>

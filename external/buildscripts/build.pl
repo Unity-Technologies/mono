@@ -1171,10 +1171,12 @@ if ($build)
 		if ($debug)
 		{
 			$ENV{CFLAGS} = "$archflags -g -O0";
+			$ENV{CXXFLAGS} = "$archflags -g -O0";
 		}
 		else
 		{
 			$ENV{CFLAGS} = "$archflags -Os";  #optimize for size
+			$ENV{CXXFLAGS} = "$archflags -Os";  #optimize for size
 		}
 	}
 	elsif($^O eq 'darwin')
@@ -1204,6 +1206,7 @@ if ($build)
 		$ENV{'CC'} = "$macSdkPath/../usr/bin/clang";
 		$ENV{'CXX'} = "$macSdkPath/../usr/bin/clang++";
 		$ENV{'CFLAGS'} = $ENV{MACSDKOPTIONS} = "-D_XOPEN_SOURCE -I$macBuildEnvDir/builds/usr/include -mmacosx-version-min=$macversion -isysroot $macSdkPath";
+		$ENV{'CXXFLAGS'} = $ENV{MACSDKOPTIONS} = "-D_XOPEN_SOURCE -I$macBuildEnvDir/builds/usr/include -mmacosx-version-min=$macversion -isysroot $macSdkPath";
 
 		$ENV{CFLAGS} = "$ENV{CFLAGS} -g -O0" if $debug;
 		$ENV{CFLAGS} = "$ENV{CFLAGS} -Os" if not $debug; #optimize for size

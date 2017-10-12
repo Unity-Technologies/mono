@@ -84,11 +84,6 @@ ICALL(COMPROX_1, "AddProxy", ves_icall_Mono_Interop_ComInteropProxy_AddProxy)
 ICALL(COMPROX_2, "FindProxy", ves_icall_Mono_Interop_ComInteropProxy_FindProxy)
 #endif
 
-ICALL_TYPE(UNITY_MBEDTLS_CERT, "Mono.Mbedtls.CertificateHelper", UNITY_MBEDTLS_CERT_1)
-ICALL(UNITY_MBEDTLS_CERT_1 , "CloseSystemRootStore", CloseSystemRootStore)
-ICALL(UNITY_MBEDTLS_CERT_2 , "EnumSystemCertificates", EnumSystemCertificates)
-ICALL(UNITY_MBEDTLS_CERT_3 , "OpenSystemRootStore", OpenSystemRootStore)
-
 ICALL_TYPE(UNITY_MBEDTLS, "Mono.Mbedtls.Mbedtls", UNITY_MBEDTLS_1)
 ICALL(UNITY_MBEDTLS_1 , "unity_mbedtls_ctr_drbg_free", unity_mbedtls_ctr_drbg_free)
 ICALL(UNITY_MBEDTLS_2 , "unity_mbedtls_ctr_drbg_init", unity_mbedtls_ctr_drbg_init)

@@ -24,7 +24,8 @@ pedump_LDADD = 			\
 	$(LLVM_LDFLAGS)			\
 	$(GLIB_LIBS)			\
 	$(LIBICONV)				\
-	$(MBEDTLS_LIBS)
+	$(MBEDTLS_LIBS)			\
+	$(UNITY_PAL_LIBS)
 
 if PLATFORM_DARWIN
 pedump_LDFLAGS = -framework CoreFoundation -framework Foundation -framework Security

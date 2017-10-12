@@ -94,7 +94,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(MONO_MBEDTLS_INCLUDE_DIR);$(MONO_DIR);$(MONO_INCLUDE_DIR);$(MONO_JIT_INCLUDE_DIR);$(MONO_EGLIB_SOURCE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(UNITY_PAL_INCLUDE_DIR);$(MONO_MBEDTLS_INCLUDE_DIR);$(MONO_DIR);$(MONO_INCLUDE_DIR);$(MONO_JIT_INCLUDE_DIR);$(MONO_EGLIB_SOURCE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(EMBEDTLS_LIBS);eglib.lib;$(MONO_RUNTIME_LIBS);%(AdditionalDependencies)</AdditionalDependencies>

@@ -16,7 +16,7 @@ runtime_lib=	\
 	$(metadata_lib) \
 	$(gc_lib)	\
 	$(top_builddir)/mono/utils/libmonoutils.la \
-	$(GLIB_LIBS) $(LIBICONV)
+	$(GLIB_LIBS) $(LIBICONV) $(UNITY_PAL_LIBS)
 
 if DISABLE_EXECUTABLES
 bin_PROGRAMS =

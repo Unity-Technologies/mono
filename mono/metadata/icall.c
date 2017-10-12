@@ -93,13 +93,15 @@
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-io-portability.h>
 #include <mono/utils/mono-digest.h>
+#include <mono/utils/mono-digest.h>
+#include <mono/utils/mono-dl.h>
 #include <mono/utils/bsearch.h>
 #include <mono/utils/mono-os-mutex.h>
 #include <mono/utils/mono-threads.h>
 #include <mono/metadata/w32error.h>
 #include <mono/utils/w32api.h>
-#include <mono/utils/mono-systemcerts.h>
 #include <metadata/mono-mbedtls.h>
+#include <os/c-api/SystemCertificates-c-api.h>
 
 #include "decimal-ms.h"
 #include "number-ms.h"
@@ -8115,6 +8117,16 @@ mono_icall_init (void)
 		}
 	}
 #endif
+
+#define MONO_REGISTER_INTERNAL_PINVOKE(name) do { \
+		mono_dl_register_symbol(#name, name);	\
+	} while(0)
+
+	MONO_REGISTER_INTERNAL_PINVOKE (UnityPalSystemCertificatesOpenSystemRootStore);
+	MONO_REGISTER_INTERNAL_PINVOKE (UnityPalSystemCertificatesEnumSystemCertificates);
+	MONO_REGISTER_INTERNAL_PINVOKE (UnityPalSystemCertificatesCloseSystemRootStore);
+
+#undef MONO_REGISTER_INTERNAL_PINVOKE
 
 	icall_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 	mono_os_mutex_init (&icall_mutex);

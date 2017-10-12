@@ -190,9 +190,6 @@
     <ClCompile Include="..\mono\utils\os-event-win32.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\mono\utils\mono-systemcerts-win.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\mono\utils\dlmalloc.h">
@@ -403,9 +400,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\mono\utils\mono-threads-posix-signals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\mono\utils\mono-systemcerts.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

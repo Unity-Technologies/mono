@@ -23,27 +23,6 @@ unix_sources = \
 platform_sources = $(unix_sources)
 endif
 
-if HOST_WIN32
-platform_sources += mono-systemcerts-win.c
-else
-
-if TARGET_OSX
-platform_sources += mono-systemcerts-osx.c
-else
-
-if PLATFORM_LINUX
-platform_sources += mono-systemcerts-linux.c
-else
-
-platform_sources += mono-systemcerts-default.c
-
-endif
-
-endif
-
-endif
-
-
 monoutils_sources = \
 	$(platform_sources)	\
 	mono-md5.c		\
@@ -193,8 +172,7 @@ monoutils_sources = \
 	checked-build.h \
 	os-event.h \
 	refcount.h	\
-	w32api.h	\
-	mono-systemcerts.h
+	w32api.h
 
 arch_sources = 
 
