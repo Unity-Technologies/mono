@@ -81,15 +81,15 @@ if (not $skipbuild)
 
 	if ($build64)
 	{
-		$archflags = '-fPIC -ftls-model=initial-exec -mtls-dialect=gnu2';
+		$archflags .= ' -fPIC -ftls-model=initial-exec -mtls-dialect=gnu2';
 	}
 	elsif ($build_armel)
 	{
-		$archflags = '-marm -DARM_FPU_NONE';
+		$archflags .= ' -marm -DARM_FPU_NONE';
 	}
 	else # x86
 	{
-		$archflags = '-m32';
+		$archflags .= ' -m32';
 	}
 	if ($debug)
 	{
