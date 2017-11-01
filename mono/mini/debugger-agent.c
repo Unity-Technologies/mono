@@ -105,10 +105,7 @@
 #endif // IL2CPP_MONO_DEBUGGER
 
 #include "debugger-agent.h"
-
-#ifdef IL2CPP_MONO_DEBUGGER
 #include "il2cpp-compat.h"
-#endif // IL2CPP_MONO_DEBUGGER
 
 typedef struct {
 	gboolean enabled;
@@ -841,7 +838,7 @@ register_socket_transport (void);
 #endif
 
 #ifndef IL2CPP_MONO_DEBUGGER
-static MonoAssembly* mono_domain_get_assemblies(MonoDomain *domain, void* *iter)
+static MonoAssembly* mono_domain_get_assemblies_iter(MonoDomain *domain, void* *iter)
 {
 	if (!iter)
 		return NULL;

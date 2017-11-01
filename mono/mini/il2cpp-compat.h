@@ -86,7 +86,7 @@
 #define VM_DOMAIN_SET_AGENT_INFO(domain, value) domain_jit_info (domain)->agent_info = value
 #define VM_DOMAIN_GET_NAME(domain) domain->friendly_name
 #define VM_DOMAIN_GET_CORLIB(domain) domain->domain->mbr.obj.vtable->klass->image->assembly
-#define VM_DOMAIN_GET_ASSEMBLIES(domain, iter) mono_domain_get_assemblies(domain, iter)
+#define VM_DOMAIN_GET_ASSEMBLIES(domain, iter) mono_domain_get_assemblies_iter(domain, iter)
 #define VM_ASSEMBLY_GET_NAME(assembly) assembly->aname.name
 #define VM_ASSEMBLY_FREE_NAME(name)
 #define VM_ASSEMBLY_IS_DYNAMIC(assembly) assembly->image->dynamic
