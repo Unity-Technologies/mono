@@ -20,6 +20,7 @@
 #define VM_DOMAIN_SET_AGENT_INFO(domain, value) il2cpp_domain_set_agent_info(domain, value)
 #define VM_DOMAIN_GET_NAME(domain) il2cpp_domain_get_name(domain)
 #define VM_DOMAIN_GET_CORLIB(domain) il2cpp_image_get_assembly(il2cpp_get_corlib())
+#define VM_DOMAIN_GET_ASSEMBLIES(domain, iter) il2cpp_domain_get_assemblies_iter(domain, iter)
 #define VM_ASSEMBLY_GET_NAME(assembly) il2cpp_assembly_get_name(assembly)
 #define VM_ASSEMBLY_FREE_NAME(name) g_free(name)
 #define VM_ASSEMBLY_IS_DYNAMIC(assembly) FALSE
@@ -42,6 +43,7 @@
 #define VM_CLASS_IS_INTERFACE(klass) il2cpp_class_is_interface(klass)
 #define VM_CLASS_GET_NAME(klass) il2cpp_class_get_name(klass)
 #define VM_CLASS_GET_INTERFACES(klass, iter) il2cpp_class_get_interfaces(klass, iter)
+#define VM_CLASS_GET_ENUMTYPE(klass) il2cpp_class_get_enumtype(klass)
 #define VM_METHOD_GET_WRAPPER_TYPE(method) FALSE
 #define VM_METHOD_GET_DECLARING_TYPE(method) il2cpp_method_get_declaring_type(method)
 #define VM_METHOD_GET_FLAGS(method) il2cpp_method_get_flags_no_iflags(method)
@@ -84,6 +86,7 @@
 #define VM_DOMAIN_SET_AGENT_INFO(domain, value) domain_jit_info (domain)->agent_info = value
 #define VM_DOMAIN_GET_NAME(domain) domain->friendly_name
 #define VM_DOMAIN_GET_CORLIB(domain) domain->domain->mbr.obj.vtable->klass->image->assembly
+#define VM_DOMAIN_GET_ASSEMBLIES(domain, iter) mono_domain_get_assemblies(domain, iter)
 #define VM_ASSEMBLY_GET_NAME(assembly) assembly->aname.name
 #define VM_ASSEMBLY_FREE_NAME(name)
 #define VM_ASSEMBLY_IS_DYNAMIC(assembly) assembly->image->dynamic
@@ -105,6 +108,7 @@
 #define VM_CLASS_IS_INTERFACE(klass) MONO_CLASS_IS_INTERFACE(klass)
 #define VM_CLASS_GET_NAME(klass) (klass)->name
 #define VM_CLASS_GET_INTERFACES(klass, iter) mono_class_get_interfaces(klass, iter)
+#define VM_CLASS_GET_ENUMTYPE(klass) (klass)->enumtype
 #define VM_METHOD_GET_WRAPPER_TYPE(method) method->wrapper_type
 #define VM_METHOD_GET_DECLARING_TYPE(method) (method)->klass
 #define VM_METHOD_GET_FLAGS(method) (method)->flags
@@ -403,6 +407,9 @@
 #define mono_method_is_generic il2cpp_method_is_generic
 #define mono_method_is_inflated il2cpp_method_is_inflated
 
+#define mono_domain_assemblies_lock
+#define mono_domain_assemblies_unlock
+
 Il2CppMonoMethod* il2cpp_mono_image_get_entry_point (Il2CppMonoImage *image);
 const char* il2cpp_mono_image_get_filename (Il2CppMonoImage *image);
 const char*  il2cpp_mono_image_get_guid (Il2CppMonoImage *image);
@@ -623,5 +630,9 @@ void il2cpp_set_local_value(guint8* newValue, void *value, Il2CppMonoType *local
 Il2CppMonoMethod* il2cpp_get_interface_method(Il2CppMonoClass* klass, Il2CppMonoClass* itf, int slot);
 gboolean il2cpp_field_is_deleted(Il2CppMonoClassField *field);
 Il2CppMonoGenericClass* il2cpp_type_get_generic_class(Il2CppMonoType *type);
+gboolean il2cpp_class_get_enumtype(Il2CppMonoClass *klass);
+Il2CppMonoClass* il2cpp_iterate_loaded_classes(void* *iter);
+Il2CppMonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domain, void* *iter);
+const char** il2cpp_get_source_files_for_type(Il2CppMonoClass *klass, int *count);
 
 #endif // RUNTIME_IL2CPP

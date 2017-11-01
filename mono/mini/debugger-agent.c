@@ -104,8 +104,11 @@
 #define THREAD_TO_INTERNAL(thread) (thread)->internal_thread
 #endif // IL2CPP_MONO_DEBUGGER
 
-#include "il2cpp-compat.h"
 #include "debugger-agent.h"
+
+#ifdef IL2CPP_MONO_DEBUGGER
+#include "il2cpp-compat.h"
+#endif // IL2CPP_MONO_DEBUGGER
 
 typedef struct {
 	gboolean enabled;
@@ -835,6 +838,30 @@ static void invalidate_frames (DebuggerTlsData *tls);
 #ifndef DISABLE_SOCKET_TRANSPORT
 static void
 register_socket_transport (void);
+#endif
+
+#ifndef IL2CPP_MONO_DEBUGGER
+static MonoAssembly* mono_domain_get_assemblies(MonoDomain *domain, void* *iter)
+{
+	if (!iter)
+		return NULL;
+
+	if (!*iter)
+	{
+		*iter = domain->domain_assemblies;
+		if (*iter)
+			return ((GList*)(*iter))->data;
+		else
+			return NULL;
+	}
+
+	*iter = ((GList*)(*iter))->next;
+
+	if (*iter)
+		return ((GList*)(*iter))->data;
+	else
+		return NULL;
+}
 #endif
 
 static inline gboolean
@@ -4244,9 +4271,6 @@ send_type_load (MonoClass *klass)
 static void
 send_types_for_domain (MonoDomain *domain, void *user_data)
 {
-#ifdef IL2CPP_MONO_DEBUGGER
-	il2cpp_send_types_for_domain(domain, emit_type_load);
-#else
 	MonoDomain* old_domain;
 	AgentDomainInfo *info = NULL;
 
@@ -4262,15 +4286,11 @@ send_types_for_domain (MonoDomain *domain, void *user_data)
 	mono_loader_unlock ();
 
 	mono_domain_set (old_domain, TRUE);
-#endif // IL2CPP_MONO_DEBUGGER
 }
 
 static void
 send_assemblies_for_domain (MonoDomain *domain, void *user_data)
 {
-#ifdef IL2CPP_MONO_DEBUGGER
-	il2cpp_send_assemblies_for_domain(domain, user_data, emit_assembly_load);
-#else
 	GSList *tmp;
 	MonoDomain* old_domain;
 
@@ -4279,14 +4299,15 @@ send_assemblies_for_domain (MonoDomain *domain, void *user_data)
 	mono_domain_set (domain, TRUE);
 
 	mono_domain_assemblies_lock (domain);
-	for (tmp = domain->domain_assemblies; tmp; tmp = tmp->next) {
-		MonoAssembly* ass = (MonoAssembly *)tmp->data;
-		emit_assembly_load (ass, NULL);
-	}
+
+	void *iter = NULL;
+	MonoAssembly *ass;
+	while (ass = VM_DOMAIN_GET_ASSEMBLIES(domain, &iter))
+		emit_assembly_load(ass, NULL);
+	
 	mono_domain_assemblies_unlock (domain);
 
 	mono_domain_set (old_domain, TRUE);
-#endif // IL2CPP_MONO_DEBUGGER
 }
 
 static void
@@ -4673,7 +4694,7 @@ set_breakpoint (MonoMethod *method, long il_offset, EventRequest *req, MonoError
 #ifdef IL2CPP_MONO_DEBUGGER
 	void *seqPointIter = NULL;
 	Il2CppSequencePointC *seqPoint;
-	while(seqPoint = il2cpp_get_sequence_points(&seqPointIter))
+	while(seqPoint = il2cpp_get_method_sequence_points(method, &seqPointIter))
 	{
 		if (bp_matches_method(bp, *(seqPoint->method)) && seqPoint->ilOffset == bp->il_offset)
 		{
@@ -6193,12 +6214,12 @@ ss_start_il2cpp(SingleStepReq *ss_req, DebuggerTlsData *tls)
 
 		void *seqPointIter = NULL;
 		Il2CppSequencePointC *seqPoint;
-		while(seqPoint = il2cpp_get_sequence_points(&seqPointIter))
+		while(seqPoint = il2cpp_get_method_sequence_points(currentMethod, &seqPointIter))
 		{
 			if (seqPoint->kind != kSequencePointKindC_Normal)
 				continue;
 
-			if (*seqPoint->method == currentMethod)
+			if (il2cpp_mono_methods_match(*seqPoint->method, currentMethod))
 				ss_bp_add_one_il2cpp(ss_req, &ss_req_bp_count, &ss_req_bp_cache, seqPoint);
 		}
 	}
@@ -6910,7 +6931,7 @@ static void buffer_add_value_full (Buffer *buf, MonoType *t, void *addr, MonoDom
 		}
 
 		buffer_add_byte (buf, MONO_TYPE_VALUETYPE);
-		buffer_add_byte (buf, klass->enumtype);
+		buffer_add_byte (buf, VM_CLASS_GET_ENUMTYPE(klass));
 		buffer_add_typeid (buf, domain, klass);
 
 		nfields = 0;
@@ -7322,11 +7343,11 @@ decode_value_internal (MonoType *t, int type, MonoDomain *domain, guint8 *addr, 
 				return err;
 			if (!obj)
 				return ERR_INVALID_ARGUMENT;
-			if (obj->vtable->klass != mono_class_from_mono_type (t)) {
-				DEBUG_PRINTF (1, "Expected type '%s', got object '%s'\n", mono_type_full_name (t), obj->vtable->klass->name);
+			if (VM_OBJECT_GET_CLASS(obj) != mono_class_from_mono_type (t)) {
+				DEBUG_PRINTF (1, "Expected type '%s', got object '%s'\n", mono_type_full_name (t), VM_CLASS_GET_NAME(VM_OBJECT_GET_CLASS(obj)));
 				return ERR_INVALID_ARGUMENT;
 			}
-			memcpy (addr, mono_object_unbox (obj), mono_class_value_size (obj->vtable->klass, NULL));
+			memcpy (addr, mono_object_unbox (obj), mono_class_value_size (VM_OBJECT_GET_CLASS(obj), NULL));
 		} else {
 			err = decode_vtype (t, domain, addr, buf, &buf, limit);
 			if (err != ERR_NONE)
@@ -7851,12 +7872,25 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 				memset (this_buf, 0, mono_class_instance_size (VM_METHOD_GET_DECLARING_TYPE(m)));
 				p = tmp_p;
 			} else {
-				err = decode_value (VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), domain, this_buf, p, &p, end);
+#ifdef IL2CPP_MONO_DEBUGGER
+				err = decode_value (VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), domain, mono_object_unbox(this_buf), p, &p, end);
+#else
+				err = decode_value(VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), domain, this_buf, p, &p, end);
+#endif
+
 				if (err != ERR_NONE)
 					return err;
 			}
 	} else {
+#ifdef IL2CPP_MONO_DEBUGGER
+		if (VM_CLASS_IS_VALUETYPE(VM_METHOD_GET_DECLARING_TYPE(m)))
+			err = decode_value (VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), domain, mono_object_unbox(this_buf), p, &p, end);
+		else
+			err = decode_value(VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), domain, this_buf, p, &p, end);
+#else
 		err = decode_value (VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), domain, this_buf, p, &p, end);
+#endif
+
 		if (err != ERR_NONE)
 			return err;
 	}
@@ -7996,7 +8030,11 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 				if (!VM_CLASS_IS_VALUETYPE(VM_METHOD_GET_DECLARING_TYPE(m)))
 					buffer_add_value (buf, VM_CLASS_GET_TYPE(VM_DEFAULTS_OBJECT_CLASS), &this_arg, domain);
 				else
-					buffer_add_value (buf, VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), this_buf, domain);
+#if IL2CPP_MONO_DEBUGGER
+					buffer_add_value (buf, VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), mono_object_unbox(this_buf), domain);
+#else
+					buffer_add_value(buf, VM_CLASS_GET_TYPE(VM_METHOD_GET_DECLARING_TYPE(m)), this_buf, domain);
+#endif
 			} else {
 				buffer_add_value (buf, VM_CLASS_GET_TYPE(VM_DEFAULTS_VOID_CLASS), NULL, domain);
 			}
@@ -8181,29 +8219,12 @@ get_source_files_for_type (MonoClass *klass)
 
 	files = g_ptr_array_new ();
 
-	while ((method = mono_class_get_methods (klass, &iter))) {
 #ifdef IL2CPP_MONO_DEBUGGER
-		GPtrArray* sequencePoints;
-		GPtrArray* uniqueFileSequencePoints;
-		GArray* uniqueFileSequencePointIndices;
-		GetSequencePointsAndSourceFilesUniqueSequencePoints(method, &sequencePoints, &uniqueFileSequencePoints, &uniqueFileSequencePointIndices);
-
-		for (j = 0; j < uniqueFileSequencePoints->len; ++j) {
-			Il2CppSequencePointC* seqPoint = (Il2CppSequencePointC*)g_ptr_array_index(uniqueFileSequencePoints, j);
-			if (strlen(seqPoint->sourceFile) != 0)
-			{
-				for (i = 0; i < files->len; ++i)
-					if (strcmp(g_ptr_array_index(files, i), seqPoint->sourceFile) == 0)
-						break;
-				if (i == files->len)
-					g_ptr_array_add(files, g_strdup(seqPoint->sourceFile));
-			}
-		}
-
-		g_ptr_array_free(sequencePoints, TRUE);
-		g_ptr_array_free(uniqueFileSequencePoints, TRUE);
-		g_array_free(uniqueFileSequencePointIndices, TRUE);
+	const char **fileNames = il2cpp_get_source_files_for_type(klass, &i);
+	for (j = 0; j < i; ++j)
+		g_ptr_array_add(files, g_strdup(fileNames[j]));
 #else
+	while ((method = mono_class_get_methods(klass, &iter))) {
 		MonoDebugMethodInfo *minfo = mono_debug_lookup_method (method);
 		GPtrArray *source_file_list;
 
@@ -8219,8 +8240,8 @@ get_source_files_for_type (MonoClass *klass)
 			}
 			g_ptr_array_free (source_file_list, TRUE);
 		}
-#endif
 	}
+#endif
 
 	return files;
 }
@@ -8607,21 +8628,23 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 			GSList *tmp;
 
 			mono_domain_assemblies_lock (domain);
-			for (tmp = domain->domain_assemblies; tmp; tmp = tmp->next) {
-				ass = (MonoAssembly *)tmp->data;
-
-				if (ass->image) {
+			void *iter = NULL;
+			while(ass = VM_DOMAIN_GET_ASSEMBLIES(domain, &iter))
+			{
+				if (VM_ASSEMBLY_GET_IMAGE(ass))
+				{
 					MonoError error;
 					type_resolve = TRUE;
 					/* FIXME really okay to call while holding locks? */
-					t = mono_reflection_get_type_checked (ass->image, ass->image, &info, ignore_case, &type_resolve, &error);
-					mono_error_cleanup (&error); 
+					t = mono_reflection_get_type_checked(VM_ASSEMBLY_GET_IMAGE(ass), VM_ASSEMBLY_GET_IMAGE(ass), &info, ignore_case, &type_resolve, &error);
+					mono_error_cleanup(&error);
 					if (t) {
-						g_ptr_array_add (res_classes, mono_type_get_class (t));
-						g_ptr_array_add (res_domains, domain);
+						g_ptr_array_add(res_classes, mono_type_get_class(t));
+						g_ptr_array_add(res_domains, domain);
 					}
 				}
 			}
+
 			mono_domain_assemblies_unlock (domain);
 		}
 		mono_loader_unlock ();
@@ -9278,8 +9301,7 @@ collect_interfaces (MonoClass *klass, GHashTable *ifaces, MonoError *error)
 		return;
 
 	gpointer iter = NULL;
-	while (ic = VM_CLASS_GET_INTERFACES(klass, &iter))
-	{
+	while (ic = VM_CLASS_GET_INTERFACES(klass, &iter)) {
 		g_hash_table_insert (ifaces, ic, ic);
 
 		collect_interfaces (ic, ifaces, error);
@@ -9850,7 +9872,7 @@ static const Il2CppMethodExecutionContextInfoC* GetExecutionContextInfo(MonoMeth
 	Il2CppSequencePointC *seqPoint;
 	while (seqPoint = il2cpp_get_method_sequence_points(method, &seqPointIter))
 	{
-		if (*seqPoint->method == method)
+		if (il2cpp_mono_methods_match(*seqPoint->method, method))
 		{
 			*count = seqPoint->executionContextInfoCount;
 			return seqPoint->executionContextInfos;
@@ -11429,7 +11451,15 @@ debugger_thread (void *arg)
 			/* Send start event to client */
 			process_profiler_event (EVENT_KIND_VM_START, mono_thread_get_main ());
 #ifdef IL2CPP_MONO_DEBUGGER
-			appdomain_load(NULL, il2cpp_mono_get_root_domain(), 0);
+			{
+				Il2CppMonoDomain* domain = il2cpp_mono_get_root_domain();
+				appdomain_load(NULL, domain, 0);
+				AgentDomainInfo *info = VM_DOMAIN_GET_AGENT_INFO(domain);
+				void *iter = NULL;
+				Il2CppMonoClass *klass;
+				while(klass = il2cpp_iterate_loaded_classes(&iter))
+					g_hash_table_insert(info->loaded_classes, klass, klass);
+			}
 #endif
 		}
 	} else {

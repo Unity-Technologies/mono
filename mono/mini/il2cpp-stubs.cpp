@@ -59,8 +59,7 @@ const char*  il2cpp_mono_image_get_guid (Il2CppMonoImage *image)
 
 Il2CppMonoClass* il2cpp_mono_type_get_class (Il2CppMonoType *type)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	return (Il2CppMonoClass*) il2cpp::vm::Type::GetClass((Il2CppType*)type);
 }
 
 mono_bool il2cpp_mono_type_is_struct (Il2CppMonoType *type)
@@ -1175,24 +1174,34 @@ void il2cpp_domain_set_agent_info(Il2CppMonoAppDomain* domain, void* agentInfo)
 	((Il2CppDomain*)domain)->agent_info = agentInfo;
 }
 
-void il2cpp_send_assemblies_for_domain (Il2CppMonoAppDomain *domain, void *user_data, emit_assembly_load_callback callback)
+Il2CppMonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domain, void* *iter)
 {
-	il2cpp::vm::AssemblyVector* assemblies = il2cpp::vm::Assembly::GetAllAssemblies();
-	for (il2cpp::vm::AssemblyVector::iterator assembly = assemblies->begin(); assembly != assemblies->end(); ++assembly)
-		callback((void*)*assembly, NULL);
-}
+	if (!iter)
+		return NULL;
 
-void il2cpp_send_types_for_domain(Il2CppMonoAppDomain *domain, emit_type_load_callback callback)
-{
 	il2cpp::vm::AssemblyVector* assemblies = il2cpp::vm::Assembly::GetAllAssemblies();
-	for (il2cpp::vm::AssemblyVector::iterator assembly = assemblies->begin(); assembly != assemblies->end(); ++assembly)
+
+	if (!*iter)
 	{
-		Il2CppImage* image = il2cpp::vm::Assembly::GetImage(*assembly);
-		il2cpp::vm::TypeVector types;
-		il2cpp::vm::Image::GetTypes(image, true, &types);
-		for (il2cpp::vm::TypeVector::iterator type = types.begin(); type != types.end(); ++type)
-			callback(NULL, (void*)*type, NULL);
+		il2cpp::vm::AssemblyVector::iterator *pIter = new il2cpp::vm::AssemblyVector::iterator();
+		*pIter = assemblies->begin();
+		*iter = pIter;
+		return (Il2CppMonoAssembly*)**pIter;
 	}
+
+	il2cpp::vm::AssemblyVector::iterator *pIter = (il2cpp::vm::AssemblyVector::iterator*)*iter;
+	(*pIter)++;
+	if (*pIter != assemblies->end())
+	{
+		return (Il2CppMonoAssembly*)(**pIter);
+	}
+	else
+	{
+		delete pIter;
+		*iter = NULL;
+	}
+
+	return NULL;
 }
 
 void il2cpp_start_debugger_thread()
@@ -1238,7 +1247,10 @@ Il2CppSequencePointC* il2cpp_get_sequence_points(void* *iter)
 
 Il2CppSequencePointC* il2cpp_get_method_sequence_points(Il2CppMonoMethod* method, void* *iter)
 {
-    return (Il2CppSequencePointC*)il2cpp::utils::Debugger::GetSequencePoints((const MethodInfo*)method, iter);
+	if (!method)
+		return (Il2CppSequencePointC*)il2cpp::utils::Debugger::GetSequencePoints(iter);
+	else
+		return (Il2CppSequencePointC*)il2cpp::utils::Debugger::GetSequencePoints((const MethodInfo*)method, iter);
 }
 
 gboolean il2cpp_mono_methods_match(Il2CppMonoMethod* left, Il2CppMonoMethod* right)
@@ -1453,6 +1465,63 @@ int il2cpp_generic_container_get_type_argc(Il2CppMonoGenericClass* container)
 Il2CppMonoGenericClass* il2cpp_type_get_generic_class(Il2CppMonoType *type)
 {
 	return (Il2CppMonoGenericClass*)((Il2CppType*)type)->data.generic_class;
+}
+
+gboolean il2cpp_class_get_enumtype(Il2CppMonoClass *klass)
+{
+	return ((Il2CppClass*)klass)->enumtype;
+}
+
+struct TypeIterState
+{
+	il2cpp::vm::AssemblyVector* assemblies;
+	il2cpp::vm::AssemblyVector::iterator assembly;
+	Il2CppImage* image;
+	il2cpp::vm::TypeVector types;
+	il2cpp::vm::TypeVector::iterator type;
+};
+
+Il2CppMonoClass* il2cpp_iterate_loaded_classes(void* *iter)
+{
+	if (!iter)
+		return NULL;
+
+	if (!*iter)
+	{
+		TypeIterState *state = new TypeIterState();
+		state->assemblies = il2cpp::vm::Assembly::GetAllAssemblies();
+		state->assembly = state->assemblies->begin();
+		state->image = il2cpp::vm::Assembly::GetImage(*state->assembly);
+		il2cpp::vm::Image::GetTypes(state->image, true, &state->types);
+		state->type = state->types.begin();
+		*iter = state;	
+		return (Il2CppMonoClass*)*state->type;
+	}
+
+	TypeIterState *state = (TypeIterState*)*iter;
+	
+	state->type++;
+	if (state->type == state->types.end())
+	{
+		state->assembly++;
+		if (state->assembly == state->assemblies->end())
+		{
+			delete state;
+			*iter = NULL;
+			return NULL;
+		}
+
+		state->image = il2cpp::vm::Assembly::GetImage(*state->assembly);
+		il2cpp::vm::Image::GetTypes(state->image, true, &state->types);
+		state->type = state->types.begin();
+	}
+
+	return (Il2CppMonoClass*)*state->type;
+}
+
+const char** il2cpp_get_source_files_for_type(Il2CppMonoClass *klass, int *count)
+{
+	return il2cpp::utils::Debugger::GetTypeSourceFiles((Il2CppClass*)klass, *count);
 }
 
 }
