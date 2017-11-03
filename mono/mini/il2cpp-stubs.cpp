@@ -843,6 +843,7 @@ Il2CppMonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2Cpp
 
 Il2CppMonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, Il2CppMonoType* type, MonoError* error)
 {
+	mono_error_init(error);
 	return (Il2CppMonoReflectionType*)il2cpp::vm::Reflection::GetTypeObject((const Il2CppType*)type);
 }
 

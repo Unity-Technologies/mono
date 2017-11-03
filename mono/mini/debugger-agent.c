@@ -3666,7 +3666,7 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, DebuggerEv
 				} else if (mod->kind == MOD_KIND_TYPE_NAME_ONLY && ei && ei->klass) {
 					char *s;
 
-					s = mono_type_full_name (&ei->klass->byval_arg);
+					s = mono_type_full_name (VM_CLASS_GET_TYPE(ei->klass));
 					if (!g_hash_table_lookup (mod->data.type_names, s))
 						filtered = TRUE;
 					g_free (s);
@@ -7131,7 +7131,7 @@ static void buffer_add_value_full(Buffer *buf, MonoType *t, void *addr, MonoDoma
 			}
 
 			buffer_add_byte(buf, MONO_TYPE_VALUETYPE);
-			buffer_add_byte(buf, klass->enumtype);
+			buffer_add_byte(buf, VM_CLASS_GET_ENUMTYPE(klass));
 			buffer_add_typeid(buf, domain, klass);
 
 			nfields = 0;
@@ -11093,8 +11093,8 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 
 			/* Check that the field belongs to the object */
 			found = FALSE;
-			for (k = obj_type; k; k = k->parent) {
-				if (k == f->parent) {
+			for (k = obj_type; k; k = VM_CLASS_GET_PARENT(k)) {
+				if (k == VM_FIELD_GET_PARENT(f)) {
 					found = TRUE;
 					break;
 				}
@@ -11102,18 +11102,18 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			if (!found)
 				return ERR_INVALID_FIELDID;
 
-			if (f->type->attrs & FIELD_ATTRIBUTE_STATIC) {
+			if (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC) {
 				guint8 *val;
 				MonoVTable *vtable;
 
 				if (mono_class_field_is_special_static (f))
 					return ERR_INVALID_FIELDID;
 
-				g_assert (f->type->attrs & FIELD_ATTRIBUTE_STATIC);
-				vtable = mono_class_vtable (VM_OBJECT_GET_DOMAIN(obj), f->parent);
+				g_assert (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC);
+				vtable = mono_class_vtable (VM_OBJECT_GET_DOMAIN(obj), VM_FIELD_GET_PARENT(f));
 
-				val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (f->type)));
-				err = decode_value (f->type, VM_OBJECT_GET_DOMAIN(obj), val, p, &p, end);
+				val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (VM_FIELD_GET_TYPE(f))));
+				err = decode_value (VM_FIELD_GET_TYPE(f), VM_OBJECT_GET_DOMAIN(obj), val, p, &p, end);
 				if (err != ERR_NONE) {
 					g_free (val);
 					return err;
@@ -11121,7 +11121,7 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 				mono_field_static_set_value (vtable, f, val);
 				g_free (val);
 			} else {
-				err = decode_value (f->type, VM_OBJECT_GET_DOMAIN(obj), (guint8*)obj + f->offset, p, &p, end);
+				err = decode_value (VM_FIELD_GET_TYPE(f), VM_OBJECT_GET_DOMAIN(obj), (guint8*)obj + VM_FIELD_GET_OFFSET(f), p, &p, end);
 				if (err != ERR_NONE)
 					return err;
 			}

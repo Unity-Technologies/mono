@@ -62,7 +62,6 @@ typedef void (GC_CALLBACK * GC_push_other_roots_proc)();
 
 static GC_push_other_roots_proc default_push_other_roots;
 static GHashTable *roots;
-static GHashTable *handle_stacks;
 
 static void GC_CALLBACK mono_push_other_roots(void);
 static void*
@@ -196,7 +195,6 @@ mono_gc_base_init (void)
 #endif
 
 	roots = g_hash_table_new (NULL, NULL);
-	handle_stacks = g_hash_table_new (NULL, NULL);
 #if HAVE_BDWGC_GC
 	default_push_other_roots = GC_get_push_other_roots ();
 	GC_set_push_other_roots (mono_push_other_roots);
@@ -417,14 +415,6 @@ mono_gc_register_thread (void *baseptr)
 	return mono_thread_info_attach (baseptr) != NULL;
 }
 
-static gpointer
-insert_handle_stack (gpointer arg)
-{
-	HandleStack* handle_stack = arg;
-	g_hash_table_insert (handle_stacks, handle_stack, NULL);
-	return NULL;
-}
-
 static void*
 boehm_thread_register (MonoThreadInfo* info, void *baseptr)
 {
@@ -439,8 +429,6 @@ boehm_thread_register (MonoThreadInfo* info, void *baseptr)
 
 	info->handle_stack = mono_handle_stack_alloc ();
 
-	GC_call_with_alloc_lock (insert_handle_stack, info->handle_stack);
-
 	return info;
 }
 
@@ -451,17 +439,11 @@ boehm_thread_unregister (MonoThreadInfo *p)
 
 	tid = mono_thread_info_get_tid (p);
 
+	mono_handle_stack_free (p->handle_stack);
+	p->handle_stack = NULL;
+
 	if (p->runtime_thread)
 		mono_threads_add_joinable_thread ((gpointer)tid);
-}
-
-static gpointer
-remove_handle_stack (gpointer arg)
-{
-	HandleStack* handle_stack = arg;
-	gboolean removed = g_hash_table_remove (handle_stacks, handle_stack);
-	g_assert (removed);
-	return NULL;
 }
 
 static void
@@ -469,15 +451,6 @@ boehm_thread_detach (MonoThreadInfo *p)
 {
 	if (mono_thread_internal_current_is_attached ())
 		mono_thread_detach_internal (mono_thread_internal_current ());
-
-	GC_call_with_alloc_lock (remove_handle_stack, p->handle_stack);
-
-	/* Free in detach rather than unregister since 
-	 * Boehm handle stack uses GC memory and acquires
-	 * GC lock to free it. The detach callback 
-	 * does not hold any locks while unregister does.
-	 */
-	mono_handle_stack_free (p->handle_stack);
 
 #if HAVE_BDWGC_GC
 	GC_unregister_my_thread ();
@@ -638,9 +611,8 @@ push_root (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-push_handle_stack (gpointer key, gpointer value, gpointer user_data)
+push_handle_stack (HandleStack* stack)
 {
-	HandleStack* stack = key;
 	HandleChunk *cur = stack->bottom;
 	HandleChunk *last = stack->top;
 
@@ -661,7 +633,11 @@ static void GC_CALLBACK
 mono_push_other_roots (void)
 {
 	g_hash_table_foreach (roots, push_root, NULL);
-	g_hash_table_foreach (handle_stacks, push_handle_stack, NULL);
+	FOREACH_THREAD (info) {
+		HandleStack* stack = (HandleStack*)info->handle_stack;
+		if (stack)
+			push_handle_stack (stack);
+	} FOREACH_THREAD_END
 	if (default_push_other_roots)
 		default_push_other_roots ();
 }
