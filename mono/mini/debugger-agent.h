@@ -2,6 +2,7 @@
 #define __MONO_DEBUGGER_AGENT_H__
 
 #include "mini.h"
+#include "il2cpp-compat.h"
 
 MONO_API void
 mono_debugger_agent_parse_options (char *options);

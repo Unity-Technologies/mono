@@ -105,7 +105,6 @@
 #endif // IL2CPP_MONO_DEBUGGER
 
 #include "debugger-agent.h"
-#include "il2cpp-compat.h"
 
 typedef struct {
 	gboolean enabled;
