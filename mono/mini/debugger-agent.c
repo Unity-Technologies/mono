@@ -6571,20 +6571,24 @@ unity_debugger_agent_handle_exception(MonoException *exc, Il2CppSequencePointC *
 		{
 			Modifier *mod = &req->modifiers[j];
 
-			if (mod->kind == MOD_KIND_ASSEMBLY_ONLY && sequencePoint)
+			if (mod->kind == MOD_KIND_ASSEMBLY_ONLY || mod->kind == MOD_KIND_EXCEPTION_ONLY)
 			{
-				int k;
-				gboolean found = FALSE;
-				MonoAssembly **assemblies = mod->data.assemblies;
-
-				if (assemblies)
+				if(sequencePoint)
 				{
-					for (k = 0; assemblies[k]; ++k)
-						if (assemblies[k] ==   VM_IMAGE_GET_ASSEMBLY(VM_CLASS_GET_IMAGE(VM_METHOD_GET_DECLARING_TYPE(*sequencePoint->method))))
-							found = TRUE;
+					int k;
+					gboolean found = FALSE;
+					MonoAssembly **assemblies = mod->data.assemblies;
+
+					if (assemblies)
+					{
+						for (k = 0; assemblies[k]; ++k)
+							if (assemblies[k] ==   VM_IMAGE_GET_ASSEMBLY(VM_CLASS_GET_IMAGE(VM_METHOD_GET_DECLARING_TYPE(*sequencePoint->method))))
+								found = TRUE;
+					}
+					if (!found)
+						ei.caught = FALSE;
 				}
-				if (!found)
-					ei.caught = FALSE;
+
 			}
 		}
 	}
