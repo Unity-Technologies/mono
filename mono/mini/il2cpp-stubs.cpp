@@ -27,6 +27,7 @@ extern "C" {
 
 #include <glib.h>
 #include <mono/utils/mono-coop-mutex.h>
+#include <mono/utils/mono-string.h>
 #include <mono/metadata/handle.h>
 #include <mono/metadata/object-internals.h>
 #include <mono/metadata/appdomain.h>
@@ -603,10 +604,125 @@ void il2cpp_mono_class_setup_interfaces(Il2CppMonoClass* klass, MonoError* error
 	il2cpp::vm::Class::SetupInterfaces((Il2CppClass*)klass);
 }
 
-GPtrArray* il2cpp_mono_class_get_methods_by_name(Il2CppMonoClass* klass, const char* name, guint32 bflags, gboolean ignore_case, gboolean allow_ctors, MonoError* error)
+enum {
+	BFLAGS_IgnoreCase = 1,
+	BFLAGS_DeclaredOnly = 2,
+	BFLAGS_Instance = 4,
+	BFLAGS_Static = 8,
+	BFLAGS_Public = 0x10,
+	BFLAGS_NonPublic = 0x20,
+	BFLAGS_FlattenHierarchy = 0x40,
+	BFLAGS_InvokeMethod = 0x100,
+	BFLAGS_CreateInstance = 0x200,
+	BFLAGS_GetField = 0x400,
+	BFLAGS_SetField = 0x800,
+	BFLAGS_GetProperty = 0x1000,
+	BFLAGS_SetProperty = 0x2000,
+	BFLAGS_ExactBinding = 0x10000,
+	BFLAGS_SuppressChangeType = 0x20000,
+	BFLAGS_OptionalParamBinding = 0x40000
+};
+
+static gboolean
+method_nonpublic (MethodInfo* method, gboolean start_klass)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	switch (method->flags & METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK) {
+		case METHOD_ATTRIBUTE_ASSEM:
+			return (start_klass || il2cpp_defaults.generic_ilist_class);
+		case METHOD_ATTRIBUTE_PRIVATE:
+			return start_klass;
+		case METHOD_ATTRIBUTE_PUBLIC:
+			return FALSE;
+		default:
+			return TRUE;
+	}
+}
+
+GPtrArray* il2cpp_mono_class_get_methods_by_name(Il2CppMonoClass* il2cppMonoKlass, const char* name, guint32 bflags, gboolean ignore_case, gboolean allow_ctors, MonoError* error)
+{
+	GPtrArray *array;
+	Il2CppClass *klass = (Il2CppClass*)il2cppMonoKlass;
+	Il2CppClass *startklass;
+	MethodInfo *method;
+	gpointer iter;
+	int match, nslots;
+	/*FIXME, use MonoBitSet*/
+	/*guint32 method_slots_default [8];
+	guint32 *method_slots = NULL;*/
+	int (*compare_func) (const char *s1, const char *s2) = NULL;
+
+	array = g_ptr_array_new ();
+	startklass = klass;
+	mono_error_init (error);
+
+	if (name != NULL)
+		compare_func = (ignore_case) ? mono_utf8_strcasecmp : strcmp;
+
+	/*il2cpp_mono_class_setup_methods (klass);
+	il2cpp_mono_class_setup_vtable (klass);
+
+	if (is_generic_parameter (&klass->byval_arg))
+		nslots = mono_class_get_vtable_size (klass->parent);
+	else
+		nslots = MONO_CLASS_IS_INTERFACE (klass) ? mono_class_num_methods (klass) : mono_class_get_vtable_size (klass);
+	if (nslots >= sizeof (method_slots_default) * 8) {
+		method_slots = g_new0 (guint32, nslots / 32 + 1);
+	} else {
+		method_slots = method_slots_default;
+		memset (method_slots, 0, sizeof (method_slots_default));
+	}*/
+handle_parent:
+	il2cpp_mono_class_setup_methods ((Il2CppMonoClass*)klass);
+	il2cpp_mono_class_setup_vtable ((Il2CppMonoClass*)klass);
+
+	iter = NULL;
+	while ((method = (MethodInfo*)il2cpp_mono_class_get_methods ((Il2CppMonoClass*)klass, &iter))) {
+		match = 0;
+		/*if (method->slot != -1) {
+			g_assert (method->slot < nslots);
+			if (method_slots [method->slot >> 5] & (1 << (method->slot & 0x1f)))
+				continue;
+			if (!(method->flags & METHOD_ATTRIBUTE_NEW_SLOT))
+				method_slots [method->slot >> 5] |= 1 << (method->slot & 0x1f);
+		}*/
+
+		if (!allow_ctors && method->name [0] == '.' && (strcmp (method->name, ".ctor") == 0 || strcmp (method->name, ".cctor") == 0))
+			continue;
+		if ((method->flags & METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK) == METHOD_ATTRIBUTE_PUBLIC) {
+			if (bflags & BFLAGS_Public)
+				match++;
+		} else if ((bflags & BFLAGS_NonPublic) && method_nonpublic (method, (klass == startklass))) {
+				match++;
+		}
+		if (!match)
+			continue;
+		match = 0;
+		if (method->flags & METHOD_ATTRIBUTE_STATIC) {
+			if (bflags & BFLAGS_Static)
+				if ((bflags & BFLAGS_FlattenHierarchy) || (klass == startklass))
+					match++;
+		} else {
+			if (bflags & BFLAGS_Instance)
+				match++;
+		}
+
+		if (!match)
+			continue;
+
+		if (name != NULL) {
+			if (compare_func (name, method->name))
+				continue;
+		}
+
+		match = 0;
+		g_ptr_array_add (array, method);
+	}
+	if (!(bflags & BFLAGS_DeclaredOnly) && (klass = klass->parent))
+		goto handle_parent;
+	/*if (method_slots != method_slots_default)
+		g_free (method_slots);*/
+
+	return array;
 }
 
 gpointer il2cpp_mono_ldtoken_checked(Il2CppMonoImage* image, guint32 token, Il2CppMonoClass** handle_class, Il2CppMonoGenericContext* context, MonoError* error)
