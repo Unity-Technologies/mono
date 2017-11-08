@@ -803,8 +803,8 @@ void il2cpp_mono_nullable_init(guint8* buf, Il2CppMonoObject* value, Il2CppMonoC
 
 Il2CppMonoObject* il2cpp_mono_value_box_checked(Il2CppMonoDomain* domain, Il2CppMonoClass* klass, gpointer value, MonoError* error)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	mono_error_init(error);
+	return (Il2CppMonoObject*)il2cpp::vm::Object::Box((Il2CppClass*)klass, value);
 }
 
 void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, Il2CppMonoClassField* field, void* value, MonoError* error)
