@@ -9450,10 +9450,10 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 
 		while ((p = mono_class_get_properties (klass, &iter))) {
 			buffer_add_propertyid (buf, domain, p);
-			buffer_add_string (buf, p->name);
-			buffer_add_methodid (buf, domain, p->get);
-			buffer_add_methodid (buf, domain, p->set);
-			buffer_add_int (buf, p->attrs);
+			buffer_add_string (buf, VM_PROPERTY_GET_NAME(p));
+			buffer_add_methodid (buf, domain, VM_PROPERTY_GET_GET_METHOD(p));
+			buffer_add_methodid (buf, domain, VM_PROPERTY_GET_SET_METHOD(p));
+			buffer_add_int (buf, VM_PROPERTY_GET_ATTRS(p));
 			i ++;
 		}
 		g_assert (i == nprops);
@@ -10174,10 +10174,10 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 					result = method;
 				} else {
 					MonoMethodInflated *imethod = (MonoMethodInflated *)method;
-					
-					result = imethod->declaring;
-					if (imethod->context.class_inst) {
-						MonoClass *klass = ((MonoMethod *) imethod)->klass;
+
+					result = VM_INFLATED_METHOD_GET_DECLARING(imethod);
+					if (VM_INFLATED_METHOD_GET_CLASS_INST(imethod)) {
+						MonoClass *klass = VM_METHOD_GET_DECLARING_TYPE((MonoMethod *) imethod);
 						/*Generic methods gets the context of the GTD.*/
 						if (mono_class_get_context (klass)) {
 							MonoError error;
@@ -10198,11 +10198,11 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 					if (is_inflated) {
 						MonoGenericInst *inst = mono_method_get_context (method)->method_inst;
 						if (inst) {
-							count = inst->type_argc;
+							count = VM_GENERIC_INST_TYPE_ARGC(inst);
 							buffer_add_int (buf, count);
 
 							for (i = 0; i < count; i++)
-								buffer_add_typeid (buf, domain, mono_class_from_mono_type (inst->type_argv [i]));
+								buffer_add_typeid (buf, domain, mono_class_from_mono_type (VM_GENERIC_INST_TYPE_ARG(inst, i)));
 						} else {
 							buffer_add_int (buf, 0);
 						}
@@ -10380,7 +10380,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 		}
 		ginst = mono_metadata_get_generic_inst (type_argc, type_argv);
 		g_free (type_argv);
-		tmp_context.class_inst = mono_class_is_ginst (method->klass) ? mono_class_get_generic_class (method->klass)->context.class_inst : NULL;
+		tmp_context.class_inst = mono_class_is_ginst (VM_METHOD_GET_DECLARING_TYPE(method)) ?  VM_GENERIC_CLASS_GET_INST(mono_class_get_generic_class (VM_METHOD_GET_DECLARING_TYPE(method))) : NULL;
 		tmp_context.method_inst = ginst;
 
 		inflated = mono_class_inflate_generic_method_checked (method, &tmp_context, &error);

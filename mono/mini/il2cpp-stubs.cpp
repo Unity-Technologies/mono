@@ -22,6 +22,7 @@
 #include "vm/ThreadPoolMs.h"
 #include "vm/Type.h"
 #include "vm-utils/Debugger.h"
+#include "metadata/GenericMetadata.h"
 
 extern "C" {
 
@@ -94,7 +95,22 @@ Il2CppMonoMethodSignature* il2cpp_mono_method_signature (Il2CppMonoMethod *m)
 	sig->call_convention = MONO_CALL_DEFAULT;
 	sig->hasthis = il2cpp::vm::Method::IsInstance(method);
 	sig->ret = (Il2CppMonoType*)il2cpp::vm::Method::GetReturnType(method);
-	sig->generic_param_count = il2cpp::vm::Method::GetGenericParamCount(method);
+
+	sig->generic_param_count = 0;
+
+	if (method->is_generic)
+	{
+		sig->generic_param_count = il2cpp::vm::Method::GetGenericParamCount(method);
+	}
+	else if (method->is_inflated)
+	{
+		if (method->genericMethod->context.method_inst)
+			sig->generic_param_count += method->genericMethod->context.method_inst->type_argc;
+
+		if (method->genericMethod->context.class_inst)
+			sig->generic_param_count += method->genericMethod->context.class_inst->type_argc;
+	}
+
 	sig->param_count = il2cpp::vm::Method::GetParamCount(method);
 	sig->params = g_new(Il2CppMonoType*, sig->param_count);
 	for (int i = 0; i < sig->param_count; ++i)
@@ -197,8 +213,7 @@ int il2cpp_mono_class_num_methods (Il2CppMonoClass *klass)
 
 int il2cpp_mono_class_num_properties (Il2CppMonoClass *klass)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return 0;
+	return il2cpp::vm::Class::GetNumProperties((Il2CppClass*)klass);
 }
 
 Il2CppMonoClassField* il2cpp_mono_class_get_fields (Il2CppMonoClass* klass, gpointer *iter)
@@ -213,8 +228,7 @@ Il2CppMonoMethod* il2cpp_mono_class_get_methods (Il2CppMonoClass* klass, gpointe
 
 Il2CppMonoProperty* il2cpp_mono_class_get_properties (Il2CppMonoClass* klass, gpointer *iter)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	return (Il2CppMonoProperty*)il2cpp::vm::Class::GetProperties((Il2CppClass*)klass, iter);
 }
 
 const char* il2cpp_mono_field_get_name (Il2CppMonoClassField *field)
@@ -483,8 +497,7 @@ guint il2cpp_mono_aligned_addr_hash(gconstpointer ptr)
 
 Il2CppMonoGenericInst* il2cpp_mono_metadata_get_generic_inst(int type_argc, Il2CppMonoType** type_argv)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	return (Il2CppMonoGenericInst*)il2cpp::vm::MetadataCache::GetGenericInst((Il2CppType**)type_argv, type_argc);
 }
 
 Il2CppMonoMethod* il2cpp_mono_get_method_checked(Il2CppMonoImage* image, guint32 token, Il2CppMonoClass* klass, Il2CppMonoGenericContext* context, MonoError* error)
@@ -532,32 +545,39 @@ guint32 il2cpp_mono_class_field_get_special_static_type(Il2CppMonoClassField* fi
 
 Il2CppMonoGenericContext* il2cpp_mono_class_get_context(Il2CppMonoClass* klass)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	return (Il2CppMonoGenericContext*)&((Il2CppClass*)klass)->generic_class->context;
 }
 
-Il2CppMonoGenericContext* il2cpp_mono_method_get_context(Il2CppMonoMethod* method)
+Il2CppMonoGenericContext* il2cpp_mono_method_get_context(Il2CppMonoMethod* monoMethod)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	MethodInfo * method = (MethodInfo*)monoMethod;
+
+	if (!method->is_inflated || method->is_generic)
+		return NULL;
+
+	return (Il2CppMonoGenericContext*) &((MethodInfo*)method)->genericMethod->context;
 }
 
-Il2CppMonoGenericContainer* il2cpp_mono_method_get_generic_container(Il2CppMonoMethod* method)
+Il2CppMonoGenericContainer* il2cpp_mono_method_get_generic_container(Il2CppMonoMethod* monoMethod)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	MethodInfo * method = (MethodInfo*)monoMethod;
+
+	if (method->is_inflated || !method->is_generic)
+		return NULL;
+
+	return (Il2CppMonoGenericContainer*) method->genericContainer;
 }
 
 Il2CppMonoMethod* il2cpp_mono_class_inflate_generic_method_full_checked(Il2CppMonoMethod* method, Il2CppMonoClass* klass_hint, Il2CppMonoGenericContext* context, MonoError* error)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	mono_error_init(error);
+	return (Il2CppMonoMethod*) il2cpp::metadata::GenericMetadata::Inflate((MethodInfo*)method, (Il2CppClass*)klass_hint, (Il2CppGenericContext*)context);
 }
 
 Il2CppMonoMethod* il2cpp_mono_class_inflate_generic_method_checked(Il2CppMonoMethod* method, Il2CppMonoGenericContext* context, MonoError* error)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
+	mono_error_init(error);
+	return (Il2CppMonoMethod*)il2cpp::metadata::GenericMetadata::Inflate((MethodInfo*)method, NULL, (Il2CppGenericContext*)context);
 }
 
 void il2cpp_mono_loader_lock()
@@ -914,8 +934,13 @@ gboolean il2cpp_mono_runtime_try_shutdown()
 
 gboolean il2cpp_mono_verifier_is_method_valid_generic_instantiation(Il2CppMonoMethod* method)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return 0;
+	if (!method)
+		return FALSE;
+
+	if (!((MethodInfo*)method)->is_generic && ((MethodInfo*)method)->is_inflated && ((MethodInfo*)method)->methodPointer)
+		return TRUE;
+
+	return FALSE;
 }
 
 Il2CppMonoType* il2cpp_mono_reflection_get_type_checked(Il2CppMonoImage* rootimage, Il2CppMonoImage* image, Il2CppMonoTypeNameParse* info, gboolean ignorecase, gboolean* type_resolve, MonoError* error)
@@ -931,7 +956,7 @@ Il2CppMonoType* il2cpp_mono_reflection_get_type_checked(Il2CppMonoImage* rootima
 
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_method_checked(Il2CppMonoMethod* method, MonoError* error)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
+	mono_error_init(error);
 	return NULL;
 }
 
@@ -943,13 +968,13 @@ Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_class_checked(Il2CppMono
 
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(Il2CppMonoClass* klass, Il2CppMonoProperty* property, MonoError* error)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
+	mono_error_init(error);
 	return NULL;
 }
 
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(Il2CppMonoClass* klass, Il2CppMonoClassField* field, MonoError* error)
 {
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
+	mono_error_init(error);
 	return NULL;
 }
 
@@ -1641,6 +1666,28 @@ const char** il2cpp_get_source_files_for_type(Il2CppMonoClass *klass, int *count
 {
 	return il2cpp::utils::Debugger::GetTypeSourceFiles((Il2CppClass*)klass, *count);
 }
+
+Il2CppMonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imethod)
+{
+	MethodInfo *method = (MethodInfo*)imethod;
+
+	if (!method->is_inflated || method->is_generic)
+		return NULL;
+
+	return (Il2CppMonoMethod*)((MethodInfo*)imethod)->genericMethod->methodDefinition;
+}
+
+
+Il2CppMonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod)
+{
+	MethodInfo *method = (MethodInfo*)imethod;
+
+	if (!method->is_inflated || method->is_generic)
+		return NULL;
+
+	return (Il2CppMonoGenericInst*)method->genericMethod->context.class_inst;
+}
+
 
 }
 

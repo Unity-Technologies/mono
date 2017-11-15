@@ -50,6 +50,8 @@
 #define VM_METHOD_GET_NAME(method) il2cpp_method_get_name(method)
 #define VM_METHOD_IS_GENERIC(method) il2cpp_method_is_generic(method)
 #define VM_METHOD_IS_INFLATED(method) il2cpp_method_is_inflated(method)
+#define VM_INFLATED_METHOD_GET_DECLARING(imethod) il2cpp_method_get_generic_definition(imethod)
+#define VM_INFLATED_METHOD_GET_CLASS_INST(imethod) il2cpp_method_get_generic_class_inst(imethod)
 #define VM_FIELD_GET_NAME(field) il2cpp_mono_field_get_name(field)
 #define VM_FIELD_GET_PARENT(field) il2cpp_field_get_parent(field)
 #define VM_FIELD_GET_TYPE(field) il2cpp_field_get_type(field)
@@ -77,6 +79,10 @@
 #define VM_IMAGE_GET_NAME(image) il2cpp_image_name(image)
 #define VM_IMAGE_GET_MODULE_NAME(image) il2cpp_image_name(image)
 #define VM_IMAGE_GET_ASSEMBLY(image) il2cpp_image_assembly(image)
+#define VM_PROPERTY_GET_NAME(prop) il2cpp_property_get_name(prop)
+#define VM_PROPERTY_GET_GET_METHOD(prop) il2cpp_property_get_get_method(prop)
+#define VM_PROPERTY_GET_SET_METHOD(prop) il2cpp_property_get_set_method(prop)
+#define VM_PROPERTY_GET_ATTRS(prop) il2cpp_property_get_flags(prop)
 #else
 #define VM_THREAD_GET(thread) thread->internal_thread
 #define VM_THREAD_SET_STATE_BACKGROUND(thread) thread->internal_thread->state |= ThreadState_Background
@@ -115,6 +121,8 @@
 #define VM_METHOD_GET_NAME(method) (method)->name
 #define VM_METHOD_IS_GENERIC(method) method->is_generic
 #define VM_METHOD_IS_INFLATED(method) method->is_inflated
+#define VM_INFLATED_METHOD_GET_DECLARING(imethod) (imethod)->declaring
+#define VM_INFLATED_METHOD_GET_CLASS_INST(imethod) (imethod)->context.class_inst
 #define VM_FIELD_GET_NAME(field) field->name
 #define VM_FIELD_GET_PARENT(field) (field)->parent
 #define VM_FIELD_GET_TYPE(field) (field)->type
@@ -143,6 +151,10 @@
 #define VM_IMAGE_GET_NAME(image) (image)->name
 #define VM_IMAGE_GET_MODULE_NAME(image) (image)->module_name
 #define VM_IMAGE_GET_ASSEMBLY(image)  (image)->assembly
+#define VM_PROPERTY_GET_NAME(prop) (prop)->name
+#define VM_PROPERTY_GET_GET_METHOD(prop) (prop)->get
+#define VM_PROPERTY_GET_SET_METHOD(prop) (prop)->set
+#define VM_PROPERTY_GET_ATTRS(prop) (prop)->attrs
 #endif
 
 #if defined(RUNTIME_IL2CPP)
@@ -634,5 +646,7 @@ gboolean il2cpp_class_get_enumtype(Il2CppMonoClass *klass);
 Il2CppMonoClass* il2cpp_iterate_loaded_classes(void* *iter);
 Il2CppMonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domain, void* *iter);
 const char** il2cpp_get_source_files_for_type(Il2CppMonoClass *klass, int *count);
+Il2CppMonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imethod);
+Il2CppMonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod);
 
 #endif // RUNTIME_IL2CPP
