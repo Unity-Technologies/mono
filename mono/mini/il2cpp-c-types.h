@@ -397,7 +397,7 @@ void il2cpp_set_thread_state_background(Il2CppMonoThread* thread);
 void* il2cpp_domain_get_agent_info(Il2CppMonoAppDomain* domain);
 void il2cpp_domain_set_agent_info(Il2CppMonoAppDomain* domain, void* agentInfo);
 void il2cpp_start_debugger_thread();
-uintptr_t il2cpp_get_thread_id(Il2CppMonoThread* thread);
+uintptr_t il2cpp_internal_thread_get_thread_id(Il2CppMonoInternalThread* thread);
 void* il2cpp_gc_alloc_fixed(size_t size);
 void il2cpp_gc_free_fixed(void* address);
 char* il2cpp_assembly_get_name(Il2CppMonoAssembly* assembly);

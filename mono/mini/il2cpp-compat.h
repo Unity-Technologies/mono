@@ -12,10 +12,12 @@
 
 #define THREAD_STATIC_FIELD_OFFSET -1
 
-#define VM_THREAD_GET(thread) thread
+#define VM_THREAD_GET_INTERNAL(thread) il2cpp_mono_thread_get_internal(thread)
 #define VM_THREAD_SET_STATE_BACKGROUND(thread) il2cpp_set_thread_state_background(thread)
 #define VM_THREAD_SET_FLAG_DONT_MANAGE(thread)
-#define VM_THREAD_GET_ID(thread) il2cpp_get_thread_id(thread)
+#define VM_INTERNAL_THREAD_GET_ID(internal_thread) il2cpp_internal_thread_get_thread_id(internal_thread)
+#define VM_INTERNAL_THREAD_GET_STATE(internal_thread) il2cpp_internal_thread_get_state(internal_thread)
+#define VM_INTERNAL_THREAD_GET_THREADPOOL_THREAD(internal_thread) il2cpp_internal_thread_get_threadpool_thread(internal_thread)
 #define VM_DOMAIN_GET_AGENT_INFO(domain) il2cpp_domain_get_agent_info(domain)
 #define VM_DOMAIN_SET_AGENT_INFO(domain, value) il2cpp_domain_set_agent_info(domain, value)
 #define VM_DOMAIN_GET_NAME(domain) il2cpp_domain_get_name(domain)
@@ -84,10 +86,12 @@
 #define VM_PROPERTY_GET_SET_METHOD(prop) il2cpp_property_get_set_method(prop)
 #define VM_PROPERTY_GET_ATTRS(prop) il2cpp_property_get_flags(prop)
 #else
-#define VM_THREAD_GET(thread) thread->internal_thread
+#define VM_THREAD_GET_INTERNAL(thread) thread->internal_thread
 #define VM_THREAD_SET_STATE_BACKGROUND(thread) thread->internal_thread->state |= ThreadState_Background
 #define VM_THREAD_SET_FLAG_DONT_MANAGE(thread) thread->internal_thread->flags |= MONO_THREAD_FLAG_DONT_MANAGE
-#define VM_THREAD_GET_ID(thread) thread->tid
+#define VM_INTERNAL_THREAD_GET_ID(internal_thread) internal_thread->tid
+#define VM_INTERNAL_THREAD_GET_STATE(internal_thread) internal_thread->state
+#define VM_INTERNAL_THREAD_GET_THREADPOOL_THREAD(internal_thread) internal_thread->threadpool_thread
 #define VM_DOMAIN_GET_AGENT_INFO(domain) domain_jit_info (domain)->agent_info
 #define VM_DOMAIN_SET_AGENT_INFO(domain, value) domain_jit_info (domain)->agent_info = value
 #define VM_DOMAIN_GET_NAME(domain) domain->friendly_name
@@ -646,6 +650,9 @@ gboolean il2cpp_class_get_enumtype(Il2CppMonoClass *klass);
 Il2CppMonoClass* il2cpp_iterate_loaded_classes(void* *iter);
 Il2CppMonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domain, void* *iter);
 const char** il2cpp_get_source_files_for_type(Il2CppMonoClass *klass, int *count);
+Il2CppMonoInternalThread* il2cpp_mono_thread_get_internal(Il2CppMonoThread* thread);
+uint32_t il2cpp_internal_thread_get_state(Il2CppMonoInternalThread* thread);
+il2cpp_internal_thread_get_threadpool_thread(Il2CppMonoInternalThread* thread);
 Il2CppMonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imethod);
 Il2CppMonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod);
 

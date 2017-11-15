@@ -98,11 +98,7 @@
 
 #include <mono/utils/mono-os-mutex.h>
 
-#ifdef IL2CPP_MONO_DEBUGGER
-#define THREAD_TO_INTERNAL(thread) thread
-#else
-#define THREAD_TO_INTERNAL(thread) (thread)->internal_thread
-#endif // IL2CPP_MONO_DEBUGGER
+#define THREAD_TO_INTERNAL(thread) VM_THREAD_GET_INTERNAL(thread)
 
 #include "debugger-agent.h"
 
@@ -3290,7 +3286,7 @@ compute_frame_info (MonoInternalThread *thread, DebuggerTlsData *tls)
 	if (tls->frames && tls->frames_up_to_date)
 		return;
 
-	DEBUG_PRINTF (1, "Frames for %p(tid=%lx):\n", thread, VM_THREAD_GET_ID(thread));
+	DEBUG_PRINTF (1, "Frames for %p(tid=%lx):\n", thread, VM_INTERNAL_THREAD_GET_ID(thread));
 
 	user_data.tls = tls;
 	user_data.frames = NULL;
@@ -4017,7 +4013,7 @@ thread_startup (MonoProfiler *prof, uintptr_t tid)
 	if (mono_native_thread_id_equals (MONO_UINT_TO_NATIVE_THREAD_ID (tid), debugger_thread_id))
 		return;
 
-	g_assert (mono_native_thread_id_equals (MONO_UINT_TO_NATIVE_THREAD_ID (tid), MONO_UINT_TO_NATIVE_THREAD_ID (VM_THREAD_GET_ID(thread))));
+	g_assert (mono_native_thread_id_equals (MONO_UINT_TO_NATIVE_THREAD_ID (tid), MONO_UINT_TO_NATIVE_THREAD_ID (VM_INTERNAL_THREAD_GET_ID(thread))));
 
 	mono_loader_lock ();
 	old_thread = (MonoInternalThread *)mono_g_hash_table_lookup (tid_to_thread, GUINT_TO_POINTER (tid));
@@ -10500,16 +10496,16 @@ thread_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		break;
 	}
 	case CMD_THREAD_GET_STATE:
-		buffer_add_int (buf, thread->state);
+		buffer_add_int (buf, VM_INTERNAL_THREAD_GET_STATE(thread));
 		break;
 	case CMD_THREAD_GET_INFO:
-		buffer_add_byte (buf, thread->threadpool_thread);
+		buffer_add_byte (buf, VM_INTERNAL_THREAD_GET_THREADPOOL_THREAD(thread));
 		break;
 	case CMD_THREAD_GET_ID:
 		buffer_add_long (buf, (guint64)(gsize)thread);
 		break;
 	case CMD_THREAD_GET_TID:
-		buffer_add_long (buf, (guint64)thread->tid);
+		buffer_add_long (buf, (guint64)VM_INTERNAL_THREAD_GET_ID(thread));
 		break;
 	case CMD_THREAD_SET_IP: {
 		DebuggerTlsData *tls;
@@ -11432,7 +11428,7 @@ debugger_thread (void *arg)
 	debugger_thread_id = mono_native_thread_id_get ();
 
 	MonoThread *thread = mono_thread_attach (mono_get_root_domain ());
-	mono_thread_set_name_internal (VM_THREAD_GET(thread), mono_string_new (mono_get_root_domain (), "Debugger agent"), TRUE, FALSE, &error);
+	mono_thread_set_name_internal (THREAD_TO_INTERNAL(thread), mono_string_new (mono_get_root_domain (), "Debugger agent"), TRUE, FALSE, &error);
 	mono_error_assert_ok (&error);
 
 	VM_THREAD_SET_STATE_BACKGROUND(thread);
