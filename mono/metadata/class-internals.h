@@ -269,6 +269,7 @@ struct _MonoClass {
 	guint8     rank;          
 
 	int        instance_size; /* object instance size */
+	int        actual_instance_size;
 
 	guint inited          : 1;
 

@@ -1566,7 +1566,7 @@ mono_class_setup_fields (MonoClass *klass)
 		mono_class_setup_fields (klass->parent);
 		if (mono_class_set_type_load_failure_causedby_class (klass, klass->parent, "Could not set up parent class"))
 			return;
-		instance_size = klass->parent->instance_size;
+		instance_size = klass->parent->actual_instance_size;
 	} else {
 		instance_size = sizeof (MonoObject);
 	}
@@ -1770,6 +1770,7 @@ mono_class_layout_fields (MonoClass *klass, int base_instance_size, int packing_
 	gboolean has_static_refs = FALSE;
 	MonoClassField *field;
 	gboolean blittable;
+	int actual_instance_size = base_instance_size;
 	int instance_size = base_instance_size;
 	int element_size = -1;
 	int class_size, min_align;
@@ -1938,7 +1939,7 @@ mono_class_layout_fields (MonoClass *klass, int base_instance_size, int packing_
 			mono_class_setup_fields (klass->parent);
 			if (mono_class_set_type_load_failure_causedby_class (klass, klass->parent, "Cannot initialize parent class"))
 				return;
-			real_size = klass->parent->instance_size;
+			real_size = klass->parent->actual_instance_size;
 		} else {
 			real_size = sizeof (MonoObject);
 		}
@@ -2000,6 +2001,7 @@ mono_class_layout_fields (MonoClass *klass, int base_instance_size, int packing_
 			if (klass->simd_type)
 				real_size = MAX (real_size, sizeof (MonoObject) + 16);
 			instance_size = MAX (real_size, instance_size);
+			actual_instance_size = instance_size;
        
 			if (instance_size & (min_align - 1)) {
 				instance_size += min_align - 1;
@@ -2090,6 +2092,7 @@ mono_class_layout_fields (MonoClass *klass, int base_instance_size, int packing_
 		}
 
 		instance_size = MAX (real_size, instance_size);
+		actual_instance_size = instance_size;
 		if (instance_size & (min_align - 1)) {
 			instance_size += min_align - 1;
 			instance_size &= ~(min_align - 1);
@@ -2140,6 +2143,7 @@ mono_class_layout_fields (MonoClass *klass, int base_instance_size, int packing_
 		g_assert (klass->instance_size == instance_size);
 	} else {
 		klass->instance_size = instance_size;
+		klass->actual_instance_size = actual_instance_size;
 	}
 	klass->blittable = blittable;
 	klass->has_references = has_references;
@@ -5321,11 +5325,13 @@ mono_class_setup_parent (MonoClass *klass, MonoClass *parent)
 	if (system_namespace && !strcmp (klass->name, "Object")) {
 		klass->parent = NULL;
 		klass->instance_size = sizeof (MonoObject);
+		klass->actual_instance_size = klass->instance_size;
 		return;
 	}
 	if (!strcmp (klass->name, "<Module>")) {
 		klass->parent = NULL;
 		klass->instance_size = 0;
+		klass->actual_instance_size = 0;
 		return;
 	}
 
@@ -5705,6 +5711,7 @@ mono_class_create_from_typedef (MonoImage *image, guint32 type_token, MonoError 
 	/* reserve space to store vector pointer in arrays */
 	if (mono_is_corlib_image (image) && !strcmp (nspace, "System") && !strcmp (name, "Array")) {
 		klass->instance_size += 2 * sizeof (gpointer);
+		klass->actual_instance_size = klass->instance_size;
 		g_assert (mono_class_get_field_count (klass) == 0);
 	}
 
