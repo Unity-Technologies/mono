@@ -7281,7 +7281,7 @@ static void buffer_add_value_full(Buffer *buf, MonoType *t, void *addr, MonoDoma
 			iter = NULL;
 			while ((f = mono_class_get_fields(klass, &iter)))
 			{
-				if (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC)
+				if (VM_FIELD_GET_TYPE(f)->attrs & FIELD_ATTRIBUTE_STATIC)
 					continue;
 				if (VM_FIELD_IS_DELETED(f))
 					continue;
@@ -7292,7 +7292,7 @@ static void buffer_add_value_full(Buffer *buf, MonoType *t, void *addr, MonoDoma
 			iter = NULL;
 			while ((f = mono_class_get_fields(klass, &iter)))
 			{
-				if (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC)
+				if (VM_FIELD_GET_TYPE(f)->attrs & FIELD_ATTRIBUTE_STATIC)
 					continue;
 				if (VM_FIELD_IS_DELETED(f))
 					continue;
@@ -7381,7 +7381,7 @@ decode_vtype (MonoType *t, MonoDomain *domain, guint8 *addr, guint8 *buf, guint8
 
 	nfields = decode_int (buf, &buf, limit);
 	while ((f = mono_class_get_fields (klass, &iter))) {
-		if (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC)
+		if (VM_FIELD_GET_TYPE(f)->attrs & FIELD_ATTRIBUTE_STATIC)
 			continue;
 		if (VM_FIELD_IS_DELETED(f))
 			continue;
@@ -7402,19 +7402,19 @@ decode_value_internal (MonoType *t, int type, MonoDomain *domain, guint8 *addr, 
 {
 	ErrorCode err;
 
-	if (type != VM_TYPE_GET_TYPE(t) && !MONO_TYPE_IS_REFERENCE (t) &&
-		!(VM_TYPE_GET_TYPE(t) == MONO_TYPE_I && type == MONO_TYPE_VALUETYPE) &&
-		!(VM_TYPE_GET_TYPE(t) == MONO_TYPE_U && type == MONO_TYPE_VALUETYPE) &&
-		!(VM_TYPE_GET_TYPE(t) == MONO_TYPE_PTR && type == MONO_TYPE_I8) &&
-		!(VM_TYPE_GET_TYPE(t) == MONO_TYPE_GENERICINST && type == MONO_TYPE_VALUETYPE) &&
-		!(VM_TYPE_GET_TYPE(t) == MONO_TYPE_VALUETYPE && type == MONO_TYPE_OBJECT)) {
+	if (type != t->type && !MONO_TYPE_IS_REFERENCE (t) &&
+		!(t->type == MONO_TYPE_I && type == MONO_TYPE_VALUETYPE) &&
+		!(t->type == MONO_TYPE_U && type == MONO_TYPE_VALUETYPE) &&
+		!(t->type == MONO_TYPE_PTR && type == MONO_TYPE_I8) &&
+		!(t->type == MONO_TYPE_GENERICINST && type == MONO_TYPE_VALUETYPE) &&
+		!(t->type == MONO_TYPE_VALUETYPE && type == MONO_TYPE_OBJECT)) {
 		char *name = mono_type_full_name (t);
 		DEBUG_PRINTF (1, "[%p] Expected value of type %s, got 0x%0x.\n", (gpointer) (gsize) mono_native_thread_id_get (), name, type);
 		g_free (name);
 		return ERR_INVALID_ARGUMENT;
 	}
 
-	switch (VM_TYPE_GET_TYPE(t)) {
+	switch (t->type) {
 	case MONO_TYPE_BOOLEAN:
 		*(guint8*)addr = decode_int (buf, &buf, limit);
 		break;
@@ -7577,8 +7577,8 @@ decode_value (MonoType *t, MonoDomain *domain, guint8 *addr, guint8 *buf, guint8
 	ErrorCode err;
 	int type = decode_byte (buf, &buf, limit);
 
-	if (VM_TYPE_GET_TYPE(t) == MONO_TYPE_GENERICINST && mono_class_is_nullable (mono_class_from_mono_type (t))) {
-		MonoType *targ = VM_GENERIC_INST_TYPE_ARG(VM_GENERIC_CLASS_GET_INST(VM_TYPE_GET_GENERIC_CLASS(t)), 0);
+	if (t->type == MONO_TYPE_GENERICINST && mono_class_is_nullable (mono_class_from_mono_type (t))) {
+		MonoType *targ = VM_GENERIC_INST_TYPE_ARG(VM_GENERIC_CLASS_GET_INST(t->data.generic_class), 0);
 		guint8 *nullable_buf;
 
 		/*
@@ -8108,7 +8108,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 			if (args [i] &&  VM_OBJECT_GET_DOMAIN(((MonoObject*)args [i])) != domain)
 				NOT_IMPLEMENTED;
 
-			if (VM_TYPE_IS_BYREF(sig->params [i])) {
+			if (sig->params [i]->byref) {
 				arg_buf [i] = (guint8 *)g_alloca (sizeof (mgreg_t));
 				*(gpointer*)arg_buf [i] = args [i];
 				args [i] = arg_buf [i];
@@ -8179,7 +8179,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 		buffer_add_byte (buf, 1 + (out_this ? 2 : 0) + (out_args ? 4 : 0));
 		if (VM_METHOD_IS_STRING_CTOR(m)) {
 			buffer_add_value (buf, &mono_get_string_class ()->byval_arg, &res, domain);
-		} else if (VM_TYPE_GET_TYPE (sig->ret) == MONO_TYPE_VOID && !VM_METHOD_IS_STRING_CTOR(m)) {
+		} else if ( sig->ret->type == MONO_TYPE_VOID && !VM_METHOD_IS_STRING_CTOR(m)) {
 			if (!strcmp (VM_METHOD_GET_NAME (m), ".ctor")) {
 				if (!VM_CLASS_IS_VALUETYPE (VM_METHOD_GET_DECLARING_TYPE (m)))
 					buffer_add_value (buf, VM_CLASS_GET_TYPE (VM_DEFAULTS_OBJECT_CLASS), &this_arg, domain);
@@ -8190,7 +8190,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 			}
 		} else if (MONO_TYPE_IS_REFERENCE (sig->ret)) {
 			buffer_add_value (buf, sig->ret, &res, domain);
-		} else if (VM_CLASS_IS_VALUETYPE (mono_class_from_mono_type (sig->ret)) || VM_TYPE_GET_TYPE (sig->ret) == MONO_TYPE_PTR || VM_TYPE_GET_TYPE (sig->ret) == MONO_TYPE_FNPTR) {
+		} else if (VM_CLASS_IS_VALUETYPE (mono_class_from_mono_type (sig->ret)) || sig->ret->type == MONO_TYPE_PTR || sig->ret->type == MONO_TYPE_FNPTR) {
 			if (mono_class_is_nullable (mono_class_from_mono_type (sig->ret))) {
 				MonoClass *k = mono_class_from_mono_type (sig->ret);
 				guint8 *nullable_buf = (guint8 *)g_alloca (mono_class_value_size (k, NULL));
@@ -8213,7 +8213,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 			for (i = 0; i < nargs; ++i) {
 				if (MONO_TYPE_IS_REFERENCE (sig->params [i]))
 					buffer_add_value (buf, sig->params [i], &args [i], domain);
-				else if (VM_TYPE_IS_BYREF(sig->params [i]))
+				else if (sig->params [i]->byref)
 					/* add_value () does an indirection */
 					buffer_add_value (buf, sig->params [i], &arg_buf [i], domain);
 				else
@@ -9593,7 +9593,7 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 			buffer_add_fieldid (buf, domain, f);
 			buffer_add_string (buf, VM_FIELD_GET_NAME(f));
 			buffer_add_typeid (buf, domain, mono_class_from_mono_type (mono_field_get_type(f)));
-			buffer_add_int (buf, VM_TYPE_GET_ATTRS(mono_field_get_type(f)));
+			buffer_add_int (buf, mono_field_get_type(f)->attrs);
 			i ++;
 		}
 		g_assert (i == nfields);
@@ -9715,7 +9715,7 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 			if (err != ERR_NONE)
 				return err;
 
-			if (!(VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC))
+			if (!(VM_FIELD_GET_TYPE(f)->attrs & FIELD_ATTRIBUTE_STATIC))
 				return ERR_INVALID_FIELDID;
 
 #ifdef IL2CPP_MONO_DEBUGGER
@@ -9763,7 +9763,7 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 			if (err != ERR_NONE)
 				return err;
 
-			if (!(VM_TYPE_GET_ATTRS(mono_field_get_type(f)) & FIELD_ATTRIBUTE_STATIC))
+			if (!(mono_field_get_type(f)->attrs & FIELD_ATTRIBUTE_STATIC))
 				return ERR_INVALID_FIELDID;
 			if (mono_class_field_is_special_static (f))
 				return ERR_INVALID_FIELDID;
@@ -10753,7 +10753,7 @@ static uint32_t GetExecutionContextIndex(const Il2CppSequencePointC* sequencePoi
 	}
 }
 
-static void GetVariable(DebuggerTlsData* tls, StackFrame* frame, MethodVariableKindC variableKind, uint32_t variablePosition, Il2CppMonoType** type, void** var)
+static void GetVariable(DebuggerTlsData* tls, StackFrame* frame, MethodVariableKindC variableKind, uint32_t variablePosition, MonoType** type, void** var)
 {
 	for (int frame_index = 0; frame_index < tls->il2cpp_context.frameCount; ++frame_index)
 	{
@@ -11268,14 +11268,14 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			if (!found)
 				return ERR_INVALID_FIELDID;
 
-			if (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f))  & FIELD_ATTRIBUTE_STATIC) {
+			if (VM_FIELD_GET_TYPE(f)->attrs  & FIELD_ATTRIBUTE_STATIC) {
 				guint8 *val;
 				MonoVTable *vtable;
 
 				if (mono_class_field_is_special_static (f))
 					return ERR_INVALID_FIELDID;
 
-				g_assert (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC);
+				g_assert (VM_FIELD_GET_TYPE(f)->attrs & FIELD_ATTRIBUTE_STATIC);
 				vtable = mono_class_vtable (VM_OBJECT_GET_DOMAIN(obj), VM_FIELD_GET_PARENT(f));
 				val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (VM_FIELD_GET_TYPE(f))));
 				mono_field_static_get_value_checked (vtable, f, val, &error);
@@ -11326,14 +11326,14 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			if (!found)
 				return ERR_INVALID_FIELDID;
 
-			if (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC) {
+			if (VM_FIELD_GET_TYPE(f)->attrs & FIELD_ATTRIBUTE_STATIC) {
 				guint8 *val;
 				MonoVTable *vtable;
 
 				if (mono_class_field_is_special_static (f))
 					return ERR_INVALID_FIELDID;
 
-				g_assert (VM_TYPE_GET_ATTRS(VM_FIELD_GET_TYPE(f)) & FIELD_ATTRIBUTE_STATIC);
+				g_assert (VM_FIELD_GET_TYPE(f)->attrs & FIELD_ATTRIBUTE_STATIC);
 				vtable = mono_class_vtable (VM_OBJECT_GET_DOMAIN(obj), VM_FIELD_GET_PARENT(f));
 
 				val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (VM_FIELD_GET_TYPE(f))));

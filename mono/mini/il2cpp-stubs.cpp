@@ -66,17 +66,17 @@ const char*  il2cpp_mono_image_get_guid (Il2CppMonoImage *image)
 	return "00000000-0000-0000-0000-000000000000"; //IL2CPP doesn't have image GUIDs
 }
 
-Il2CppMonoClass* il2cpp_mono_type_get_class (Il2CppMonoType *type)
+Il2CppMonoClass* il2cpp_mono_type_get_class (MonoType *type)
 {
 	return (Il2CppMonoClass*) il2cpp::vm::Type::GetClass((Il2CppType*)type);
 }
 
-mono_bool il2cpp_mono_type_is_struct (Il2CppMonoType *type)
+mono_bool il2cpp_mono_type_is_struct (MonoType *type)
 {
 	return il2cpp::vm::Type::IsStruct((Il2CppType*)type);
 }
 
-mono_bool il2cpp_mono_type_is_reference (Il2CppMonoType *type)
+mono_bool il2cpp_mono_type_is_reference (MonoType *type)
 {
 	return il2cpp::vm::Type::IsReference((Il2CppType*)type);
 }
@@ -101,7 +101,7 @@ Il2CppMonoMethodSignature* il2cpp_mono_method_signature (Il2CppMonoMethod *m)
 
 	sig->call_convention = MONO_CALL_DEFAULT;
 	sig->hasthis = il2cpp::vm::Method::IsInstance(method);
-	sig->ret = (Il2CppMonoType*)il2cpp::vm::Method::GetReturnType(method);
+	sig->ret = (MonoType*)il2cpp::vm::Method::GetReturnType(method);
 
 	sig->generic_param_count = 0;
 
@@ -119,9 +119,9 @@ Il2CppMonoMethodSignature* il2cpp_mono_method_signature (Il2CppMonoMethod *m)
 	}
 
 	sig->param_count = il2cpp::vm::Method::GetParamCount(method);
-	sig->params = g_new(Il2CppMonoType*, sig->param_count);
+	sig->params = g_new(MonoType*, sig->param_count);
 	for (int i = 0; i < sig->param_count; ++i)
-		sig->params[i] = (Il2CppMonoType*)il2cpp::vm::Method::GetParam(method, i);
+		sig->params[i] = (MonoType*)il2cpp::vm::Method::GetParam(method, i);
 
 	mono_g_hash_table_insert(method_signatures, method, sig);
 
@@ -152,7 +152,7 @@ void il2cpp_mono_method_get_param_names (Il2CppMonoMethod *m, const char **names
 		names[i] = il2cpp::vm::Method::GetParamName(method, i);
 }
 
-mono_bool il2cpp_mono_type_generic_inst_is_valuetype (Il2CppMonoType *monoType)
+mono_bool il2cpp_mono_type_generic_inst_is_valuetype (MonoType *monoType)
 {
 	static const int kBitIsValueType = 1;
 	Il2CppType *type = (Il2CppType*)monoType;
@@ -203,7 +203,7 @@ gboolean il2cpp_mono_class_is_assignable_from (Il2CppMonoClass *klass, Il2CppMon
 	return il2cpp::vm::Class::IsAssignableFrom((Il2CppClass*)klass, (Il2CppClass*)oklass);
 }
 
-Il2CppMonoClass* il2cpp_mono_class_from_mono_type (Il2CppMonoType *type)
+Il2CppMonoClass* il2cpp_mono_class_from_mono_type (MonoType *type)
 {
 	return (Il2CppMonoClass*)il2cpp::vm::Class::FromIl2CppType((Il2CppType*)type);
 }
@@ -449,7 +449,7 @@ void il2cpp_mono_set_is_debugger_attached(gboolean attached)
 	il2cpp::utils::Debugger::SetIsDebuggerAttached(attached == TRUE);
 }
 
-char* il2cpp_mono_type_full_name(Il2CppMonoType* type)
+char* il2cpp_mono_type_full_name(MonoType* type)
 {
 	std::string name = il2cpp::vm::Type::GetName((Il2CppType*)type, IL2CPP_TYPE_NAME_FORMAT_FULL_NAME);
 	return g_strdup(name.c_str());
@@ -519,7 +519,7 @@ guint il2cpp_mono_aligned_addr_hash(gconstpointer ptr)
 	return GPOINTER_TO_UINT(ptr) >> 3;
 }
 
-Il2CppMonoGenericInst* il2cpp_mono_metadata_get_generic_inst(int type_argc, Il2CppMonoType** type_argv)
+Il2CppMonoGenericInst* il2cpp_mono_metadata_get_generic_inst(int type_argc, MonoType** type_argv)
 {
 	return (Il2CppMonoGenericInst*)il2cpp::vm::MetadataCache::GetGenericInst((Il2CppType**)type_argv, type_argc);
 }
@@ -642,7 +642,7 @@ gpointer il2cpp_mono_method_get_wrapper_data(Il2CppMonoMethod* method, guint32 i
 	return 0;
 }
 
-char* il2cpp_mono_type_get_name_full(Il2CppMonoType* type, MonoTypeNameFormat format)
+char* il2cpp_mono_type_get_name_full(MonoType* type, MonoTypeNameFormat format)
 {
 	std::string name = il2cpp::vm::Type::GetName((Il2CppType*)type, (Il2CppTypeNameFormat)format);
 	return g_strdup(name.c_str());
@@ -992,7 +992,7 @@ gboolean il2cpp_mono_verifier_is_method_valid_generic_instantiation(Il2CppMonoMe
 	return FALSE;
 }
 
-Il2CppMonoType* il2cpp_mono_reflection_get_type_checked(Il2CppMonoImage* rootimage, Il2CppMonoImage* image, Il2CppMonoTypeNameParse* info, gboolean ignorecase, gboolean* type_resolve, MonoError* error)
+MonoType* il2cpp_mono_reflection_get_type_checked(Il2CppMonoImage* rootimage, Il2CppMonoImage* image, Il2CppMonoTypeNameParse* info, gboolean ignorecase, gboolean* type_resolve, MonoError* error)
 {
 	error_init(error);
 
@@ -1000,7 +1000,7 @@ Il2CppMonoType* il2cpp_mono_reflection_get_type_checked(Il2CppMonoImage* rootima
 	if (!klass)
 		return NULL;
 
-	return (Il2CppMonoType*)il2cpp::vm::Class::GetType(klass);
+	return (MonoType*)il2cpp::vm::Class::GetType(klass);
 }
 
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_method_checked(Il2CppMonoMethod* method, MonoError* error)
@@ -1032,7 +1032,7 @@ Il2CppMonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2Cpp
 	return (Il2CppMonoReflectionAssemblyHandle)il2cpp::vm::Reflection::GetAssemblyObject((const Il2CppAssembly *)assembly);
 }
 
-Il2CppMonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, Il2CppMonoType* type, MonoError* error)
+Il2CppMonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error)
 {
 	error_init(error);
 	return (Il2CppMonoReflectionType*)il2cpp::vm::Reflection::GetTypeObject((const Il2CppType*)type);
@@ -1391,11 +1391,6 @@ const char* il2cpp_domain_get_name(Il2CppMonoDomain* domain)
 	return ((Il2CppDomain*)domain)->friendly_name;
 }
 
-int il2cpp_mono_type_get_attrs(Il2CppMonoType* type)
-{
-	return ((Il2CppType*)type)->attrs;
-}
-
 Il2CppSequencePointC* il2cpp_get_sequence_points(void* *iter)
 {
 	return (Il2CppSequencePointC*)il2cpp::utils::Debugger::GetSequencePoints(iter);
@@ -1453,16 +1448,16 @@ guint il2cpp_generic_inst_type_argc(Il2CppMonoGenericInst *monoInst)
 	return inst->type_argc;
 }
 
-Il2CppMonoType* il2cpp_generic_inst_type_arg(Il2CppMonoGenericInst *monoInst, int i)
+MonoType* il2cpp_generic_inst_type_arg(Il2CppMonoGenericInst *monoInst, int i)
 {
 	Il2CppGenericInst *inst = (Il2CppGenericInst*)monoInst;
-	return (Il2CppMonoType*)inst->type_argv[i];
+	return (MonoType*)inst->type_argv[i];
 }
 
-Il2CppMonoType* il2cpp_class_this_arg(Il2CppMonoClass *monoClass)
+MonoType* il2cpp_class_this_arg(Il2CppMonoClass *monoClass)
 {
 	Il2CppClass *klass = (Il2CppClass*)monoClass;
-	return (Il2CppMonoType*)klass->this_arg;
+	return (MonoType*)klass->this_arg;
 }
 
 Il2CppMonoClass* il2cpp_class_get_nested_types_accepts_generic(Il2CppMonoClass *monoClass, void* *iter)
@@ -1569,9 +1564,9 @@ guint8* il2cpp_field_get_address(Il2CppMonoObject *obj, Il2CppMonoClassField *mo
 	return (guint8*)obj + field->offset;
 }
 
-Il2CppMonoType* il2cpp_mono_object_get_type(Il2CppMonoObject* object)
+MonoType* il2cpp_mono_object_get_type(Il2CppMonoObject* object)
 {
-    return (Il2CppMonoType*)(((Il2CppObject*)object)->klass->byval_arg);
+    return (MonoType*)(((Il2CppObject*)object)->klass->byval_arg);
 }
 
 Il2CppMonoClass* il2cpp_defaults_exception_class()
@@ -1600,7 +1595,7 @@ Il2CppMonoClass* il2cpp_defaults_void_class()
 	return (Il2CppMonoClass*)il2cpp_defaults.void_class;
 }
 
-void il2cpp_set_var(guint8* newValue, void *value, Il2CppMonoType *localVariableTypeMono)
+void il2cpp_set_var(guint8* newValue, void *value, MonoType *localVariableTypeMono)
 {
 	il2cpp::metadata::SizeAndAlignment sa = il2cpp::metadata::FieldLayout::GetTypeSizeAndAlignment((const Il2CppType*)localVariableTypeMono);
 	if (((Il2CppType*)localVariableTypeMono)->byref)
@@ -1626,11 +1621,6 @@ gboolean il2cpp_field_is_deleted(Il2CppMonoClassField *field)
 int il2cpp_generic_container_get_type_argc(Il2CppMonoGenericClass* container)
 {
 	return ((Il2CppGenericContainer*)container)->type_argc;
-}
-
-Il2CppMonoGenericClass* il2cpp_type_get_generic_class(Il2CppMonoType *type)
-{
-	return (Il2CppMonoGenericClass*)((Il2CppType*)type)->data.generic_class;
 }
 
 gboolean il2cpp_class_get_enumtype(Il2CppMonoClass *klass)

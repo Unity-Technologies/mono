@@ -8,7 +8,10 @@
 
 #define IL2CPP_MONO_PUBLIC_KEY_TOKEN_LENGTH	17
 
-typedef struct Il2CppType Il2CppMonoType;
+//Converted to typedef
+#define MonoType Il2CppType
+
+//still stubs everywhere
 typedef struct Il2CppClass Il2CppMonoClass;
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
 typedef struct _Il2CppMonoAssembly Il2CppMonoAssembly;
@@ -67,7 +70,7 @@ struct _Il2CppMonoExceptionClause
 
 struct _Il2CppCattrNamedArg
 {
-	Il2CppMonoType *type;
+	MonoType *type;
 	Il2CppMonoClassField *field;
 	Il2CppMonoProperty *prop;
 };
@@ -140,7 +143,7 @@ struct _Il2CppMonoMethodHeader
 	guint16 num_locals;
 	Il2CppMonoExceptionClause *clauses;
 	unsigned int num_clauses : 15;
-	Il2CppMonoType *locals [MONO_ZERO_LEN_ARRAY];
+	MonoType *locals [MONO_ZERO_LEN_ARRAY];
 };
 
 struct _Il2CppMonoVTable
@@ -185,12 +188,12 @@ struct _Il2CppMonoDomain
 
 struct _Il2CppMonoMethodSignature
 {
-	Il2CppMonoType *ret;
+	MonoType *ret;
 	guint16 param_count;
 	unsigned int generic_param_count : 16;
 	unsigned int  call_convention     : 6;
 	unsigned int  hasthis             : 1;
-	Il2CppMonoType **params;
+	MonoType **params;
 };
 
 struct _Il2CppMonoTypeNameParse
@@ -214,7 +217,7 @@ typedef enum
 
 typedef struct
 {
-	const Il2CppMonoType* const* const type;
+	const MonoType* const* const type;
 	const char* const name;
 	const MethodVariableKindC variableKind;
 } Il2CppMethodExecutionContextInfoC;
@@ -273,6 +276,5 @@ void* il2cpp_gc_alloc_fixed(size_t size);
 void il2cpp_gc_free_fixed(void* address);
 char* il2cpp_assembly_get_name(Il2CppMonoAssembly* assembly);
 const char* il2cpp_domain_get_name(Il2CppMonoDomain* domain);
-int il2cpp_mono_type_get_attrs(Il2CppMonoType* type);
 
 #endif
