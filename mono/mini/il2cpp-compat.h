@@ -91,10 +91,7 @@
 #define MonoMarshalByRefObject Il2CppMonoMarshalByRefObject
 #define MonoObject Il2CppMonoObject
 #define MonoCustomAttrInfo Il2CppMonoCustomAttrInfo
-#define MonoGHashTable Il2CppMonoGHashTable
 #define MonoReflectionAssemblyHandle Il2CppMonoReflectionAssemblyHandle
-#define MonoReflectionType Il2CppMonoReflectionType
-#define MonoProfiler Il2CppMonoProfiler
 #define MonoJitTlsData Il2CppMonoJitTlsData
 #define MonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks
 #define MonoCustomAttrEntry Il2CppMonoCustomAttrEntry
@@ -466,7 +463,7 @@ Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_class_checked(MonoClass*
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoClass* klass, MonoProperty* property, MonoError* error);
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass* klass, MonoClassField* field, MonoError* error);
 Il2CppMonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2CppMonoDomain* domain, Il2CppMonoAssembly* assembly, MonoError* error);
-Il2CppMonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error);
+MonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error);
 void il2cpp_mono_network_init();
 gint il2cpp_mono_w32socket_set_blocking(SOCKET sock, gboolean blocking);
 

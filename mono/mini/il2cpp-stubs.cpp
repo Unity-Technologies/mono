@@ -1027,10 +1027,10 @@ Il2CppMonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2Cpp
 	return (Il2CppMonoReflectionAssemblyHandle)il2cpp::vm::Reflection::GetAssemblyObject((const Il2CppAssembly *)assembly);
 }
 
-Il2CppMonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error)
+MonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error)
 {
 	error_init(error);
-	return (Il2CppMonoReflectionType*)il2cpp::vm::Reflection::GetTypeObject((const Il2CppType*)type);
+	return (MonoReflectionType*)il2cpp::vm::Reflection::GetTypeObject((const Il2CppType*)type);
 }
 
 void il2cpp_mono_network_init()

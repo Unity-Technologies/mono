@@ -25,6 +25,8 @@
 #define MonoArray Il2CppArraySize
 #define MonoThread Il2CppThread
 #define MonoInternalThread Il2CppInternalThread
+#define MonoReflectionType Il2CppReflectionType
+#define MonoProfiler Il2CppProfiler
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
@@ -37,10 +39,7 @@ typedef struct _Il2CppMonoAppDomain Il2CppMonoAppDomain;
 typedef struct _Il2CppMonoMarshalByRefObject Il2CppMonoMarshalByRefObject;
 typedef struct _Il2CppMonoObject Il2CppMonoObject;
 typedef struct _Il2CppMonoCustomAttrInfo Il2CppMonoCustomAttrInfo;
-typedef struct Il2CppGHashTable Il2CppMonoGHashTable;
 typedef struct Il2CppReflectionAssembly Il2CppMonoReflectionAssembly;
-typedef struct Il2CppReflectionType Il2CppMonoReflectionType;
-typedef struct Il2CppProfiler Il2CppMonoProfiler;
 typedef struct _Il2CppMonoJitTlsData Il2CppMonoJitTlsData;
 typedef struct _Il2CppMonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks;
 typedef struct _Il2CppMonoCustomAttrEntry Il2CppMonoCustomAttrEntry;
@@ -254,13 +253,13 @@ TYPED_HANDLE_DECL (Il2CppMonoReflectionAssembly);
 Il2CppMonoDefaults il2cpp_mono_defaults;
 MonoDebugOptions il2cpp_mono_debug_options;
 
-typedef void (*Il2CppMonoProfileFunc) (Il2CppMonoProfiler *prof);
-typedef void (*Il2CppMonoProfileAppDomainFunc) (Il2CppMonoProfiler *prof, Il2CppMonoDomain *domain);
-typedef void (*Il2CppMonoProfileAppDomainResult) (Il2CppMonoProfiler *prof, Il2CppMonoDomain *domain, int result);
-typedef void (*Il2CppMonoProfileAssemblyFunc) (Il2CppMonoProfiler *prof, Il2CppMonoAssembly *assembly);
-typedef void (*Il2CppMonoProfileJitResult) (Il2CppMonoProfiler *prof, MonoMethod *method, MonoJitInfo* jinfo, int result);
-typedef void (*Il2CppMonoProfileAssemblyResult) (Il2CppMonoProfiler *prof, Il2CppMonoAssembly *assembly, int result);
-typedef void (*Il2CppMonoProfileThreadFunc) (Il2CppMonoProfiler *prof, uintptr_t tid);
+typedef void (*Il2CppMonoProfileFunc) (MonoProfiler *prof);
+typedef void (*Il2CppMonoProfileAppDomainFunc) (MonoProfiler *prof, Il2CppMonoDomain *domain);
+typedef void (*Il2CppMonoProfileAppDomainResult) (MonoProfiler *prof, Il2CppMonoDomain *domain, int result);
+typedef void (*Il2CppMonoProfileAssemblyFunc) (MonoProfiler *prof, Il2CppMonoAssembly *assembly);
+typedef void (*Il2CppMonoProfileJitResult) (MonoProfiler *prof, MonoMethod *method, MonoJitInfo* jinfo, int result);
+typedef void (*Il2CppMonoProfileAssemblyResult) (MonoProfiler *prof, Il2CppMonoAssembly *assembly, int result);
+typedef void (*Il2CppMonoProfileThreadFunc) (MonoProfiler *prof, uintptr_t tid);
 typedef gboolean (*Il2CppMonoJitStackWalk) (Il2CppMonoStackFrameInfo *frame, MonoContext *ctx, gpointer data);
 typedef void (*Il2CppMonoDomainFunc) (Il2CppMonoDomain *domain, void* user_data);
 
