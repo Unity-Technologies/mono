@@ -11,12 +11,12 @@
 //Converted to il2cpp types
 #define MonoType Il2CppType
 #define MonoClass Il2CppClass
+#define MonoImage Il2CppImage
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
 typedef struct _Il2CppMonoAssembly Il2CppMonoAssembly;
 typedef struct _Il2CppMonoDomain Il2CppMonoDomain;
-typedef struct Il2CppImage Il2CppMonoImage;
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
 typedef struct MethodInfo Il2CppMonoMethod;
 typedef struct FieldInfo Il2CppMonoClassField;
@@ -172,7 +172,7 @@ struct _Il2CppMonoAssemblyName
 struct _Il2CppMonoAssembly
 {
 	Il2CppMonoAssemblyNameReplacement aname;
-	Il2CppMonoImage *image;
+	MonoImage *image;
 };
 
 struct _Il2CppMonoDomain

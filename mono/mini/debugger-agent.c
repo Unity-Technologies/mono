@@ -5759,7 +5759,7 @@ process_single_step_inner (DebuggerTlsData *tls, gboolean from_signal, uint64_t 
 		gboolean found = FALSE;
 		for (int k = 0; ss_req->user_assemblies[k]; k++)
 		{
-			if (ss_req->user_assemblies[k] ==  VM_IMAGE_GET_ASSEMBLY(VM_METHOD_GET_DECLARING_TYPE(sequence_pt->method)->image))
+			if (ss_req->user_assemblies[k] ==  VM_METHOD_GET_DECLARING_TYPE(sequence_pt->method)->image->assembly)
 			{
 				found = TRUE;
 				break;
@@ -6721,7 +6721,7 @@ unity_debugger_agent_handle_exception(MonoException *exc, Il2CppSequencePointC *
 				if (assemblies)
 				{
 					for (k = 0; assemblies[k]; ++k)
-						if (assemblies[k] ==   VM_IMAGE_GET_ASSEMBLY(VM_METHOD_GET_DECLARING_TYPE(sequencePoint->method)->image))
+						if (assemblies[k] ==   VM_METHOD_GET_DECLARING_TYPE(sequencePoint->method)->image->assembly)
 							found = TRUE;
 				}
 				if (!found)
@@ -9316,12 +9316,12 @@ module_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		MonoImage *image = decode_moduleid (p, &p, end, &domain, &err);
 		char *basename;
 
-		basename = g_path_get_basename (VM_IMAGE_GET_NAME(image));
+		basename = g_path_get_basename (image->name);
 		buffer_add_string (buf, basename); // name
 		buffer_add_string (buf, VM_IMAGE_GET_MODULE_NAME(image)); // scopename
-		buffer_add_string (buf, VM_IMAGE_GET_NAME(image)); // fqname
+		buffer_add_string (buf, image->name); // fqname
 		buffer_add_string (buf, mono_image_get_guid (image)); // guid
-		buffer_add_assemblyid (buf, domain, VM_IMAGE_GET_ASSEMBLY(image)); // assembly
+		buffer_add_assemblyid (buf, domain, image->assembly); // assembly
 		g_free (basename);
 		break;
 	}
