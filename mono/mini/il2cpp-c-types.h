@@ -8,11 +8,11 @@
 
 #define IL2CPP_MONO_PUBLIC_KEY_TOKEN_LENGTH	17
 
-//Converted to typedef
+//Converted to il2cpp types
 #define MonoType Il2CppType
+#define MonoClass Il2CppClass
 
 //still stubs everywhere
-typedef struct Il2CppClass Il2CppMonoClass;
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
 typedef struct _Il2CppMonoAssembly Il2CppMonoAssembly;
 typedef struct _Il2CppMonoDomain Il2CppMonoDomain;
@@ -64,7 +64,7 @@ struct _Il2CppMonoExceptionClause
 	uint32_t handler_len;
 	union {
 		uint32_t filter_offset;
-		Il2CppMonoClass *catch_class;
+		MonoClass *catch_class;
 	} data;
 };
 
@@ -148,7 +148,7 @@ struct _Il2CppMonoMethodHeader
 
 struct _Il2CppMonoVTable
 {
-	Il2CppMonoClass *klass;
+	MonoClass *klass;
 	Il2CppMonoDomain *domain;
 	guint8 initialized;
 	gpointer type;
