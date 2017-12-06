@@ -7578,7 +7578,7 @@ decode_value (MonoType *t, MonoDomain *domain, guint8 *addr, guint8 *buf, guint8
 	int type = decode_byte (buf, &buf, limit);
 
 	if (t->type == MONO_TYPE_GENERICINST && mono_class_is_nullable (mono_class_from_mono_type (t))) {
-		MonoType *targ = VM_GENERIC_INST_TYPE_ARG(VM_GENERIC_CLASS_GET_INST(t->data.generic_class), 0);
+		MonoType *targ = t->data.generic_class->context.class_inst->type_argv[0];
 		guint8 *nullable_buf;
 
 		/*
@@ -9538,17 +9538,17 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 			int count, i;
 
 			if (mono_class_is_ginst (klass)) {
-				MonoGenericInst *inst = VM_GENERIC_CLASS_GET_INST(mono_class_get_generic_class(klass));
+				MonoGenericInst *inst = mono_class_get_generic_class(klass)->context.class_inst;
 
-				count = VM_GENERIC_INST_TYPE_ARGC(inst);
+				count = inst->type_argc;
 				buffer_add_int (buf, count);
 				for (i = 0; i < count; i++)
-					buffer_add_typeid (buf, domain, mono_class_from_mono_type (VM_GENERIC_INST_TYPE_ARG(inst, i)));
+					buffer_add_typeid (buf, domain, mono_class_from_mono_type (inst->type_argv[i]));
 			} else if (mono_class_is_gtd (klass)) {
 				MonoGenericContainer *container = mono_class_get_generic_container (klass);
 				MonoClass *pklass;
 
-				count = VM_GENERIC_CONTAINER_GET_TYPE_ARGC(container);
+				count = container->type_argc;
 				buffer_add_int (buf, count);
 				for (i = 0; i < count; i++) {
 					pklass = mono_class_from_generic_parameter_internal (mono_generic_container_get_param (container, i));
@@ -10362,11 +10362,11 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 					if (is_inflated) {
 						MonoGenericInst *inst = mono_method_get_context (method)->method_inst;
 						if (inst) {
-							count = VM_GENERIC_INST_TYPE_ARGC(inst);
+							count = inst->type_argc;
 							buffer_add_int (buf, count);
 
 							for (i = 0; i < count; i++)
-								buffer_add_typeid (buf, domain, mono_class_from_mono_type (VM_GENERIC_INST_TYPE_ARG(inst, i)));
+								buffer_add_typeid (buf, domain, mono_class_from_mono_type (inst->type_argv[i]));
 						} else {
 							buffer_add_int (buf, 0);
 						}
@@ -10544,7 +10544,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 		}
 		ginst = mono_metadata_get_generic_inst (type_argc, type_argv);
 		g_free (type_argv);
-		tmp_context.class_inst = mono_class_is_ginst (method->klass) ?  VM_GENERIC_CLASS_GET_INST(mono_class_get_generic_class (method->klass)) : NULL;
+		tmp_context.class_inst = mono_class_is_ginst (method->klass) ? mono_class_get_generic_class (method->klass)->context.class_inst : NULL;
 		tmp_context.method_inst = ginst;
 
 		inflated = mono_class_inflate_generic_method_checked (method, &tmp_context, &error);

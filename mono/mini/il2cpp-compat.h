@@ -43,11 +43,7 @@
 #define VM_OBJECT_GET_DOMAIN(object) il2cpp_mono_domain_get()
 #define VM_OBJECT_GET_CLASS(object) il2cpp_object_get_class(object)
 #define VM_OBJECT_GET_TYPE(object) il2cpp_mono_object_get_type(object)
-#define VM_GENERIC_CLASS_GET_INST(gklass) il2cpp_generic_class_get_inst(gklass)
 #define VM_GENERIC_CLASS_GET_CONTAINER_CLASS(gklass) il2cpp_generic_class_get_container_class(gklass)
-#define VM_GENERIC_CONTAINER_GET_TYPE_ARGC(container) il2cpp_generic_container_get_type_argc(container)
-#define VM_GENERIC_INST_TYPE_ARGC(inst) il2cpp_generic_inst_type_argc(inst)
-#define VM_GENERIC_INST_TYPE_ARG(inst, i) il2cpp_generic_inst_type_arg(inst, i)
 #define VM_DEFAULTS_OBJECT_CLASS il2cpp_defaults_object_class()
 #define VM_DEFAULTS_EXCEPTION_CLASS il2cpp_defaults_exception_class()
 #define VM_DEFAULTS_CORLIB_IMAGE il2cpp_defaults_corlib_image()
@@ -92,11 +88,7 @@
 #define VM_OBJECT_GET_DOMAIN(object) ((MonoObject*)object)->vtable->domain
 #define VM_OBJECT_GET_CLASS(object) ((MonoObject*)object)->vtable->klass
 #define VM_OBJECT_GET_TYPE(object) ((MonoReflectionType*)object->vtable->type)->type
-#define VM_GENERIC_CONTAINER_GET_TYPE_ARGC(container) container->type_argc
-#define VM_GENERIC_CLASS_GET_INST(gklass) (gklass)->context.class_inst
 #define VM_GENERIC_CLASS_GET_CONTAINER_CLASS(gklass) (gklass)->container_class
-#define VM_GENERIC_INST_TYPE_ARGC(inst) (inst)->type_argc
-#define VM_GENERIC_INST_TYPE_ARG(inst, i) (inst)->type_argv[i]
 #define VM_DEFAULTS_OBJECT_CLASS mono_defaults.object_class
 #define VM_DEFAULTS_EXCEPTION_CLASS mono_defaults.exception_class
 #define VM_DEFAULTS_CORLIB_IMAGE mono_defaults.corlib
@@ -121,11 +113,6 @@
 #define MonoAppDomain Il2CppMonoAppDomain
 #define MonoDomain Il2CppMonoDomain
 #define MonoMethodSignature Il2CppMonoMethodSignature
-#define MonoArrayType Il2CppMonoArrayType
-#define MonoGenericParam Il2CppMonoGenericParam
-#define MonoGenericInst Il2CppMonoGenericInst
-#define MonoGenericContext Il2CppMonoGenericContext
-#define MonoGenericClass Il2CppMonoGenericClass
 #define MonoAssemblyName Il2CppMonoAssemblyNameReplacement
 #define MonoMarshalByRefObject Il2CppMonoMarshalByRefObject
 #define MonoObject Il2CppMonoObject
@@ -134,7 +121,6 @@
 #define MonoThread Il2CppMonoThread
 #define MonoInternalThread Il2CppMonoInternalThread
 #define MonoGHashTable Il2CppMonoGHashTable
-#define MonoGenericContainer Il2CppMonoGenericContainer
 #define MonoReflectionAssemblyHandle Il2CppMonoReflectionAssemblyHandle
 #define MonoReflectionType Il2CppMonoReflectionType
 #define MonoProfiler Il2CppMonoProfiler
@@ -447,19 +433,19 @@ void il2cpp_mono_domain_lock(Il2CppMonoDomain* domain);
 void il2cpp_mono_domain_unlock(Il2CppMonoDomain* domain);
 MonoJitInfo* il2cpp_mono_jit_info_table_find_internal(Il2CppMonoDomain* domain, char* addr, gboolean try_aot, gboolean allow_trampolines);
 guint il2cpp_mono_aligned_addr_hash(gconstpointer ptr);
-Il2CppMonoGenericInst* il2cpp_mono_metadata_get_generic_inst(int type_argc, MonoType** type_argv);
-MonoMethod* il2cpp_mono_get_method_checked(MonoImage* image, guint32 token, MonoClass* klass, Il2CppMonoGenericContext* context, MonoError* error);
+MonoGenericInst* il2cpp_mono_metadata_get_generic_inst(int type_argc, MonoType** type_argv);
+MonoMethod* il2cpp_mono_get_method_checked(MonoImage* image, guint32 token, MonoClass* klass, MonoGenericContext* context, MonoError* error);
 int il2cpp_mono_class_interface_offset_with_variance(MonoClass* klass, MonoClass* itf, gboolean* non_exact_match);
 void il2cpp_mono_class_setup_supertypes(MonoClass* klass);
 void il2cpp_mono_class_setup_vtable(MonoClass* klass);
 void il2cpp_mono_class_setup_methods(MonoClass* klass);
 gboolean il2cpp_mono_class_field_is_special_static(MonoClassField* field);
 guint32 il2cpp_mono_class_field_get_special_static_type(MonoClassField* field);
-Il2CppMonoGenericContext* il2cpp_mono_class_get_context(MonoClass* klass);
-Il2CppMonoGenericContext* il2cpp_mono_method_get_context(MonoMethod* method);
-Il2CppMonoGenericContainer* il2cpp_mono_method_get_generic_container(MonoMethod* method);
-MonoMethod* il2cpp_mono_class_inflate_generic_method_full_checked(MonoMethod* method, MonoClass* klass_hint, Il2CppMonoGenericContext* context, MonoError* error);
-MonoMethod* il2cpp_mono_class_inflate_generic_method_checked(MonoMethod* method, Il2CppMonoGenericContext* context, MonoError* error);
+MonoGenericContext* il2cpp_mono_class_get_context(MonoClass* klass);
+MonoGenericContext* il2cpp_mono_method_get_context(MonoMethod* method);
+MonoGenericContainer* il2cpp_mono_method_get_generic_container(MonoMethod* method);
+MonoMethod* il2cpp_mono_class_inflate_generic_method_full_checked(MonoMethod* method, MonoClass* klass_hint, MonoGenericContext* context, MonoError* error);
+MonoMethod* il2cpp_mono_class_inflate_generic_method_checked(MonoMethod* method, MonoGenericContext* context, MonoError* error);
 void il2cpp_mono_loader_lock();
 void il2cpp_mono_loader_unlock();
 void il2cpp_mono_loader_lock_track_ownership(gboolean track);
@@ -467,13 +453,13 @@ gboolean il2cpp_mono_loader_lock_is_owned_by_self();
 gpointer il2cpp_mono_method_get_wrapper_data(MonoMethod* method, guint32 id);
 char* il2cpp_mono_type_get_name_full(MonoType* type, MonoTypeNameFormat format);
 gboolean il2cpp_mono_class_is_nullable(MonoClass* klass);
-Il2CppMonoGenericContainer* il2cpp_mono_class_get_generic_container(MonoClass* klass);
+MonoGenericContainer* il2cpp_mono_class_get_generic_container(MonoClass* klass);
 void il2cpp_mono_class_setup_interfaces(MonoClass* klass, MonoError* error);
 GPtrArray* il2cpp_mono_class_get_methods_by_name(MonoClass* klass, const char* name, guint32 bflags, gboolean ignore_case, gboolean allow_ctors, MonoError* error);
-gpointer il2cpp_mono_ldtoken_checked(MonoImage* image, guint32 token, MonoClass** handle_class, Il2CppMonoGenericContext* context, MonoError* error);
-MonoClass* il2cpp_mono_class_from_generic_parameter_internal(Il2CppMonoGenericParam* param);
+gpointer il2cpp_mono_ldtoken_checked(MonoImage* image, guint32 token, MonoClass** handle_class, MonoGenericContext* context, MonoError* error);
+MonoClass* il2cpp_mono_class_from_generic_parameter_internal(MonoGenericParam* param);
 MonoClass* il2cpp_mono_class_load_from_name(MonoImage* image, const char* name_space, const char* name);
-Il2CppMonoGenericClass* il2cpp_mono_class_get_generic_class(MonoClass* klass);
+MonoGenericClass* il2cpp_mono_class_get_generic_class(MonoClass* klass);
 Il2CppMonoInternalThread* il2cpp_mono_thread_internal_current();
 gboolean il2cpp_mono_thread_internal_is_current(Il2CppMonoInternalThread* thread);
 void il2cpp_mono_thread_internal_abort(Il2CppMonoInternalThread* thread, gboolean appdomain_unload);
@@ -543,7 +529,7 @@ gboolean il2cpp_mono_find_prev_seq_point_for_native_offset (Il2CppMonoDomain *do
 SOCKET il2cpp_mono_w32socket_accept_internal (SOCKET s, struct sockaddr *addr, socklen_t *addrlen, gboolean blocking);
 gboolean il2cpp_mono_find_next_seq_point_for_native_offset (Il2CppMonoDomain *domain, MonoMethod *method, gint32 native_offset, MonoSeqPointInfo **info, SeqPoint* seq_point);
 gboolean il2cpp_mono_class_has_parent (MonoClass *klass, MonoClass *parent);
-Il2CppMonoGenericParam* il2cpp_mono_generic_container_get_param (Il2CppMonoGenericContainer *gc, int i);
+MonoGenericParam* il2cpp_mono_generic_container_get_param (MonoGenericContainer *gc, int i);
 gboolean il2cpp_mono_find_seq_point (Il2CppMonoDomain *domain, MonoMethod *method, gint32 il_offset, MonoSeqPointInfo **info, SeqPoint *seq_point);
 void il2cpp_mono_seq_point_iterator_init (SeqPointIterator* it, MonoSeqPointInfo* info);
 gboolean il2cpp_mono_seq_point_iterator_next (SeqPointIterator* it);
@@ -557,9 +543,6 @@ const char* il2cpp_mono_error_get_message (MonoError *oerror);
 void il2cpp_mono_error_assert_ok_pos (MonoError *error, const char* filename, int lineno);
 Il2CppSequencePointC* il2cpp_get_sequence_points(void* *iter);
 Il2CppSequencePointC* il2cpp_get_method_sequence_points(MonoMethod* method, void* *iter);
-Il2CppMonoGenericInst* il2cpp_generic_class_get_inst(Il2CppMonoGenericClass *monoGenClass);
-guint il2cpp_generic_inst_type_argc(Il2CppMonoGenericInst *monoInst);
-MonoType* il2cpp_generic_inst_type_arg(Il2CppMonoGenericInst *monoInst, int i);
 MonoClass* il2cpp_class_get_nested_types_accepts_generic(MonoClass *monoClass, void* *iter);
 MonoClass* il2cpp_defaults_object_class();
 guint8 il2cpp_array_rank(Il2CppMonoArray *monoArr);
@@ -579,7 +562,6 @@ guint8* il2cpp_field_get_address(Il2CppMonoObject *obj, MonoClassField *monoFiel
 MonoType* il2cpp_mono_object_get_type(Il2CppMonoObject* object);
 MonoClass* il2cpp_defaults_exception_class();
 MonoImage* il2cpp_defaults_corlib_image();
-int il2cpp_generic_container_get_type_argc(Il2CppMonoGenericClass* container);
 bool il2cpp_method_is_string_ctor (const MonoMethod * method);
 MonoClass* il2cpp_defaults_void_class();
 void il2cpp_set_var(guint8* newValue, void *value, MonoType *localVariableTypeMono);
@@ -592,8 +574,8 @@ Il2CppMonoInternalThread* il2cpp_mono_thread_get_internal(Il2CppMonoThread* thre
 uint32_t il2cpp_internal_thread_get_state(Il2CppMonoInternalThread* thread);
 il2cpp_internal_thread_get_threadpool_thread(Il2CppMonoInternalThread* thread);
 MonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imethod);
-Il2CppMonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod);
-MonoClass* il2cpp_generic_class_get_container_class(Il2CppMonoGenericClass *gclass);
+MonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod);
+MonoClass* il2cpp_generic_class_get_container_class(MonoGenericClass *gclass);
 void il2cpp_mono_thread_detach(Il2CppMonoThread* thread);
 MonoClass* il2cpp_mono_get_string_class (void);
 

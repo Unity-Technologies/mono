@@ -519,12 +519,12 @@ guint il2cpp_mono_aligned_addr_hash(gconstpointer ptr)
 	return GPOINTER_TO_UINT(ptr) >> 3;
 }
 
-Il2CppMonoGenericInst* il2cpp_mono_metadata_get_generic_inst(int type_argc, MonoType** type_argv)
+MonoGenericInst* il2cpp_mono_metadata_get_generic_inst(int type_argc, MonoType** type_argv)
 {
-	return (Il2CppMonoGenericInst*)il2cpp::vm::MetadataCache::GetGenericInst((Il2CppType**)type_argv, type_argc);
+	return (MonoGenericInst*)il2cpp::vm::MetadataCache::GetGenericInst((Il2CppType**)type_argv, type_argc);
 }
 
-MonoMethod* il2cpp_mono_get_method_checked(MonoImage* image, guint32 token, MonoClass* klass, Il2CppMonoGenericContext* context, MonoError* error)
+MonoMethod* il2cpp_mono_get_method_checked(MonoImage* image, guint32 token, MonoClass* klass, MonoGenericContext* context, MonoError* error)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return NULL;
@@ -578,38 +578,38 @@ guint32 il2cpp_mono_class_field_get_special_static_type(MonoClassField* field)
 	return 0;
 }
 
-Il2CppMonoGenericContext* il2cpp_mono_class_get_context(MonoClass* klass)
+MonoGenericContext* il2cpp_mono_class_get_context(MonoClass* klass)
 {
-	return (Il2CppMonoGenericContext*)&((Il2CppClass*)klass)->generic_class->context;
+	return (MonoGenericContext*)&((Il2CppClass*)klass)->generic_class->context;
 }
 
-Il2CppMonoGenericContext* il2cpp_mono_method_get_context(MonoMethod* monoMethod)
+MonoGenericContext* il2cpp_mono_method_get_context(MonoMethod* monoMethod)
 {
 	MethodInfo * method = (MethodInfo*)monoMethod;
 
 	if (!method->is_inflated || method->is_generic)
 		return NULL;
 
-	return (Il2CppMonoGenericContext*) &((MethodInfo*)method)->genericMethod->context;
+	return (MonoGenericContext*) &((MethodInfo*)method)->genericMethod->context;
 }
 
-Il2CppMonoGenericContainer* il2cpp_mono_method_get_generic_container(MonoMethod* monoMethod)
+MonoGenericContainer* il2cpp_mono_method_get_generic_container(MonoMethod* monoMethod)
 {
 	MethodInfo * method = (MethodInfo*)monoMethod;
 
 	if (method->is_inflated || !method->is_generic)
 		return NULL;
 
-	return (Il2CppMonoGenericContainer*) method->genericContainer;
+	return (MonoGenericContainer*) method->genericContainer;
 }
 
-MonoMethod* il2cpp_mono_class_inflate_generic_method_full_checked(MonoMethod* method, MonoClass* klass_hint, Il2CppMonoGenericContext* context, MonoError* error)
+MonoMethod* il2cpp_mono_class_inflate_generic_method_full_checked(MonoMethod* method, MonoClass* klass_hint, MonoGenericContext* context, MonoError* error)
 {
 	error_init(error);
 	return (MonoMethod*) il2cpp::metadata::GenericMetadata::Inflate((MethodInfo*)method, (Il2CppClass*)klass_hint, (Il2CppGenericContext*)context);
 }
 
-MonoMethod* il2cpp_mono_class_inflate_generic_method_checked(MonoMethod* method, Il2CppMonoGenericContext* context, MonoError* error)
+MonoMethod* il2cpp_mono_class_inflate_generic_method_checked(MonoMethod* method, MonoGenericContext* context, MonoError* error)
 {
 	error_init(error);
 	return (MonoMethod*)il2cpp::metadata::GenericMetadata::Inflate((MethodInfo*)method, NULL, (Il2CppGenericContext*)context);
@@ -653,9 +653,9 @@ gboolean il2cpp_mono_class_is_nullable(MonoClass* klass)
 	return il2cpp::vm::Class::IsNullable((Il2CppClass*)klass);
 }
 
-Il2CppMonoGenericContainer* il2cpp_mono_class_get_generic_container(MonoClass* klass)
+MonoGenericContainer* il2cpp_mono_class_get_generic_container(MonoClass* klass)
 {
-    return (Il2CppMonoGenericContainer*)il2cpp::vm::Class::GetGenericContainer((Il2CppClass*)klass);
+    return (MonoGenericContainer*)il2cpp::vm::Class::GetGenericContainer((Il2CppClass*)klass);
 }
 
 void il2cpp_mono_class_setup_interfaces(MonoClass* klass, MonoError* error)
@@ -785,13 +785,13 @@ handle_parent:
 	return array;
 }
 
-gpointer il2cpp_mono_ldtoken_checked(MonoImage* image, guint32 token, MonoClass** handle_class, Il2CppMonoGenericContext* context, MonoError* error)
+gpointer il2cpp_mono_ldtoken_checked(MonoImage* image, guint32 token, MonoClass** handle_class, MonoGenericContext* context, MonoError* error)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return 0;
 }
 
-MonoClass* il2cpp_mono_class_from_generic_parameter_internal(Il2CppMonoGenericParam* param)
+MonoClass* il2cpp_mono_class_from_generic_parameter_internal(MonoGenericParam* param)
 {
 	return (MonoClass*)il2cpp::vm::Class::FromGenericParameter((Il2CppGenericParameter*)param);
 }
@@ -802,10 +802,10 @@ MonoClass* il2cpp_mono_class_load_from_name(MonoImage* image, const char* name_s
 	return NULL;
 }
 
-Il2CppMonoGenericClass* il2cpp_mono_class_get_generic_class(MonoClass* monoClass)
+MonoGenericClass* il2cpp_mono_class_get_generic_class(MonoClass* monoClass)
 {
 	Il2CppClass *klass = (Il2CppClass*)monoClass;
-	return (Il2CppMonoGenericClass*)klass->generic_class;
+	return (MonoGenericClass*)klass->generic_class;
 }
 
 Il2CppMonoInternalThread* il2cpp_mono_thread_internal_current()
@@ -1229,9 +1229,9 @@ gboolean il2cpp_mono_class_has_parent (MonoClass *klass, MonoClass *parent)
 	return 0;
 }
 
-Il2CppMonoGenericParam* il2cpp_mono_generic_container_get_param (Il2CppMonoGenericContainer *gc, int i)
+MonoGenericParam* il2cpp_mono_generic_container_get_param (MonoGenericContainer *gc, int i)
 {
-	return (Il2CppMonoGenericParam*)il2cpp::vm::GenericContainer::GetGenericParameter((Il2CppGenericContainer*)gc, i);
+	return (MonoGenericParam*)il2cpp::vm::GenericContainer::GetGenericParameter((Il2CppGenericContainer*)gc, i);
 }
 
 gboolean il2cpp_mono_find_seq_point (Il2CppMonoDomain *domain, MonoMethod *method, gint32 il_offset, MonoSeqPointInfo **info, SeqPoint *seq_point)
@@ -1436,24 +1436,6 @@ gboolean il2cpp_mono_methods_match(MonoMethod* left, MonoMethod* right)
 	return FALSE;
 }
 
-Il2CppMonoGenericInst* il2cpp_generic_class_get_inst(Il2CppMonoGenericClass *monoGenClass)
-{
-	Il2CppGenericClass *klass = (Il2CppGenericClass*) monoGenClass;
-	return (Il2CppMonoGenericInst*)klass->context.class_inst;
-}
-
-guint il2cpp_generic_inst_type_argc(Il2CppMonoGenericInst *monoInst)
-{
-	Il2CppGenericInst *inst = (Il2CppGenericInst*)monoInst;
-	return inst->type_argc;
-}
-
-MonoType* il2cpp_generic_inst_type_arg(Il2CppMonoGenericInst *monoInst, int i)
-{
-	Il2CppGenericInst *inst = (Il2CppGenericInst*)monoInst;
-	return (MonoType*)inst->type_argv[i];
-}
-
 MonoClass* il2cpp_class_get_nested_types_accepts_generic(MonoClass *monoClass, void* *iter)
 {
 	Il2CppClass *klass = (Il2CppClass*)monoClass;
@@ -1601,11 +1583,6 @@ gboolean il2cpp_field_is_deleted(MonoClassField *field)
 	return il2cpp::vm::Field::IsDeleted((FieldInfo*)field);
 }
 
-int il2cpp_generic_container_get_type_argc(Il2CppMonoGenericClass* container)
-{
-	return ((Il2CppGenericContainer*)container)->type_argc;
-}
-
 struct TypeIterState
 {
 	il2cpp::vm::AssemblyVector* assemblies;
@@ -1669,17 +1646,17 @@ MonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imeth
 }
 
 
-Il2CppMonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod)
+MonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod)
 {
 	MethodInfo *method = (MethodInfo*)imethod;
 
 	if (!method->is_inflated || method->is_generic)
 		return NULL;
 
-	return (Il2CppMonoGenericInst*)method->genericMethod->context.class_inst;
+	return (MonoGenericInst*)method->genericMethod->context.class_inst;
 }
 
-MonoClass* il2cpp_generic_class_get_container_class(Il2CppMonoGenericClass *gclass)
+MonoClass* il2cpp_generic_class_get_container_class(MonoGenericClass *gclass)
 {
 	return (MonoClass*)il2cpp::vm::GenericClass::GetTypeDefinition((Il2CppGenericClass*)gclass);
 }

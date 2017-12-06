@@ -14,17 +14,18 @@
 #define MonoImage Il2CppImage
 #define MonoMethod MethodInfo
 #define MonoClassField FieldInfo
+#define MonoArrayType Il2CppArrayType
+#define MonoGenericParam Il2CppGenericParameter
+#define MonoGenericInst Il2CppGenericInst
+#define MonoGenericContext Il2CppGenericContext
+#define MonoGenericClass Il2CppGenericClass
+#define MonoGenericContainer Il2CppGenericContainer
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
 typedef struct _Il2CppMonoAssembly Il2CppMonoAssembly;
 typedef struct _Il2CppMonoDomain Il2CppMonoDomain;
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
-typedef struct Il2CppArrayType Il2CppMonoArrayType;
-typedef struct Il2CppGenericParam Il2CppMonoGenericParam;
-typedef struct Il2CppGenericInst Il2CppMonoGenericInst;
-typedef struct Il2CppGenericContext Il2CppMonoGenericContext;
-typedef struct Il2CppGenericClass Il2CppMonoGenericClass;
 typedef struct _Il2CppMonoMethodHeader Il2CppMonoMethodHeader;
 typedef struct _Il2CppMonoVTable Il2CppMonoVTable;
 typedef struct Il2CppPropertyInfo Il2CppMonoProperty;
@@ -36,7 +37,6 @@ typedef struct Il2CppArraySize Il2CppMonoArray;
 typedef struct _Il2CppMonoCustomAttrInfo Il2CppMonoCustomAttrInfo;
 typedef struct Il2CppThread Il2CppMonoThread;
 typedef struct Il2CppGHashTable Il2CppMonoGHashTable;
-typedef struct Il2CppGenericContainer Il2CppMonoGenericContainer;
 typedef struct Il2CppReflectionAssembly Il2CppMonoReflectionAssembly;
 typedef struct Il2CppReflectionType Il2CppMonoReflectionType;
 typedef struct Il2CppProfiler Il2CppMonoProfiler;
@@ -89,7 +89,7 @@ struct _Il2CppMonoException
 struct _Il2CppMonoMethodInflated
 {
 	MonoMethod *declaring;
-	Il2CppMonoGenericContext context;
+	MonoGenericContext context;
 };
 
 struct _Il2CppMonoStackFrameInfo
