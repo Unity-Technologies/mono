@@ -11112,8 +11112,8 @@ array_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			buffer_add_int (buf, 0);
 		} else {
 			for (i = 0; i < VM_ARRAY_GET_RANK(arr); ++i) {
-				buffer_add_int (buf, VM_ARRAY_BOUND_LENGTH(arr, i));
-				buffer_add_int (buf, VM_ARRAY_BOUND_LOWER_BOUND(arr, i));
+				buffer_add_int (buf, arr->bounds[i].length);
+				buffer_add_int (buf, arr->bounds[i].lower_bound);
 			}
 		}
 		break;

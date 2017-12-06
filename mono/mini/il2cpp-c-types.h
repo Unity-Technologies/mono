@@ -22,6 +22,7 @@
 #define MonoGenericContainer Il2CppGenericContainer
 #define MonoProperty Il2CppPropertyInfo
 #define MonoString Il2CppString
+#define MonoArray Il2CppArraySize
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
@@ -33,7 +34,6 @@ typedef struct _Il2CppMonoVTable Il2CppMonoVTable;
 typedef struct _Il2CppMonoAppDomain Il2CppMonoAppDomain;
 typedef struct _Il2CppMonoMarshalByRefObject Il2CppMonoMarshalByRefObject;
 typedef struct _Il2CppMonoObject Il2CppMonoObject;
-typedef struct Il2CppArraySize Il2CppMonoArray;
 typedef struct _Il2CppMonoCustomAttrInfo Il2CppMonoCustomAttrInfo;
 typedef struct Il2CppThread Il2CppMonoThread;
 typedef struct Il2CppGHashTable Il2CppMonoGHashTable;

@@ -255,13 +255,13 @@ int il2cpp_mono_string_length (MonoString *monoStr)
 	return str->length;
 }
 
-char* il2cpp_mono_array_addr_with_size (Il2CppMonoArray *array, int size, uintptr_t idx)
+char* il2cpp_mono_array_addr_with_size (MonoArray *array, int size, uintptr_t idx)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return NULL;
 }
 
-uintptr_t il2cpp_mono_array_length (Il2CppMonoArray *array)
+uintptr_t il2cpp_mono_array_length (MonoArray *array)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return 0;
@@ -855,7 +855,7 @@ Il2CppMonoRuntimeExceptionHandlingCallbacks* il2cpp_mono_get_eh_callbacks()
 	return NULL;
 }
 
-void il2cpp_mono_reflection_create_custom_attr_data_args(MonoImage* image, MonoMethod* method, const guchar* data, guint32 len, Il2CppMonoArray** typed_args, Il2CppMonoArray** named_args, CattrNamedArg** named_arg_info, MonoError* error)
+void il2cpp_mono_reflection_create_custom_attr_data_args(MonoImage* image, MonoMethod* method, const guchar* data, guint32 len, MonoArray** typed_args, MonoArray** named_args, CattrNamedArg** named_arg_info, MonoError* error)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
@@ -1450,22 +1450,10 @@ MonoClass* il2cpp_defaults_object_class()
 	return (MonoClass*)il2cpp_defaults.object_class;
 }
 
-guint8 il2cpp_array_rank(Il2CppMonoArray *monoArr)
+guint8 il2cpp_array_rank(MonoArray *monoArr)
 {
 	Il2CppArray *arr = (Il2CppArray*)monoArr;
 	return arr->klass->rank;
-}
-
-mono_array_size_t il2cpp_array_bound_length(Il2CppMonoArray *monoArr, int i)
-{
-	Il2CppArray *arr = (Il2CppArray*)monoArr;
-	return arr->bounds[i].length;
-}
-
-mono_array_lower_bound_t il2cpp_array_bound_lower_bound(Il2CppMonoArray *monoArr, int i)
-{
-	Il2CppArray *arr = (Il2CppArray*)monoArr;
-	return arr->bounds[i].lower_bound;
 }
 
 const char* il2cpp_assembly_name_name(Il2CppMonoAssembly *monoAssembly)
