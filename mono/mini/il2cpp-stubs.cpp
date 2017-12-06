@@ -243,13 +243,13 @@ const char* il2cpp_mono_field_get_name (MonoClassField *field)
 	return il2cpp::vm::Field::GetName((FieldInfo*)field);
 }
 
-mono_unichar2* il2cpp_mono_string_chars (Il2CppMonoString *monoStr)
+mono_unichar2* il2cpp_mono_string_chars (MonoString *monoStr)
 {
 	Il2CppString *str = (Il2CppString*)monoStr;
 	return (mono_unichar2*)str->chars;
 }
 
-int il2cpp_mono_string_length (Il2CppMonoString *monoStr)
+int il2cpp_mono_string_length (MonoString *monoStr)
 {
 	Il2CppString *str = (Il2CppString*)monoStr;
 	return str->length;
@@ -267,19 +267,19 @@ uintptr_t il2cpp_mono_array_length (Il2CppMonoArray *array)
 	return 0;
 }
 
-Il2CppMonoString* il2cpp_mono_string_new (Il2CppMonoDomain *domain, const char *text)
+MonoString* il2cpp_mono_string_new (Il2CppMonoDomain *domain, const char *text)
 {
-	return (Il2CppMonoString*)il2cpp::vm::String::New(text);
+	return (MonoString*)il2cpp::vm::String::New(text);
 }
 
 
-Il2CppMonoString* il2cpp_mono_string_new_checked (Il2CppMonoDomain *domain, const char *text, MonoError *merror)
+MonoString* il2cpp_mono_string_new_checked (Il2CppMonoDomain *domain, const char *text, MonoError *merror)
 {
 	error_init(merror);
 	return il2cpp_mono_string_new (domain, text);
 }
 
-char* il2cpp_mono_string_to_utf8_checked (Il2CppMonoString *string_obj, MonoError *error)
+char* il2cpp_mono_string_to_utf8_checked (MonoString *string_obj, MonoError *error)
 {
 	error_init(error);
 	Il2CppString *str = (Il2CppString*)string_obj;
@@ -833,7 +833,7 @@ gunichar2* il2cpp_mono_thread_get_name(Il2CppMonoInternalThread* this_obj, guint
 	return NULL;
 }
 
-void il2cpp_mono_thread_set_name_internal(Il2CppMonoInternalThread* this_obj, Il2CppMonoString* name, gboolean permanent, gboolean reset, MonoError* error)
+void il2cpp_mono_thread_set_name_internal(Il2CppMonoInternalThread* this_obj, MonoString* name, gboolean permanent, gboolean reset, MonoError* error)
 {
 	il2cpp::vm::Thread::SetName((Il2CppInternalThread*)this_obj, (Il2CppString*)name);
 	error_init(error);
@@ -895,7 +895,7 @@ Il2CppMonoObject* il2cpp_mono_object_new_checked(Il2CppMonoDomain* domain, MonoC
 	return (Il2CppMonoObject*)il2cpp::vm::Object::New((Il2CppClass*)klass);
 }
 
-Il2CppMonoString* il2cpp_mono_ldstr_checked(Il2CppMonoDomain* domain, MonoImage* image, guint32 idx, MonoError* error)
+MonoString* il2cpp_mono_ldstr_checked(Il2CppMonoDomain* domain, MonoImage* image, guint32 idx, MonoError* error)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return NULL;
