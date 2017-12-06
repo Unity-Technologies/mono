@@ -53,10 +53,6 @@
 #define VM_ARRAY_BOUND_LOWER_BOUND(arr, i) il2cpp_array_bound_lower_bound(arr, i)
 //Fixme module name as image name seems bad
 #define VM_IMAGE_GET_MODULE_NAME(image) il2cpp_image_name(image)
-#define VM_PROPERTY_GET_NAME(prop) il2cpp_property_get_name(prop)
-#define VM_PROPERTY_GET_GET_METHOD(prop) il2cpp_property_get_get_method(prop)
-#define VM_PROPERTY_GET_SET_METHOD(prop) il2cpp_property_get_set_method(prop)
-#define VM_PROPERTY_GET_ATTRS(prop) il2cpp_property_get_flags(prop)
 #else
 #define VM_THREAD_GET_INTERNAL(thread) thread->internal_thread
 #define VM_INTERNAL_THREAD_SET_STATE_BACKGROUND(internal_thread) internal_thread->state |= ThreadState_Background
@@ -97,10 +93,6 @@
 #define VM_ARRAY_BOUND_LENGTH(arr, i) arr->bounds[i].length
 #define VM_ARRAY_BOUND_LOWER_BOUND(arr, i) arr->bounds[i].lower_bound
 #define VM_IMAGE_GET_MODULE_NAME(image) (image)->module_name
-#define VM_PROPERTY_GET_NAME(prop) (prop)->name
-#define VM_PROPERTY_GET_GET_METHOD(prop) (prop)->get
-#define VM_PROPERTY_GET_SET_METHOD(prop) (prop)->set
-#define VM_PROPERTY_GET_ATTRS(prop) (prop)->attrs
 #endif
 
 #if defined(RUNTIME_IL2CPP)
@@ -108,7 +100,6 @@
 #define MonoMethodHeader Il2CppMonoMethodHeader
 #define MonoVTable Il2CppMonoVTable
 #define MonoAssembly Il2CppMonoAssembly
-#define MonoProperty Il2CppMonoProperty
 #define MonoString Il2CppMonoString
 #define MonoAppDomain Il2CppMonoAppDomain
 #define MonoDomain Il2CppMonoDomain
@@ -382,7 +373,7 @@ int il2cpp_mono_class_num_methods (MonoClass *klass);
 int il2cpp_mono_class_num_properties (MonoClass *klass);
 MonoClassField* il2cpp_mono_class_get_fields (MonoClass* klass, gpointer *iter);
 MonoMethod* il2cpp_mono_class_get_methods (MonoClass* klass, gpointer *iter);
-Il2CppMonoProperty* il2cpp_mono_class_get_properties (MonoClass* klass, gpointer *iter);
+MonoProperty* il2cpp_mono_class_get_properties (MonoClass* klass, gpointer *iter);
 const char* il2cpp_mono_field_get_name (MonoClassField *field);
 mono_unichar2* il2cpp_mono_string_chars (Il2CppMonoString *s);
 int il2cpp_mono_string_length (Il2CppMonoString *s);
@@ -492,7 +483,7 @@ gboolean il2cpp_mono_verifier_is_method_valid_generic_instantiation(MonoMethod* 
 MonoType* il2cpp_mono_reflection_get_type_checked(MonoImage* rootimage, MonoImage* image, Il2CppMonoTypeNameParse* info, gboolean ignorecase, gboolean* type_resolve, MonoError* error);
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_method_checked(MonoMethod* method, MonoError* error);
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_class_checked(MonoClass* klass, MonoError* error);
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoClass* klass, Il2CppMonoProperty* property, MonoError* error);
+Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoClass* klass, MonoProperty* property, MonoError* error);
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass* klass, MonoClassField* field, MonoError* error);
 Il2CppMonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2CppMonoDomain* domain, Il2CppMonoAssembly* assembly, MonoError* error);
 Il2CppMonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error);

@@ -9611,10 +9611,10 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 
 		while ((p = mono_class_get_properties (klass, &iter))) {
 			buffer_add_propertyid (buf, domain, p);
-			buffer_add_string (buf, VM_PROPERTY_GET_NAME(p));
-			buffer_add_methodid (buf, domain, VM_PROPERTY_GET_GET_METHOD(p));
-			buffer_add_methodid (buf, domain, VM_PROPERTY_GET_SET_METHOD(p));
-			buffer_add_int (buf, VM_PROPERTY_GET_ATTRS(p));
+			buffer_add_string (buf, p->name);
+			buffer_add_methodid (buf, domain, p->get);
+			buffer_add_methodid (buf, domain, p->set);
+			buffer_add_int (buf, p->attrs);
 			i ++;
 		}
 		g_assert (i == nprops);

@@ -20,6 +20,7 @@
 #define MonoGenericContext Il2CppGenericContext
 #define MonoGenericClass Il2CppGenericClass
 #define MonoGenericContainer Il2CppGenericContainer
+#define MonoProperty Il2CppPropertyInfo
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
@@ -28,7 +29,6 @@ typedef struct _Il2CppMonoDomain Il2CppMonoDomain;
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
 typedef struct _Il2CppMonoMethodHeader Il2CppMonoMethodHeader;
 typedef struct _Il2CppMonoVTable Il2CppMonoVTable;
-typedef struct Il2CppPropertyInfo Il2CppMonoProperty;
 typedef struct Il2CppString Il2CppMonoString;
 typedef struct _Il2CppMonoAppDomain Il2CppMonoAppDomain;
 typedef struct _Il2CppMonoMarshalByRefObject Il2CppMonoMarshalByRefObject;
@@ -72,7 +72,7 @@ struct _Il2CppCattrNamedArg
 {
 	MonoType *type;
 	MonoClassField *field;
-	Il2CppMonoProperty *prop;
+	MonoProperty *prop;
 };
 
 struct _Il2CppMonoObject

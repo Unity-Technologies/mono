@@ -233,9 +233,9 @@ MonoMethod* il2cpp_mono_class_get_methods (MonoClass* klass, gpointer *iter)
 	return (MonoMethod*)il2cpp::vm::Class::GetMethods((Il2CppClass*)klass, iter);
 }
 
-Il2CppMonoProperty* il2cpp_mono_class_get_properties (MonoClass* klass, gpointer *iter)
+MonoProperty* il2cpp_mono_class_get_properties (MonoClass* klass, gpointer *iter)
 {
-	return (Il2CppMonoProperty*)il2cpp::vm::Class::GetProperties((Il2CppClass*)klass, iter);
+	return (MonoProperty*)il2cpp::vm::Class::GetProperties((Il2CppClass*)klass, iter);
 }
 
 const char* il2cpp_mono_field_get_name (MonoClassField *field)
@@ -1015,7 +1015,7 @@ Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_class_checked(MonoClass*
 	return NULL;
 }
 
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoClass* klass, Il2CppMonoProperty* property, MonoError* error)
+Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoClass* klass, MonoProperty* property, MonoError* error)
 {
 	error_init(error);
 	return NULL;
