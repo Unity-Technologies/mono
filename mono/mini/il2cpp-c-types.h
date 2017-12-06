@@ -13,13 +13,13 @@
 #define MonoClass Il2CppClass
 #define MonoImage Il2CppImage
 #define MonoMethod MethodInfo
+#define MonoClassField FieldInfo
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
 typedef struct _Il2CppMonoAssembly Il2CppMonoAssembly;
 typedef struct _Il2CppMonoDomain Il2CppMonoDomain;
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
-typedef struct FieldInfo Il2CppMonoClassField;
 typedef struct Il2CppArrayType Il2CppMonoArrayType;
 typedef struct Il2CppGenericParam Il2CppMonoGenericParam;
 typedef struct Il2CppGenericInst Il2CppMonoGenericInst;
@@ -71,7 +71,7 @@ struct _Il2CppMonoExceptionClause
 struct _Il2CppCattrNamedArg
 {
 	MonoType *type;
-	Il2CppMonoClassField *field;
+	MonoClassField *field;
 	Il2CppMonoProperty *prop;
 };
 

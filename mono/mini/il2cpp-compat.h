@@ -40,12 +40,6 @@
 #define VM_METHOD_IS_STRING_CTOR(method) il2cpp_method_is_string_ctor(method)
 #define VM_INFLATED_METHOD_GET_DECLARING(imethod) il2cpp_method_get_generic_definition(imethod)
 #define VM_INFLATED_METHOD_GET_CLASS_INST(imethod) il2cpp_method_get_generic_class_inst(imethod)
-#define VM_FIELD_GET_NAME(field) il2cpp_mono_field_get_name(field)
-#define VM_FIELD_GET_PARENT(field) il2cpp_field_get_parent(field)
-#define VM_FIELD_GET_TYPE(field) il2cpp_field_get_type(field)
-#define VM_FIELD_GET_ADDRESS(obj, field) il2cpp_field_get_address(obj, field)
-#define VM_FIELD_IS_DELETED(field) il2cpp_field_is_deleted(field)
-#define VM_FIELD_GET_OFFSET(field) il2cpp_field_get_offset(field)
 #define VM_OBJECT_GET_DOMAIN(object) il2cpp_mono_domain_get()
 #define VM_OBJECT_GET_CLASS(object) il2cpp_object_get_class(object)
 #define VM_OBJECT_GET_TYPE(object) il2cpp_mono_object_get_type(object)
@@ -95,12 +89,6 @@
 #define VM_METHOD_IS_STRING_CTOR(method) method->string_ctor
 #define VM_INFLATED_METHOD_GET_DECLARING(imethod) (imethod)->declaring
 #define VM_INFLATED_METHOD_GET_CLASS_INST(imethod) (imethod)->context.class_inst
-#define VM_FIELD_GET_NAME(field) field->name
-#define VM_FIELD_GET_PARENT(field) (field)->parent
-#define VM_FIELD_GET_TYPE(field) (field)->type
-#define VM_FIELD_GET_ADDRESS(obj, field) (guint8*)(obj) + (f)->offset
-#define VM_FIELD_IS_DELETED(field) mono_field_is_deleted(field)
-#define VM_FIELD_GET_OFFSET(field) (field)->offset
 #define VM_OBJECT_GET_DOMAIN(object) ((MonoObject*)object)->vtable->domain
 #define VM_OBJECT_GET_CLASS(object) ((MonoObject*)object)->vtable->klass
 #define VM_OBJECT_GET_TYPE(object) ((MonoReflectionType*)object->vtable->type)->type
@@ -133,7 +121,6 @@
 #define MonoAppDomain Il2CppMonoAppDomain
 #define MonoDomain Il2CppMonoDomain
 #define MonoMethodSignature Il2CppMonoMethodSignature
-#define MonoClassField Il2CppMonoClassField
 #define MonoArrayType Il2CppMonoArrayType
 #define MonoGenericParam Il2CppMonoGenericParam
 #define MonoGenericInst Il2CppMonoGenericInst
@@ -378,6 +365,7 @@
 #define mono_method_get_token il2cpp_method_get_token
 #define mono_method_is_generic il2cpp_method_is_generic
 #define mono_method_is_inflated il2cpp_method_is_inflated
+#define mono_field_is_deleted il2cpp_field_is_deleted
 
 #define mono_domain_assemblies_lock
 #define mono_domain_assemblies_unlock
@@ -397,7 +385,7 @@ mono_bool il2cpp_mono_type_generic_inst_is_valuetype (MonoType *type);
 Il2CppMonoMethodHeader* il2cpp_mono_method_get_header_checked (MonoMethod *method, MonoError *error);
 gboolean il2cpp_mono_class_init (MonoClass *klass);
 Il2CppMonoVTable* il2cpp_mono_class_vtable (Il2CppMonoDomain *domain, MonoClass *klass);
-Il2CppMonoClassField* il2cpp_mono_class_get_field_from_name (MonoClass *klass, const char *name);
+MonoClassField* il2cpp_mono_class_get_field_from_name (MonoClass *klass, const char *name);
 int32_t il2cpp_mono_array_element_size (MonoClass *ac);
 int32_t il2cpp_mono_class_instance_size (MonoClass *klass);
 int32_t il2cpp_mono_class_value_size (MonoClass *klass, uint32_t *align);
@@ -406,10 +394,10 @@ MonoClass* il2cpp_mono_class_from_mono_type (MonoType *type);
 int il2cpp_mono_class_num_fields (MonoClass *klass);
 int il2cpp_mono_class_num_methods (MonoClass *klass);
 int il2cpp_mono_class_num_properties (MonoClass *klass);
-Il2CppMonoClassField* il2cpp_mono_class_get_fields (MonoClass* klass, gpointer *iter);
+MonoClassField* il2cpp_mono_class_get_fields (MonoClass* klass, gpointer *iter);
 MonoMethod* il2cpp_mono_class_get_methods (MonoClass* klass, gpointer *iter);
 Il2CppMonoProperty* il2cpp_mono_class_get_properties (MonoClass* klass, gpointer *iter);
-const char* il2cpp_mono_field_get_name (Il2CppMonoClassField *field);
+const char* il2cpp_mono_field_get_name (MonoClassField *field);
 mono_unichar2* il2cpp_mono_string_chars (Il2CppMonoString *s);
 int il2cpp_mono_string_length (Il2CppMonoString *s);
 char* il2cpp_mono_array_addr_with_size (Il2CppMonoArray *array, int size, uintptr_t idx);
@@ -420,8 +408,8 @@ Il2CppMonoString* il2cpp_mono_string_new_checked (Il2CppMonoDomain *domain, cons
 char* il2cpp_mono_string_to_utf8_checked (Il2CppMonoString *string_obj, MonoError *error);
 int il2cpp_mono_object_hash (Il2CppMonoObject* obj);
 void* il2cpp_mono_object_unbox (Il2CppMonoObject *obj);
-void il2cpp_mono_field_set_value (Il2CppMonoObject *obj, Il2CppMonoClassField *field, void *value);
-void il2cpp_mono_field_static_set_value (Il2CppMonoVTable *vt, Il2CppMonoClassField *field, void *value);
+void il2cpp_mono_field_set_value (Il2CppMonoObject *obj, MonoClassField *field, void *value);
+void il2cpp_mono_field_static_set_value (Il2CppMonoVTable *vt, MonoClassField *field, void *value);
 uint32_t il2cpp_mono_gchandle_new_weakref (Il2CppMonoObject *obj, mono_bool track_resurrection);
 Il2CppMonoObject*  il2cpp_mono_gchandle_get_target (uint32_t gchandle);
 void il2cpp_mono_gchandle_free (uint32_t gchandle);
@@ -465,8 +453,8 @@ int il2cpp_mono_class_interface_offset_with_variance(MonoClass* klass, MonoClass
 void il2cpp_mono_class_setup_supertypes(MonoClass* klass);
 void il2cpp_mono_class_setup_vtable(MonoClass* klass);
 void il2cpp_mono_class_setup_methods(MonoClass* klass);
-gboolean il2cpp_mono_class_field_is_special_static(Il2CppMonoClassField* field);
-guint32 il2cpp_mono_class_field_get_special_static_type(Il2CppMonoClassField* field);
+gboolean il2cpp_mono_class_field_is_special_static(MonoClassField* field);
+guint32 il2cpp_mono_class_field_get_special_static_type(MonoClassField* field);
 Il2CppMonoGenericContext* il2cpp_mono_class_get_context(MonoClass* klass);
 Il2CppMonoGenericContext* il2cpp_mono_method_get_context(MonoMethod* method);
 Il2CppMonoGenericContainer* il2cpp_mono_method_get_generic_container(MonoMethod* method);
@@ -498,9 +486,9 @@ Il2CppMonoRuntimeExceptionHandlingCallbacks* il2cpp_mono_get_eh_callbacks();
 void il2cpp_mono_reflection_create_custom_attr_data_args(MonoImage* image, MonoMethod* method, const guchar* data, guint32 len, Il2CppMonoArray** typed_args, Il2CppMonoArray** named_args, CattrNamedArg** named_arg_info, MonoError* error);
 void il2cpp_mono_nullable_init(guint8* buf, Il2CppMonoObject* value, MonoClass* klass);
 Il2CppMonoObject* il2cpp_mono_value_box_checked(Il2CppMonoDomain* domain, MonoClass* klass, gpointer value, MonoError* error);
-void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, Il2CppMonoClassField* field, void* value, MonoError* error);
-void il2cpp_mono_field_static_get_value_for_thread(Il2CppMonoInternalThread* thread, Il2CppMonoVTable* vt, Il2CppMonoClassField* field, void* value, MonoError* error);
-Il2CppMonoObject* il2cpp_mono_field_get_value_object_checked(Il2CppMonoDomain* domain, Il2CppMonoClassField* field, Il2CppMonoObject* obj, MonoError* error);
+void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error);
+void il2cpp_mono_field_static_get_value_for_thread(Il2CppMonoInternalThread* thread, Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error);
+Il2CppMonoObject* il2cpp_mono_field_get_value_object_checked(Il2CppMonoDomain* domain, MonoClassField* field, Il2CppMonoObject* obj, MonoError* error);
 Il2CppMonoObject* il2cpp_mono_object_new_checked(Il2CppMonoDomain* domain, MonoClass* klass, MonoError* error);
 Il2CppMonoString* il2cpp_mono_ldstr_checked(Il2CppMonoDomain* domain, MonoImage* image, guint32 idx, MonoError* error);
 Il2CppMonoObject* il2cpp_mono_runtime_try_invoke(MonoMethod* method, void* obj, void** params, Il2CppMonoObject** exc, MonoError* error);
@@ -519,7 +507,7 @@ MonoType* il2cpp_mono_reflection_get_type_checked(MonoImage* rootimage, MonoImag
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_method_checked(MonoMethod* method, MonoError* error);
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_class_checked(MonoClass* klass, MonoError* error);
 Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoClass* klass, Il2CppMonoProperty* property, MonoError* error);
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass* klass, Il2CppMonoClassField* field, MonoError* error);
+Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass* klass, MonoClassField* field, MonoError* error);
 Il2CppMonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2CppMonoDomain* domain, Il2CppMonoAssembly* assembly, MonoError* error);
 Il2CppMonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error);
 void il2cpp_mono_network_init();
@@ -587,7 +575,7 @@ mono_byte il2cpp_assembly_name_public_key_token(Il2CppMonoAssembly *monoAssembly
 const char* il2cpp_assembly_name_public_key_token_string(Il2CppMonoAssembly *monoAssembly);
 uint32_t il2cpp_assembly_name_flags(Il2CppMonoAssembly *monoAssembly);
 const char* il2cpp_image_name(MonoImage *monoImage);
-guint8* il2cpp_field_get_address(Il2CppMonoObject *obj, Il2CppMonoClassField *monoField);
+guint8* il2cpp_field_get_address(Il2CppMonoObject *obj, MonoClassField *monoField);
 MonoType* il2cpp_mono_object_get_type(Il2CppMonoObject* object);
 MonoClass* il2cpp_defaults_exception_class();
 MonoImage* il2cpp_defaults_corlib_image();
@@ -596,7 +584,7 @@ bool il2cpp_method_is_string_ctor (const MonoMethod * method);
 MonoClass* il2cpp_defaults_void_class();
 void il2cpp_set_var(guint8* newValue, void *value, MonoType *localVariableTypeMono);
 MonoMethod* il2cpp_get_interface_method(MonoClass* klass, MonoClass* itf, int slot);
-gboolean il2cpp_field_is_deleted(Il2CppMonoClassField *field);
+gboolean il2cpp_field_is_deleted(MonoClassField *field);
 MonoClass* il2cpp_iterate_loaded_classes(void* *iter);
 Il2CppMonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domain, void* *iter);
 const char** il2cpp_get_source_files_for_type(MonoClass *klass, int *count);

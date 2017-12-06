@@ -223,9 +223,9 @@ int il2cpp_mono_class_num_properties (MonoClass *klass)
 	return il2cpp::vm::Class::GetNumProperties((Il2CppClass*)klass);
 }
 
-Il2CppMonoClassField* il2cpp_mono_class_get_fields (MonoClass* klass, gpointer *iter)
+MonoClassField* il2cpp_mono_class_get_fields (MonoClass* klass, gpointer *iter)
 {
-	return (Il2CppMonoClassField*)il2cpp::vm::Class::GetFields((Il2CppClass*)klass, iter);
+	return (MonoClassField*)il2cpp::vm::Class::GetFields((Il2CppClass*)klass, iter);
 }
 
 MonoMethod* il2cpp_mono_class_get_methods (MonoClass* klass, gpointer *iter)
@@ -238,7 +238,7 @@ Il2CppMonoProperty* il2cpp_mono_class_get_properties (MonoClass* klass, gpointer
 	return (Il2CppMonoProperty*)il2cpp::vm::Class::GetProperties((Il2CppClass*)klass, iter);
 }
 
-const char* il2cpp_mono_field_get_name (Il2CppMonoClassField *field)
+const char* il2cpp_mono_field_get_name (MonoClassField *field)
 {
 	return il2cpp::vm::Field::GetName((FieldInfo*)field);
 }
@@ -298,12 +298,12 @@ void* il2cpp_mono_object_unbox (Il2CppMonoObject *monoObj)
 	return il2cpp::vm::Object::Unbox(obj);
 }
 
-void il2cpp_mono_field_set_value (Il2CppMonoObject *obj, Il2CppMonoClassField *field, void *value)
+void il2cpp_mono_field_set_value (Il2CppMonoObject *obj, MonoClassField *field, void *value)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
 
-void il2cpp_mono_field_static_set_value (Il2CppMonoVTable *vt, Il2CppMonoClassField *field, void *value)
+void il2cpp_mono_field_static_set_value (Il2CppMonoVTable *vt, MonoClassField *field, void *value)
 {
 	il2cpp::vm::Field::StaticSetValue((FieldInfo*)field, value);
 }
@@ -567,12 +567,12 @@ void il2cpp_mono_class_setup_methods(MonoClass* klass)
 	il2cpp::vm::Class::SetupMethods((Il2CppClass*)klass);
 }
 
-gboolean il2cpp_mono_class_field_is_special_static(Il2CppMonoClassField* field)
+gboolean il2cpp_mono_class_field_is_special_static(MonoClassField* field)
 {
 	return il2cpp::vm::Field::IsNormalStatic((FieldInfo*)field) ? FALSE : TRUE;
 }
 
-guint32 il2cpp_mono_class_field_get_special_static_type(Il2CppMonoClassField* field)
+guint32 il2cpp_mono_class_field_get_special_static_type(MonoClassField* field)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return 0;
@@ -871,19 +871,19 @@ Il2CppMonoObject* il2cpp_mono_value_box_checked(Il2CppMonoDomain* domain, MonoCl
 	return (Il2CppMonoObject*)il2cpp::vm::Object::Box((Il2CppClass*)klass, value);
 }
 
-void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, Il2CppMonoClassField* field, void* value, MonoError* error)
+void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
 {
 	error_init(error);
 	il2cpp::vm::Field::StaticGetValue((FieldInfo*)field, value);
 }
 
-void il2cpp_mono_field_static_get_value_for_thread(Il2CppMonoInternalThread* thread, Il2CppMonoVTable* vt, Il2CppMonoClassField* field, void* value, MonoError* error)
+void il2cpp_mono_field_static_get_value_for_thread(Il2CppMonoInternalThread* thread, Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
 {
 	error_init(error);
 	il2cpp::vm::Field::StaticGetValueForThread((FieldInfo*)field, value, (Il2CppInternalThread*)thread);
 }
 
-Il2CppMonoObject* il2cpp_mono_field_get_value_object_checked(Il2CppMonoDomain* domain, Il2CppMonoClassField* field, Il2CppMonoObject* obj, MonoError* error)
+Il2CppMonoObject* il2cpp_mono_field_get_value_object_checked(Il2CppMonoDomain* domain, MonoClassField* field, Il2CppMonoObject* obj, MonoError* error)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return NULL;
@@ -1021,7 +1021,7 @@ Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoCla
 	return NULL;
 }
 
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass* klass, Il2CppMonoClassField* field, MonoError* error)
+Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass* klass, MonoClassField* field, MonoError* error)
 {
 	error_init(error);
 	return NULL;
@@ -1546,7 +1546,7 @@ const char* il2cpp_image_name(MonoImage *monoImage)
 	return image->name;
 }
 
-guint8* il2cpp_field_get_address(Il2CppMonoObject *obj, Il2CppMonoClassField *monoField)
+guint8* il2cpp_field_get_address(Il2CppMonoObject *obj, MonoClassField *monoField)
 {
 	FieldInfo *field = (FieldInfo*)monoField;
 	return (guint8*)obj + field->offset;
@@ -1596,7 +1596,7 @@ MonoMethod* il2cpp_get_interface_method(MonoClass* klass, MonoClass* itf, int sl
 	return (MonoMethod*)data->method;
 }
 
-gboolean il2cpp_field_is_deleted(Il2CppMonoClassField *field)
+gboolean il2cpp_field_is_deleted(MonoClassField *field)
 {
 	return il2cpp::vm::Field::IsDeleted((FieldInfo*)field);
 }
