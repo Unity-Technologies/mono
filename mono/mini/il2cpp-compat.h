@@ -13,12 +13,6 @@
 
 #define THREAD_STATIC_FIELD_OFFSET -1
 
-#define VM_THREAD_GET_INTERNAL(thread) il2cpp_mono_thread_get_internal(thread)
-#define VM_INTERNAL_THREAD_SET_STATE_BACKGROUND(internal_thread) il2cpp_internal_thread_set_state_background(internal_thread)
-#define VM_INTERNAL_THREAD_SET_FLAG_DONT_MANAGE(thread)
-#define VM_INTERNAL_THREAD_GET_ID(internal_thread) il2cpp_internal_thread_get_thread_id(internal_thread)
-#define VM_INTERNAL_THREAD_GET_STATE(internal_thread) il2cpp_internal_thread_get_state(internal_thread)
-#define VM_INTERNAL_THREAD_GET_THREADPOOL_THREAD(internal_thread) il2cpp_internal_thread_get_threadpool_thread(internal_thread)
 #define VM_DOMAIN_GET_AGENT_INFO(domain) il2cpp_domain_get_agent_info(domain)
 #define VM_DOMAIN_SET_AGENT_INFO(domain, value) il2cpp_domain_set_agent_info(domain, value)
 #define VM_DOMAIN_GET_NAME(domain) il2cpp_domain_get_name(domain)
@@ -52,12 +46,6 @@
 //Fixme module name as image name seems bad
 #define VM_IMAGE_GET_MODULE_NAME(image) il2cpp_image_name(image)
 #else
-#define VM_THREAD_GET_INTERNAL(thread) thread->internal_thread
-#define VM_INTERNAL_THREAD_SET_STATE_BACKGROUND(internal_thread) internal_thread->state |= ThreadState_Background
-#define VM_INTERNAL_THREAD_SET_FLAG_DONT_MANAGE(internal_thread) internal_thread->flags |= MONO_THREAD_FLAG_DONT_MANAGE
-#define VM_INTERNAL_THREAD_GET_ID(internal_thread) internal_thread->tid
-#define VM_INTERNAL_THREAD_GET_STATE(internal_thread) internal_thread->state
-#define VM_INTERNAL_THREAD_GET_THREADPOOL_THREAD(internal_thread) internal_thread->threadpool_thread
 #define VM_DOMAIN_GET_AGENT_INFO(domain) domain_jit_info (domain)->agent_info
 #define VM_DOMAIN_SET_AGENT_INFO(domain, value) domain_jit_info (domain)->agent_info = value
 #define VM_DOMAIN_GET_NAME(domain) domain->friendly_name
@@ -103,8 +91,6 @@
 #define MonoMarshalByRefObject Il2CppMonoMarshalByRefObject
 #define MonoObject Il2CppMonoObject
 #define MonoCustomAttrInfo Il2CppMonoCustomAttrInfo
-#define MonoThread Il2CppMonoThread
-#define MonoInternalThread Il2CppMonoInternalThread
 #define MonoGHashTable Il2CppMonoGHashTable
 #define MonoReflectionAssemblyHandle Il2CppMonoReflectionAssemblyHandle
 #define MonoReflectionType Il2CppMonoReflectionType
@@ -411,9 +397,9 @@ char* il2cpp_mono_method_full_name(MonoMethod* method, gboolean signature);
 void il2cpp_mono_debug_get_seq_points(MonoDebugMethodInfo* minfo, char** source_file, GPtrArray** source_file_list, int** source_files, MonoSymSeqPoint** seq_points, int* n_seq_points);
 void il2cpp_mono_debug_free_locals(MonoDebugLocalsInfo* info);
 void il2cpp_mono_debug_free_method_async_debug_info(MonoDebugMethodAsyncInfo* info);
-Il2CppMonoThread* il2cpp_mono_thread_current();
-Il2CppMonoThread* il2cpp_mono_thread_get_main();
-Il2CppMonoThread* il2cpp_mono_thread_attach(Il2CppMonoDomain* domain);
+MonoThread* il2cpp_mono_thread_current();
+MonoThread* il2cpp_mono_thread_get_main();
+MonoThread* il2cpp_mono_thread_attach(Il2CppMonoDomain* domain);
 void il2cpp_mono_domain_lock(Il2CppMonoDomain* domain);
 void il2cpp_mono_domain_unlock(Il2CppMonoDomain* domain);
 MonoJitInfo* il2cpp_mono_jit_info_table_find_internal(Il2CppMonoDomain* domain, char* addr, gboolean try_aot, gboolean allow_trampolines);
@@ -445,12 +431,12 @@ gpointer il2cpp_mono_ldtoken_checked(MonoImage* image, guint32 token, MonoClass*
 MonoClass* il2cpp_mono_class_from_generic_parameter_internal(MonoGenericParam* param);
 MonoClass* il2cpp_mono_class_load_from_name(MonoImage* image, const char* name_space, const char* name);
 MonoGenericClass* il2cpp_mono_class_get_generic_class(MonoClass* klass);
-Il2CppMonoInternalThread* il2cpp_mono_thread_internal_current();
-gboolean il2cpp_mono_thread_internal_is_current(Il2CppMonoInternalThread* thread);
-void il2cpp_mono_thread_internal_abort(Il2CppMonoInternalThread* thread, gboolean appdomain_unload);
-void il2cpp_mono_thread_internal_reset_abort(Il2CppMonoInternalThread* thread);
-gunichar2* il2cpp_mono_thread_get_name(Il2CppMonoInternalThread* this_obj, guint32* name_len);
-void il2cpp_mono_thread_set_name_internal(Il2CppMonoInternalThread* this_obj, MonoString* name, gboolean permanent, gboolean reset, MonoError* error);
+MonoInternalThread* il2cpp_mono_thread_internal_current();
+gboolean il2cpp_mono_thread_internal_is_current(MonoInternalThread* thread);
+void il2cpp_mono_thread_internal_abort(MonoInternalThread* thread, gboolean appdomain_unload);
+void il2cpp_mono_thread_internal_reset_abort(MonoInternalThread* thread);
+gunichar2* il2cpp_mono_thread_get_name(MonoInternalThread* this_obj, guint32* name_len);
+void il2cpp_mono_thread_set_name_internal(MonoInternalThread* this_obj, MonoString* name, gboolean permanent, gboolean reset, MonoError* error);
 void il2cpp_mono_thread_suspend_all_other_threads();
 void il2cpp_mono_stack_mark_record_size(MonoThreadInfo* info, HandleStackMark* stackmark, const char* func_name);
 Il2CppMonoRuntimeExceptionHandlingCallbacks* il2cpp_mono_get_eh_callbacks();
@@ -458,7 +444,7 @@ void il2cpp_mono_reflection_create_custom_attr_data_args(MonoImage* image, MonoM
 void il2cpp_mono_nullable_init(guint8* buf, Il2CppMonoObject* value, MonoClass* klass);
 Il2CppMonoObject* il2cpp_mono_value_box_checked(Il2CppMonoDomain* domain, MonoClass* klass, gpointer value, MonoError* error);
 void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error);
-void il2cpp_mono_field_static_get_value_for_thread(Il2CppMonoInternalThread* thread, Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error);
+void il2cpp_mono_field_static_get_value_for_thread(MonoInternalThread* thread, Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error);
 Il2CppMonoObject* il2cpp_mono_field_get_value_object_checked(Il2CppMonoDomain* domain, MonoClassField* field, Il2CppMonoObject* obj, MonoError* error);
 Il2CppMonoObject* il2cpp_mono_object_new_checked(Il2CppMonoDomain* domain, MonoClass* klass, MonoError* error);
 MonoString* il2cpp_mono_ldstr_checked(Il2CppMonoDomain* domain, MonoImage* image, guint32 idx, MonoError* error);
@@ -553,13 +539,10 @@ gboolean il2cpp_field_is_deleted(MonoClassField *field);
 MonoClass* il2cpp_iterate_loaded_classes(void* *iter);
 Il2CppMonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domain, void* *iter);
 const char** il2cpp_get_source_files_for_type(MonoClass *klass, int *count);
-Il2CppMonoInternalThread* il2cpp_mono_thread_get_internal(Il2CppMonoThread* thread);
-uint32_t il2cpp_internal_thread_get_state(Il2CppMonoInternalThread* thread);
-il2cpp_internal_thread_get_threadpool_thread(Il2CppMonoInternalThread* thread);
 MonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imethod);
 MonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod);
 MonoClass* il2cpp_generic_class_get_container_class(MonoGenericClass *gclass);
-void il2cpp_mono_thread_detach(Il2CppMonoThread* thread);
+void il2cpp_mono_thread_detach(MonoThread* thread);
 MonoClass* il2cpp_mono_get_string_class (void);
 
 #endif // RUNTIME_IL2CPP

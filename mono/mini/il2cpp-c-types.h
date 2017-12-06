@@ -23,6 +23,8 @@
 #define MonoProperty Il2CppPropertyInfo
 #define MonoString Il2CppString
 #define MonoArray Il2CppArraySize
+#define MonoThread Il2CppThread
+#define MonoInternalThread Il2CppInternalThread
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
@@ -35,14 +37,12 @@ typedef struct _Il2CppMonoAppDomain Il2CppMonoAppDomain;
 typedef struct _Il2CppMonoMarshalByRefObject Il2CppMonoMarshalByRefObject;
 typedef struct _Il2CppMonoObject Il2CppMonoObject;
 typedef struct _Il2CppMonoCustomAttrInfo Il2CppMonoCustomAttrInfo;
-typedef struct Il2CppThread Il2CppMonoThread;
 typedef struct Il2CppGHashTable Il2CppMonoGHashTable;
 typedef struct Il2CppReflectionAssembly Il2CppMonoReflectionAssembly;
 typedef struct Il2CppReflectionType Il2CppMonoReflectionType;
 typedef struct Il2CppProfiler Il2CppMonoProfiler;
 typedef struct _Il2CppMonoJitTlsData Il2CppMonoJitTlsData;
 typedef struct _Il2CppMonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks;
-typedef struct Il2CppInternalThread Il2CppMonoInternalThread;
 typedef struct _Il2CppMonoCustomAttrEntry Il2CppMonoCustomAttrEntry;
 typedef struct _Il2CppMonoStackFrameInfo Il2CppMonoStackFrameInfo;
 typedef struct Il2CppDefaults Il2CppMonoDefaults;
@@ -267,11 +267,10 @@ typedef void (*Il2CppMonoDomainFunc) (Il2CppMonoDomain *domain, void* user_data)
 typedef void (*emit_assembly_load_callback)(void*, void*);
 typedef void(*emit_type_load_callback)(void*, void*, void*);
 
-void il2cpp_set_thread_state_background(Il2CppMonoThread* thread);
+void il2cpp_set_thread_state_background(MonoThread* thread);
 void* il2cpp_domain_get_agent_info(Il2CppMonoAppDomain* domain);
 void il2cpp_domain_set_agent_info(Il2CppMonoAppDomain* domain, void* agentInfo);
 void il2cpp_start_debugger_thread();
-uintptr_t il2cpp_internal_thread_get_thread_id(Il2CppMonoInternalThread* thread);
 void* il2cpp_gc_alloc_fixed(size_t size);
 void il2cpp_gc_free_fixed(void* address);
 char* il2cpp_assembly_get_name(Il2CppMonoAssembly* assembly);

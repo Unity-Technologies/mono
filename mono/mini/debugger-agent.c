@@ -99,7 +99,7 @@
 
 #include <mono/utils/mono-os-mutex.h>
 
-#define THREAD_TO_INTERNAL(thread) VM_THREAD_GET_INTERNAL(thread)
+#define THREAD_TO_INTERNAL(thread) thread->internal_thread
 
 #include "debugger-agent.h"
 
@@ -3342,7 +3342,7 @@ compute_frame_info (MonoInternalThread *thread, DebuggerTlsData *tls)
 	if (tls->frames && tls->frames_up_to_date)
 		return;
 
-	DEBUG_PRINTF (1, "Frames for %p(tid=%lx):\n", thread, VM_INTERNAL_THREAD_GET_ID(thread));
+	DEBUG_PRINTF (1, "Frames for %p(tid=%lx):\n", thread, thread->tid);
 
 	user_data.tls = tls;
 	user_data.frames = NULL;
@@ -4063,7 +4063,7 @@ thread_startup (MonoProfiler *prof, uintptr_t tid)
 	if (is_debugger_thread ())
 		return;
 
-	g_assert (mono_native_thread_id_equals (MONO_UINT_TO_NATIVE_THREAD_ID (tid), MONO_UINT_TO_NATIVE_THREAD_ID (VM_INTERNAL_THREAD_GET_ID(thread))));
+	g_assert (mono_native_thread_id_equals (MONO_UINT_TO_NATIVE_THREAD_ID (tid), MONO_UINT_TO_NATIVE_THREAD_ID (thread->tid)));
 
 	mono_loader_lock ();
 	old_thread = (MonoInternalThread *)mono_g_hash_table_lookup (tid_to_thread, GUINT_TO_POINTER (tid));
@@ -10664,16 +10664,16 @@ thread_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		break;
 	}
 	case CMD_THREAD_GET_STATE:
-		buffer_add_int (buf, VM_INTERNAL_THREAD_GET_STATE(thread));
+		buffer_add_int (buf, thread->state);
 		break;
 	case CMD_THREAD_GET_INFO:
-		buffer_add_byte (buf, VM_INTERNAL_THREAD_GET_THREADPOOL_THREAD(thread));
+		buffer_add_byte (buf, thread->threadpool_thread);
 		break;
 	case CMD_THREAD_GET_ID:
 		buffer_add_long (buf, (guint64)(gsize)thread);
 		break;
 	case CMD_THREAD_GET_TID:
-		buffer_add_long (buf, (guint64)VM_INTERNAL_THREAD_GET_ID(thread));
+		buffer_add_long (buf, (guint64)thread->tid);
 		break;
 	case CMD_THREAD_SET_IP: {
 #ifndef IL2CPP_MONO_DEBUGGER
@@ -11666,8 +11666,8 @@ debugger_thread (void *arg)
 	mono_thread_set_name_internal (internal, str, TRUE, FALSE, &error);
 	mono_error_assert_ok (&error);
 
-	VM_INTERNAL_THREAD_SET_STATE_BACKGROUND (internal);
-	VM_INTERNAL_THREAD_SET_FLAG_DONT_MANAGE (internal);
+	internal->state |= ThreadState_Background;
+	internal->flags |= MONO_THREAD_FLAG_DONT_MANAGE;
 
 	if (agent_config.defer) {
 		if (!wait_for_attach ()) {

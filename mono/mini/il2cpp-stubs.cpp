@@ -475,29 +475,24 @@ void il2cpp_mono_debug_free_method_async_debug_info(MonoDebugMethodAsyncInfo* in
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
 
-Il2CppMonoThread* il2cpp_mono_thread_current()
+MonoThread* il2cpp_mono_thread_current()
 {
-	return (Il2CppMonoThread*)il2cpp::vm::Thread::Current();
+	return (MonoThread*)il2cpp::vm::Thread::Current();
 }
 
-Il2CppMonoThread* il2cpp_mono_thread_get_main()
+MonoThread* il2cpp_mono_thread_get_main()
 {
-	return (Il2CppMonoThread*)il2cpp::vm::Thread::Main();
+	return (MonoThread*)il2cpp::vm::Thread::Main();
 }
 
-Il2CppMonoThread* il2cpp_mono_thread_attach(Il2CppMonoDomain* domain)
+MonoThread* il2cpp_mono_thread_attach(Il2CppMonoDomain* domain)
 {
-	return (Il2CppMonoThread*)il2cpp::vm::Thread::Attach((Il2CppDomain*)domain);
+	return (MonoThread*)il2cpp::vm::Thread::Attach((Il2CppDomain*)domain);
 }
 
-void il2cpp_mono_thread_detach(Il2CppMonoThread* thread)
+void il2cpp_mono_thread_detach(MonoThread* thread)
 {
 	il2cpp::vm::Thread::Detach((Il2CppThread*)thread);
-}
-
-Il2CppMonoInternalThread* il2cpp_mono_thread_get_internal(Il2CppMonoThread* thread)
-{
-	return (Il2CppMonoInternalThread*)(((Il2CppThread*)thread)->internal_thread);
 }
 
 void il2cpp_mono_domain_lock(Il2CppMonoDomain* domain)
@@ -808,32 +803,32 @@ MonoGenericClass* il2cpp_mono_class_get_generic_class(MonoClass* monoClass)
 	return (MonoGenericClass*)klass->generic_class;
 }
 
-Il2CppMonoInternalThread* il2cpp_mono_thread_internal_current()
+MonoInternalThread* il2cpp_mono_thread_internal_current()
 {
-	return (Il2CppMonoInternalThread*)(((Il2CppThread*)il2cpp_mono_thread_current())->internal_thread);
+	return (MonoInternalThread*)(((Il2CppThread*)il2cpp_mono_thread_current())->internal_thread);
 }
 
-gboolean il2cpp_mono_thread_internal_is_current(Il2CppMonoInternalThread* thread)
+gboolean il2cpp_mono_thread_internal_is_current(MonoInternalThread* thread)
 {
 	return il2cpp_mono_thread_internal_current () == thread;
 }
 
-void il2cpp_mono_thread_internal_abort(Il2CppMonoInternalThread* thread, gboolean appdomain_unload)
+void il2cpp_mono_thread_internal_abort(MonoInternalThread* thread, gboolean appdomain_unload)
 {
 	il2cpp::vm::Thread::RequestAbort((Il2CppInternalThread*)thread);
 }
 
-void il2cpp_mono_thread_internal_reset_abort(Il2CppMonoInternalThread* thread)
+void il2cpp_mono_thread_internal_reset_abort(MonoInternalThread* thread)
 {
 	il2cpp::vm::Thread::ResetAbort((Il2CppInternalThread*)thread);
 }
 
-gunichar2* il2cpp_mono_thread_get_name(Il2CppMonoInternalThread* this_obj, guint32* name_len)
+gunichar2* il2cpp_mono_thread_get_name(MonoInternalThread* this_obj, guint32* name_len)
 {
 	return NULL;
 }
 
-void il2cpp_mono_thread_set_name_internal(Il2CppMonoInternalThread* this_obj, MonoString* name, gboolean permanent, gboolean reset, MonoError* error)
+void il2cpp_mono_thread_set_name_internal(MonoInternalThread* this_obj, MonoString* name, gboolean permanent, gboolean reset, MonoError* error)
 {
 	il2cpp::vm::Thread::SetName((Il2CppInternalThread*)this_obj, (Il2CppString*)name);
 	error_init(error);
@@ -877,7 +872,7 @@ void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, MonoClassF
 	il2cpp::vm::Field::StaticGetValue((FieldInfo*)field, value);
 }
 
-void il2cpp_mono_field_static_get_value_for_thread(Il2CppMonoInternalThread* thread, Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
+void il2cpp_mono_field_static_get_value_for_thread(MonoInternalThread* thread, Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
 {
 	error_init(error);
 	il2cpp::vm::Field::StaticGetValueForThread((FieldInfo*)field, value, (Il2CppInternalThread*)thread);
@@ -1305,11 +1300,6 @@ void* il2cpp_mono_gc_invoke_with_gc_lock (Il2CppMonoGCLockedCallbackFunc func, v
 
 // These functions expose the IL2CPP VM C++ API to C
 
-void il2cpp_internal_thread_set_state_background(Il2CppMonoThread* thread)
-{
-	il2cpp::vm::Thread::SetState((Il2CppInternalThread*)thread, il2cpp::vm::kThreadStateBackground);
-}
-
 void* il2cpp_domain_get_agent_info(Il2CppMonoAppDomain* domain)
 {
 	return ((Il2CppDomain*)domain)->agent_info;
@@ -1353,21 +1343,6 @@ Il2CppMonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domai
 void il2cpp_start_debugger_thread()
 {
 	il2cpp::utils::Debugger::StartDebuggerThread();
-}
-
-uintptr_t il2cpp_internal_thread_get_thread_id(Il2CppMonoInternalThread* thread)
-{
-	return il2cpp::vm::Thread::GetId((Il2CppInternalThread*)thread);
-}
-
-uint32_t il2cpp_internal_thread_get_state(Il2CppMonoInternalThread* thread)
-{
-	return il2cpp::vm::Thread::GetState((Il2CppInternalThread*)thread);
-}
-
-bool il2cpp_internal_thread_get_threadpool_thread(Il2CppMonoInternalThread* thread)
-{
-	return ((Il2CppInternalThread*)thread)->threadpool_thread;
 }
 
 void* il2cpp_gc_alloc_fixed(size_t size)
