@@ -12,13 +12,13 @@
 #define MonoType Il2CppType
 #define MonoClass Il2CppClass
 #define MonoImage Il2CppImage
+#define MonoMethod MethodInfo
 
 //still stubs everywhere
 typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
 typedef struct _Il2CppMonoAssembly Il2CppMonoAssembly;
 typedef struct _Il2CppMonoDomain Il2CppMonoDomain;
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
-typedef struct MethodInfo Il2CppMonoMethod;
 typedef struct FieldInfo Il2CppMonoClassField;
 typedef struct Il2CppArrayType Il2CppMonoArrayType;
 typedef struct Il2CppGenericParam Il2CppMonoGenericParam;
@@ -88,7 +88,7 @@ struct _Il2CppMonoException
 
 struct _Il2CppMonoMethodInflated
 {
-	Il2CppMonoMethod *declaring;
+	MonoMethod *declaring;
 	Il2CppMonoGenericContext context;
 };
 
@@ -96,8 +96,8 @@ struct _Il2CppMonoStackFrameInfo
 {
 	MonoStackFrameType type;
 	MonoJitInfo *ji;
-	Il2CppMonoMethod *method;
-	Il2CppMonoMethod *actual_method;
+	MonoMethod *method;
+	MonoMethod *actual_method;
 	Il2CppMonoDomain *domain;
 	gboolean managed;
 	gboolean async_context;
@@ -113,7 +113,7 @@ struct _Il2CppMonoStackFrameInfo
 
 struct _Il2CppMonoCustomAttrEntry
 {
-	Il2CppMonoMethod *ctor;
+	MonoMethod *ctor;
 	uint32_t data_size;
 	const mono_byte* data;
 };
@@ -226,7 +226,7 @@ typedef struct
 {
 	const Il2CppMethodExecutionContextInfoC* const executionContextInfos;
 	const uint32_t executionContextInfoCount;
-	const Il2CppMonoMethod* method;
+	const MonoMethod* method;
 	const char* const sourceFile;
 	const uint8_t sourceFileHash[16];
 	const int32_t lineStart, lineEnd;
@@ -258,7 +258,7 @@ typedef void (*Il2CppMonoProfileFunc) (Il2CppMonoProfiler *prof);
 typedef void (*Il2CppMonoProfileAppDomainFunc) (Il2CppMonoProfiler *prof, Il2CppMonoDomain *domain);
 typedef void (*Il2CppMonoProfileAppDomainResult) (Il2CppMonoProfiler *prof, Il2CppMonoDomain *domain, int result);
 typedef void (*Il2CppMonoProfileAssemblyFunc) (Il2CppMonoProfiler *prof, Il2CppMonoAssembly *assembly);
-typedef void (*Il2CppMonoProfileJitResult) (Il2CppMonoProfiler *prof, Il2CppMonoMethod *method, MonoJitInfo* jinfo, int result);
+typedef void (*Il2CppMonoProfileJitResult) (Il2CppMonoProfiler *prof, MonoMethod *method, MonoJitInfo* jinfo, int result);
 typedef void (*Il2CppMonoProfileAssemblyResult) (Il2CppMonoProfiler *prof, Il2CppMonoAssembly *assembly, int result);
 typedef void (*Il2CppMonoProfileThreadFunc) (Il2CppMonoProfiler *prof, uintptr_t tid);
 typedef gboolean (*Il2CppMonoJitStackWalk) (Il2CppMonoStackFrameInfo *frame, MonoContext *ctx, gpointer data);
