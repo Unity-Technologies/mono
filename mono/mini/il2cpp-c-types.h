@@ -20,7 +20,7 @@
 #define MonoGenericContext Il2CppGenericContext
 #define MonoGenericClass Il2CppGenericClass
 #define MonoGenericContainer Il2CppGenericContainer
-#define MonoProperty Il2CppPropertyInfo
+#define MonoProperty PropertyInfo
 #define MonoString Il2CppString
 #define MonoArray Il2CppArraySize
 #define MonoThread Il2CppThread

@@ -1499,7 +1499,7 @@ guint8* il2cpp_field_get_address(Il2CppMonoObject *obj, MonoClassField *monoFiel
 
 MonoType* il2cpp_mono_object_get_type(Il2CppMonoObject* object)
 {
-    return (MonoType*)(((Il2CppObject*)object)->klass->byval_arg);
+    return (MonoType*)&(((Il2CppObject*)object)->klass->byval_arg);
 }
 
 MonoClass* il2cpp_defaults_exception_class()

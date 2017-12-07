@@ -3715,7 +3715,7 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, DebuggerEv
 				} else if (mod->kind == MOD_KIND_TYPE_NAME_ONLY && ei && ei->klass) {
 					char *s;
 
-					s = mono_type_full_name (ei->klass->byval_arg);
+					s = mono_type_full_name (&ei->klass->byval_arg);
 					if (!g_hash_table_lookup (mod->data.type_names, s))
 						filtered = TRUE;
 					g_free (s);
@@ -4311,7 +4311,7 @@ send_assemblies_for_domain (MonoDomain *domain, void *user_data)
 
 	void *iter = NULL;
 	MonoAssembly *ass;
-	while (ass = VM_DOMAIN_GET_ASSEMBLIES(domain, &iter))
+	while (ass = mono_domain_get_assemblies_iter(domain, &iter))
 		emit_assembly_load(ass, NULL);
 	
 	mono_domain_assemblies_unlock (domain);
@@ -8031,13 +8031,13 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 				memset (this_buf, 0, mono_class_instance_size (m->klass));
 				p = tmp_p;
 			} else {
-				err = decode_value(m->klass->byval_arg, domain, this_buf, p, &p, end);
+				err = decode_value(&m->klass->byval_arg, domain, this_buf, p, &p, end);
 
 				if (err != ERR_NONE)
 					return err;
 			}
 	} else {
-		err = decode_value (m->klass->byval_arg, domain, this_buf, p, &p, end);
+		err = decode_value (&m->klass->byval_arg, domain, this_buf, p, &p, end);
 
 		if (err != ERR_NONE)
 			return err;
@@ -8090,7 +8090,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 		}
 	}
 
-	if (this_arg && !obj_is_of_type (this_arg, m->klass->byval_arg))
+	if (this_arg && !obj_is_of_type (this_arg, &m->klass->byval_arg))
 		return ERR_INVALID_ARGUMENT;
 
 	nargs = decode_int (p, &p, end);
@@ -8167,7 +8167,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 	DEBUG_PRINTF (1, "[%p] Invoke result: %p, exc: %s, time: %ld ms.\n", (gpointer) (gsize) mono_native_thread_id_get (), res, exc ? VM_OBJECT_GET_CLASS (exc)->name : NULL, (long)mono_stopwatch_elapsed_ms (&watch));
 	if (exc) {
 		buffer_add_byte (buf, 0);
-		buffer_add_value (buf, VM_DEFAULTS_OBJECT_CLASS->byval_arg, &exc, domain);
+		buffer_add_value (buf, &VM_DEFAULTS_OBJECT_CLASS->byval_arg, &exc, domain);
 	} else {
 		gboolean out_this = FALSE;
 		gboolean out_args = FALSE;
@@ -8182,11 +8182,11 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 		} else if ( sig->ret->type == MONO_TYPE_VOID && !VM_METHOD_IS_STRING_CTOR(m)) {
 			if (!strcmp (m->name, ".ctor")) {
 				if (!m->klass->valuetype)
-					buffer_add_value (buf, VM_DEFAULTS_OBJECT_CLASS->byval_arg, &this_arg, domain);
+					buffer_add_value (buf, &VM_DEFAULTS_OBJECT_CLASS->byval_arg, &this_arg, domain);
 				else
-					buffer_add_value (buf, m->klass->byval_arg, this_buf, domain);
+					buffer_add_value (buf, &m->klass->byval_arg, this_buf, domain);
 			} else {
-				buffer_add_value (buf, VM_DEFAULTS_VOID_CLASS->byval_arg, NULL, domain);
+				buffer_add_value (buf, &VM_DEFAULTS_VOID_CLASS->byval_arg, NULL, domain);
 			}
 		} else if (MONO_TYPE_IS_REFERENCE (sig->ret)) {
 			buffer_add_value (buf, sig->ret, &res, domain);
@@ -8207,7 +8207,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 		}
 		if (out_this)
 			/* Return the new value of the receiver after the call */
-			buffer_add_value (buf, m->klass->byval_arg, this_buf, domain);
+			buffer_add_value (buf, &m->klass->byval_arg, this_buf, domain);
 		if (out_args) {
 			buffer_add_int (buf, nargs);
 			for (i = 0; i < nargs; ++i) {
@@ -8781,7 +8781,7 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 
 			mono_domain_assemblies_lock (domain);
 			void *iter = NULL;
-			while (ass = VM_DOMAIN_GET_ASSEMBLIES (domain, &iter))
+			while (ass = mono_domain_get_assemblies_iter (domain, &iter))
 			{
 				if (VM_ASSEMBLY_GET_IMAGE (ass))
 				{
@@ -10918,7 +10918,7 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		if (frame->api_method->klass->valuetype) {
 			if (!sig->hasthis) {
 				MonoObject *p = NULL;
-				buffer_add_value (buf, VM_DEFAULTS_OBJECT_CLASS->byval_arg, &p, frame->domain);
+				buffer_add_value (buf, &VM_DEFAULTS_OBJECT_CLASS->byval_arg, &p, frame->domain);
 			} else {
 #ifndef IL2CPP_MONO_DEBUGGER
 				if (frame->ji->is_interp) {
@@ -10935,7 +10935,7 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 				{
 					if (tls->il2cpp_context.sequencePoints[frame_index]->method == frame->actual_method)
 					{
-						buffer_add_value_full (buf, frame->actual_method->klass->this_arg, tls->il2cpp_context.executionContexts[frame_index]->values[0], frame->domain, TRUE, NULL);
+						buffer_add_value_full (buf, &frame->actual_method->klass->this_arg, tls->il2cpp_context.executionContexts[frame_index]->values[0], frame->domain, TRUE, NULL);
 						break;
 					}
 				}
@@ -10944,7 +10944,7 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		} else {
 			if (!sig->hasthis) {
 				MonoObject *p = NULL;
-				buffer_add_value (buf, frame->actual_method->klass->byval_arg, &p, frame->domain);
+				buffer_add_value (buf, &frame->actual_method->klass->byval_arg, &p, frame->domain);
 			} else {
 #ifndef IL2CPP_MONO_DEBUGGER
 				if (frame->ji->is_interp) {
@@ -11057,7 +11057,7 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		void *var;
 #endif
 
-		t = frame->actual_method->klass->byval_arg;
+		t = &frame->actual_method->klass->byval_arg;
 		/* Checked by the sender */
 		g_assert (MONO_TYPE_ISSTRUCT (t));
 
@@ -11080,7 +11080,7 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		}
 #else
 		GetVariable (tls, frame, kMethodVariableKindC_This, 0, &t, &var);
-		il2cpp_set_var(val_buf, var, frame->actual_method->klass->this_arg);
+		il2cpp_set_var(val_buf, var, &frame->actual_method->klass->this_arg);
 #endif
 		break;
 	}
@@ -11128,7 +11128,7 @@ array_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		esize = mono_array_element_size (VM_OBJECT_GET_CLASS(arr));
 		for (i = index; i < index + len; ++i) {
 			elem = (gpointer*)((char*)arr->vector + (i * esize));
-			buffer_add_value (buf, VM_OBJECT_GET_CLASS(arr)->element_class->byval_arg, elem, VM_OBJECT_GET_DOMAIN(arr));
+			buffer_add_value (buf, &VM_OBJECT_GET_CLASS(arr)->element_class->byval_arg, elem, VM_OBJECT_GET_DOMAIN(arr));
 		}
 		break;
 	case CMD_ARRAY_REF_SET_VALUES:
@@ -11142,7 +11142,7 @@ array_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		esize = mono_array_element_size (VM_OBJECT_GET_CLASS(arr));
 		for (i = index; i < index + len; ++i) {
 			elem = (gpointer*)((char*)arr->vector + (i * esize));
-			decode_value (VM_OBJECT_GET_CLASS(arr)->element_class->byval_arg, VM_OBJECT_GET_DOMAIN(arr), (guint8 *)elem, p, &p, end);
+			decode_value (&VM_OBJECT_GET_CLASS(arr)->element_class->byval_arg, VM_OBJECT_GET_DOMAIN(arr), (guint8 *)elem, p, &p, end);
 		}
 		break;
 	default:
