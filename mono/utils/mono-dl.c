@@ -79,7 +79,7 @@ void close_loaded_library(MonoDl *module)
  * 'mono_aot_module_<ASSEMBLY_NAME>_info' global symbol from the AOT module.
  */
 void
-mono_dl_register_symbol (const char* name, gpointer *addr)
+mono_dl_register_symbol (const char* name, void *addr)
 {
        if (!static_dl_symbols)
                static_dl_symbols = g_hash_table_new (g_str_hash, g_str_equal);
@@ -297,14 +297,12 @@ mono_dl_symbol (MonoDl *module, const char *name, void **symbol)
 		sym = load_function(module, name);
 #endif
 	}
-#ifndef HOST_WIN32
 	// lookup in static table
-	if (!sym && module->handle == RTLD_DEFAULT)
+	if (!sym && module->main_module)
 	{
 	       if (static_dl_symbols)
 	               sym = g_hash_table_lookup (static_dl_symbols, name);
 	}
-#endif
 	if (sym) {
 		if (symbol)
 			*symbol = sym;

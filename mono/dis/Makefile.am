@@ -16,7 +16,7 @@ runtime_lib=	\
 	$(metadata_lib) \
 	$(gc_lib)	\
 	$(top_builddir)/mono/utils/libmonoutils.la \
-	$(GLIB_LIBS) $(LIBICONV)
+	$(GLIB_LIBS) $(LIBICONV) $(UNITY_PAL_LIBS)
 
 if DISABLE_EXECUTABLES
 bin_PROGRAMS =
@@ -52,10 +52,11 @@ monodis_LDADD = 			\
 	$(LLVM_LIBS)			\
 	$(LLVM_LDFLAGS)			\
 	$(GLIB_LIBS)			\
-	$(LIBICONV)
+	$(LIBICONV)				\
+	$(MBEDTLS_LIBS)
 
 if PLATFORM_DARWIN
-monodis_LDFLAGS=-framework CoreFoundation -framework Foundation
+monodis_LDFLAGS = -framework CoreFoundation -framework Foundation -framework Security
 endif
 
 man_MANS = monodis.1

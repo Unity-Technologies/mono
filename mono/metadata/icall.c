@@ -93,11 +93,15 @@
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-io-portability.h>
 #include <mono/utils/mono-digest.h>
+#include <mono/utils/mono-digest.h>
+#include <mono/utils/mono-dl.h>
 #include <mono/utils/bsearch.h>
 #include <mono/utils/mono-os-mutex.h>
 #include <mono/utils/mono-threads.h>
 #include <mono/metadata/w32error.h>
 #include <mono/utils/w32api.h>
+#include <mbedtls/unity_mbedtls_api.h>
+#include <os/c-api/SystemCertificates-c-api.h>
 
 #include "decimal-ms.h"
 #include "number-ms.h"
@@ -7840,6 +7844,16 @@ ves_icall_Mono_TlsProviderFactory_IsBtlsSupported (void)
 #endif
 }
 
+ICALL_EXPORT MonoString*
+ves_icall_Mono_TlsProviderFactory_GetDefaultProviderForPlatform (void)
+{
+#ifdef TIZEN
+	return NULL;
+#else
+	return mono_string_new(mono_domain_get (), "mbedtls");
+#endif
+}
+
 #ifndef DISABLE_COM
 
 ICALL_EXPORT int
@@ -8103,6 +8117,60 @@ mono_icall_init (void)
 		}
 	}
 #endif
+
+#define MONO_REGISTER_INTERNAL_PINVOKE(name) do { \
+		mono_dl_register_symbol(#name, name);	\
+	} while(0)
+
+	MONO_REGISTER_INTERNAL_PINVOKE (UnityPalSystemCertificatesOpenSystemRootStore);
+	MONO_REGISTER_INTERNAL_PINVOKE (UnityPalSystemCertificatesEnumSystemCertificates);
+	MONO_REGISTER_INTERNAL_PINVOKE (UnityPalSystemCertificatesCloseSystemRootStore);
+
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ctr_drbg_free);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ctr_drbg_init);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ctr_drbg_seed);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_debug_set_threshold);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_entropy_free);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_entropy_init);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_pk_free);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_pk_init);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_pk_parse_key);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_authmode);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_ca_chain);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_ciphersuites);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_dbg);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_max_version);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_min_version);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_own_cert);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_rng);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_conf_verify);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_config_defaults);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_config_free);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_config_init);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_free);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_get_ciphersuite);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_get_ciphersuite_id);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_get_minor_ver);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_get_peer_cert);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_get_state);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_handshake);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_handshake_step);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_init);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_read);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_set_bio);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_set_hostname);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_setup);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_ssl_write);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_strerror);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_x509_crt_free);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_x509_crt_get_next);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_x509_crt_get_raw);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_x509_crt_init);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_x509_crt_parse);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_x509_crt_parse_file);
+	MONO_REGISTER_INTERNAL_PINVOKE (unity_mbedtls_x509_crt_verify);
+
+#undef MONO_REGISTER_INTERNAL_PINVOKE
 
 	icall_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 	mono_os_mutex_init (&icall_mutex);

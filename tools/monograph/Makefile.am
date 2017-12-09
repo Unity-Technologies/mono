@@ -36,7 +36,8 @@ monograph_LDADD = \
 	$(GLIB_LIBS)			\
 	$(LLVM_LIBS)			\
 	$(LIBICONV)			\
-	-lm
+	-lm					\
+	$(MBEDTLS_LIBS)
 
 if PLATFORM_DARWIN
 monograph_LDFLAGS=-framework CoreFoundation

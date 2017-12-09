@@ -2,9 +2,11 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/mono $(LIBGC_CPPFLAGS) $(GLIB_CFLA
 
 test_cflags = $(AM_CFLAGS) $(SGEN_DEFINES)
 test_ldadd = libtestlib.la \
-	$(LIBGC_LIBS) $(GLIB_LIBS) -lm $(LIBICONV)
+	$(LIBGC_LIBS) $(GLIB_LIBS) -lm $(LIBICONV) \
+	$(MBEDTLS_LIBS) $(UNITY_PAL_LIBS)
+
 if PLATFORM_DARWIN
-test_ldflags = -framework CoreFoundation -framework Foundation
+test_ldflags = -framework CoreFoundation -framework Foundation -framework Security
 endif
 
 if !CROSS_COMPILE

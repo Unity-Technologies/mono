@@ -306,6 +306,14 @@ Mono.AppleTls/Trust.cs
 Mono.AppleTls/SslConnection.cs
 Mono.AppleTls/Items.cs
 
+Mono.Mbedtls/CertificateHelper.cs
+Mono.Mbedtls/Debug.cs
+Mono.Mbedtls/NativeBuffer.cs
+Mono.Mbedtls/Mbedtls.cs
+Mono.Mbedtls/MbedtlsContext.cs
+Mono.Mbedtls/MbedtlsProvider.cs
+Mono.Mbedtls/MbedtlsStream.cs
+
 Mono.Net.Security/AsyncProtocolRequest.cs
 Mono.Net.Security/CallbackHelpers.cs
 Mono.Net.Security/ChainValidationHelper.cs

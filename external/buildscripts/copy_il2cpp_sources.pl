@@ -5,6 +5,8 @@
 
 use File::Basename;
 use File::Copy;
+use lib ('external/buildscripts/perl_lib');
+use File::Copy::Recursive qw(dircopy rmove);
 use File::Path;
 use Getopt::Long;
 
