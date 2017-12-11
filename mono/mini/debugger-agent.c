@@ -9056,6 +9056,7 @@ domain_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 {
 	ErrorCode err;
 	MonoDomain *domain;
+	void *iter = NULL;
 
 	switch (command) {
 	case CMD_APPDOMAIN_GET_ROOT_DOMAIN: {
@@ -9079,12 +9080,20 @@ domain_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			return err;
 		mono_loader_lock ();
 		count = 0;
+#ifndef IL2CPP_MONO_DEBUGGER
 		for (tmp = domain->domain_assemblies; tmp; tmp = tmp->next) {
+#else
+	while(il2cpp_domain_get_assemblies_iter(domain, &iter)) {
+#endif //IL2CPP_MONO_DEBUGGER
 			count ++;
 		}
 		buffer_add_int (buf, count);
+#ifndef IL2CPP_MONO_DEBUGGER
 		for (tmp = domain->domain_assemblies; tmp; tmp = tmp->next) {
 			ass = (MonoAssembly *)tmp->data;
+#else
+		while(ass = il2cpp_domain_get_assemblies_iter(domain, &iter)) {
+#endif //IL2CPP_MONO_DEBUGGER
 			buffer_add_assemblyid (buf, domain, ass);
 		}
 		mono_loader_unlock ();
@@ -9094,8 +9103,11 @@ domain_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		domain = decode_domainid (p, &p, end, NULL, &err);
 		if (err != ERR_NONE)
 			return err;
-
+#ifndef IL2CPP_MONO_DEBUGGER
 		buffer_add_assemblyid (buf, domain, domain->entry_assembly);
+#else
+		buffer_add_assemblyid (buf, domain, NULL);
+#endif //IL2CPP_MONO_DEBUGGER
 		break;
 	}
 	case CMD_APPDOMAIN_GET_CORLIB: {
@@ -11696,7 +11708,7 @@ debugger_thread (void *arg)
 			process_profiler_event (EVENT_KIND_VM_START, mono_thread_get_main ());
 #ifdef IL2CPP_MONO_DEBUGGER
 			{
-				Il2CppMonoDomain* domain = il2cpp_mono_get_root_domain();
+				MonoDomain* domain = il2cpp_mono_get_root_domain();
 				appdomain_load(NULL, domain);
 				AgentDomainInfo *info = VM_DOMAIN_GET_AGENT_INFO(domain);
 				void *iter = NULL;
