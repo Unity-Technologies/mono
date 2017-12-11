@@ -10405,6 +10405,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 		break;
 	}
 	case CMD_METHOD_GET_BODY: {
+#ifndef IL2CPP_MONO_DEBUGGER
 		MonoError error;
 		int i;
 
@@ -10439,8 +10440,10 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 
 			mono_metadata_free_mh (header);
 		}
-
 		break;
+#else
+		return ERR_NOT_IMPLEMENTED;
+#endif
 	}
 	case CMD_METHOD_RESOLVE_TOKEN: {
 		guint32 token = decode_int (p, &p, end);

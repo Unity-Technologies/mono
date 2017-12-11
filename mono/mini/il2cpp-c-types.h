@@ -28,18 +28,18 @@
 #define MonoReflectionType Il2CppReflectionType
 #define MonoProfiler Il2CppProfiler
 #define MonoAssembly Il2CppAssembly
+#define MonoAssembyName Il2CppAssemblyName
+#define MonoMethodHeader Il2CppMethodHeaderInfo
+#define MonoReflectionAssembly Il2CppReflectionAssembly
+#define MonoAppDomain Il2CppAppDomain
 
 //still stubs everywhere
-typedef struct _Il2CppMonoAssemblyName Il2CppMonoAssemblyNameReplacement;
 typedef struct _Il2CppMonoDomain Il2CppMonoDomain;
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
-typedef struct _Il2CppMonoMethodHeader Il2CppMonoMethodHeader;
 typedef struct _Il2CppMonoVTable Il2CppMonoVTable;
-typedef struct _Il2CppMonoAppDomain Il2CppMonoAppDomain;
 typedef struct _Il2CppMonoMarshalByRefObject Il2CppMonoMarshalByRefObject;
 typedef struct _Il2CppMonoObject Il2CppMonoObject;
 typedef struct _Il2CppMonoCustomAttrInfo Il2CppMonoCustomAttrInfo;
-typedef struct Il2CppReflectionAssembly Il2CppMonoReflectionAssembly;
 typedef struct _Il2CppMonoJitTlsData Il2CppMonoJitTlsData;
 typedef struct _Il2CppMonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks;
 typedef struct _Il2CppMonoCustomAttrEntry Il2CppMonoCustomAttrEntry;
@@ -48,24 +48,10 @@ typedef struct Il2CppDefaults Il2CppMonoDefaults;
 typedef struct _Il2CppMonoMethodInflated Il2CppMonoMethodInflated;
 typedef struct _Il2CppMonoException Il2CppMonoException;
 typedef struct _Il2CppCattrNamedArg Il2CppCattrNamedArg;
-typedef struct _Il2CppMonoExceptionClause Il2CppMonoExceptionClause;
 typedef struct _Il2CppMonoTypeNameParse Il2CppMonoTypeNameParse;
 
 
 struct _Il2CppMonoJitTlsData { void *dummy; };
-
-struct _Il2CppMonoExceptionClause
-{
-	uint32_t flags;
-	uint32_t try_offset;
-	uint32_t try_len;
-	uint32_t handler_offset;
-	uint32_t handler_len;
-	union {
-		uint32_t filter_offset;
-		MonoClass *catch_class;
-	} data;
-};
 
 struct _Il2CppCattrNamedArg
 {
@@ -135,16 +121,6 @@ struct _Il2CppMonoMarshalByRefObject
 	Il2CppMonoObject obj;
 };
 
-struct _Il2CppMonoMethodHeader
-{
-	const unsigned char *code;
-	guint32 code_size;
-	guint16 num_locals;
-	Il2CppMonoExceptionClause *clauses;
-	unsigned int num_clauses : 15;
-	MonoType *locals [MONO_ZERO_LEN_ARRAY];
-};
-
 struct _Il2CppMonoVTable
 {
 	MonoClass *klass;
@@ -152,20 +128,6 @@ struct _Il2CppMonoVTable
 	guint8 initialized;
 	gpointer type;
 	guint init_failed     : 1;
-};
-
-struct _Il2CppMonoAppDomain
-{
-	Il2CppMonoMarshalByRefObject mbr;
-};
-
-struct _Il2CppMonoAssemblyName
-{
-	const char *name;
-	const char *culture;
-	mono_byte public_key_token [IL2CPP_MONO_PUBLIC_KEY_TOKEN_LENGTH];
-	uint32_t flags;
-	uint16_t major, minor, build, revision;
 };
 
 struct _Il2CppMonoDomain
@@ -176,7 +138,7 @@ struct _Il2CppMonoDomain
 	mono_mutex_t assemblies_lock;
 	GSList *domain_assemblies;
 	MonoAssembly *entry_assembly;
-	Il2CppMonoAppDomain *domain;
+	MonoAppDomain *domain;
 };
 
 struct _Il2CppMonoMethodSignature
@@ -191,7 +153,7 @@ struct _Il2CppMonoMethodSignature
 
 struct _Il2CppMonoTypeNameParse
 {
-	Il2CppMonoAssemblyNameReplacement assembly;
+	MonoAssemblyName assembly;
 	void *il2cppTypeNameParseInfo;
 };
 
@@ -259,7 +221,7 @@ typedef struct Il2CppThreadUnwindState
 } Il2CppThreadUnwindState;
 
 TYPED_HANDLE_DECL (Il2CppMonoObject);
-TYPED_HANDLE_DECL (Il2CppMonoReflectionAssembly);
+TYPED_HANDLE_DECL (MonoReflectionAssembly);
 Il2CppMonoDefaults il2cpp_mono_defaults;
 MonoDebugOptions il2cpp_mono_debug_options;
 
@@ -277,8 +239,8 @@ typedef void (*emit_assembly_load_callback)(void*, void*);
 typedef void(*emit_type_load_callback)(void*, void*, void*);
 
 void il2cpp_set_thread_state_background(MonoThread* thread);
-void* il2cpp_domain_get_agent_info(Il2CppMonoAppDomain* domain);
-void il2cpp_domain_set_agent_info(Il2CppMonoAppDomain* domain, void* agentInfo);
+void* il2cpp_domain_get_agent_info(MonoAppDomain* domain);
+void il2cpp_domain_set_agent_info(MonoAppDomain* domain, void* agentInfo);
 void il2cpp_start_debugger_thread();
 void* il2cpp_gc_alloc_fixed(size_t size);
 void il2cpp_gc_free_fixed(void* address);

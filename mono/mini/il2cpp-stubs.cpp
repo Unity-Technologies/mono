@@ -81,7 +81,7 @@ mono_bool il2cpp_mono_type_is_reference (MonoType *type)
 	return il2cpp::vm::Type::IsReference((Il2CppType*)type);
 }
 
-void il2cpp_mono_metadata_free_mh (Il2CppMonoMethodHeader *mh)
+void il2cpp_mono_metadata_free_mh (MonoMethodHeader *mh)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
@@ -160,7 +160,7 @@ mono_bool il2cpp_mono_type_generic_inst_is_valuetype (MonoType *monoType)
 	return (typeDef->bitfield >> (kBitIsValueType - 1)) & 0x1;
 }
 
-Il2CppMonoMethodHeader* il2cpp_mono_method_get_header_checked (MonoMethod *method, MonoError *error)
+MonoMethodHeader* il2cpp_mono_method_get_header_checked (MonoMethod *method, MonoError *error)
 {
 	return NULL;
 }
@@ -1022,9 +1022,9 @@ Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass*
 	return NULL;
 }
 
-Il2CppMonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2CppMonoDomain* domain, MonoAssembly* assembly, MonoError* error)
+MonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(Il2CppMonoDomain* domain, MonoAssembly* assembly, MonoError* error)
 {
-	return (Il2CppMonoReflectionAssemblyHandle)il2cpp::vm::Reflection::GetAssemblyObject((const Il2CppAssembly *)assembly);
+	return (MonoReflectionAssemblyHandle)il2cpp::vm::Reflection::GetAssemblyObject((const Il2CppAssembly *)assembly);
 }
 
 MonoReflectionType* il2cpp_mono_type_get_object_checked(Il2CppMonoDomain* domain, MonoType* type, MonoError* error)
@@ -1300,17 +1300,17 @@ void* il2cpp_mono_gc_invoke_with_gc_lock (Il2CppMonoGCLockedCallbackFunc func, v
 
 // These functions expose the IL2CPP VM C++ API to C
 
-void* il2cpp_domain_get_agent_info(Il2CppMonoAppDomain* domain)
+void* il2cpp_domain_get_agent_info(MonoAppDomain* domain)
 {
 	return ((Il2CppDomain*)domain)->agent_info;
 }
 
-void il2cpp_domain_set_agent_info(Il2CppMonoAppDomain* domain, void* agentInfo)
+void il2cpp_domain_set_agent_info(MonoAppDomain* domain, void* agentInfo)
 {
 	((Il2CppDomain*)domain)->agent_info = agentInfo;
 }
 
-MonoAssembly* il2cpp_domain_get_assemblies_iter(Il2CppMonoAppDomain *domain, void* *iter)
+MonoAssembly* il2cpp_domain_get_assemblies_iter(MonoAppDomain *domain, void* *iter)
 {
 	if (!iter)
 		return NULL;
