@@ -37,34 +37,25 @@
 #define MonoDomainFunc Il2CppDomainFunc
 #define MonoObject Il2CppObject
 #define MonoVTable Il2CppVTable
+#define MonoException Il2CppException
+#define MonoMarshalByRefObject Il2CppMarshalByRefObject
 
 //still stubs everywhere
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
-typedef struct _Il2CppMonoMarshalByRefObject Il2CppMonoMarshalByRefObject;
 typedef struct _Il2CppMonoCustomAttrInfo Il2CppMonoCustomAttrInfo;
-typedef struct _Il2CppMonoJitTlsData Il2CppMonoJitTlsData;
 typedef struct _Il2CppMonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks;
 typedef struct _Il2CppMonoCustomAttrEntry Il2CppMonoCustomAttrEntry;
 typedef struct _Il2CppMonoStackFrameInfo Il2CppMonoStackFrameInfo;
 typedef struct Il2CppDefaults Il2CppMonoDefaults;
 typedef struct _Il2CppMonoMethodInflated Il2CppMonoMethodInflated;
-typedef struct _Il2CppMonoException Il2CppMonoException;
 typedef struct _Il2CppCattrNamedArg Il2CppCattrNamedArg;
 typedef struct _Il2CppMonoTypeNameParse Il2CppMonoTypeNameParse;
-
-
-struct _Il2CppMonoJitTlsData { void *dummy; };
 
 struct _Il2CppCattrNamedArg
 {
 	MonoType *type;
 	MonoClassField *field;
 	MonoProperty *prop;
-};
-
-struct _Il2CppMonoException
-{
-	MonoObject object;
 };
 
 struct _Il2CppMonoMethodInflated
@@ -112,11 +103,6 @@ struct _Il2CppMonoRuntimeExceptionHandlingCallbacks
 	void (*il2cpp_mono_walk_stack_with_state) (Il2CppMonoInternalStackWalk func, MonoThreadUnwindState *state, MonoUnwindOptions options, void *user_data);
 };
 
-struct _Il2CppMonoMarshalByRefObject
-{
-	MonoObject obj;
-};
-
 struct _Il2CppMonoMethodSignature
 {
 	MonoType *ret;
@@ -132,13 +118,6 @@ struct _Il2CppMonoTypeNameParse
 	MonoAssemblyName assembly;
 	void *il2cppTypeNameParseInfo;
 };
-
-typedef struct Il2CppThreadUnwindState
-{
-	Il2CppSequencePoint** sequencePoints;
-	Il2CppSequencePointExecutionContext** executionContexts;
-	uint32_t frameCount;
-} Il2CppThreadUnwindState;
 
 TYPED_HANDLE_DECL (MonoObject);
 TYPED_HANDLE_DECL (MonoReflectionAssembly);

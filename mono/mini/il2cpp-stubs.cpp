@@ -1167,12 +1167,6 @@ void il2cpp_mono_restore_context(MonoContext* ctx)
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
 
-gboolean il2cpp_mono_find_jit_info_ext(MonoDomain* domain, MonoJitTlsData* jit_tls, MonoJitInfo* prev_ji, MonoContext* ctx, MonoContext* new_ctx, char** trace, MonoLMF** lmf, mgreg_t** save_locations, StackFrameInfo* frame)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return 0;
-}
-
 MonoMethod* il2cpp_mono_method_get_declaring_generic_method(MonoMethod* method)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
@@ -1267,7 +1261,7 @@ void il2cpp_mono_thread_info_safe_suspend_and_run (MonoNativeThreadId id, gboole
 	callback(NULL, user_data);
 }
 
-Il2CppMonoException* il2cpp_mono_error_convert_to_exception (MonoError *target_error)
+MonoException* il2cpp_mono_error_convert_to_exception (MonoError *target_error)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return NULL;

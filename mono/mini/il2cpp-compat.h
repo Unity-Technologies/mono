@@ -54,14 +54,11 @@
 #if defined(RUNTIME_IL2CPP)
 
 #define MonoMethodSignature Il2CppMonoMethodSignature
-#define MonoMarshalByRefObject Il2CppMonoMarshalByRefObject
 #define MonoCustomAttrInfo Il2CppMonoCustomAttrInfo
-#define MonoJitTlsData Il2CppMonoJitTlsData
 #define MonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks
 #define MonoCustomAttrEntry Il2CppMonoCustomAttrEntry
 #define StackFrameInfo Il2CppMonoStackFrameInfo
 #define MonoMethodInflated Il2CppMonoMethodInflated
-#define MonoException Il2CppMonoException
 #define CattrNamedArg Il2CppCattrNamedArg
 #define debug_options il2cpp_mono_debug_options
 #define MonoTypeNameParse Il2CppMonoTypeNameParse
@@ -236,7 +233,6 @@
 #define mono_thread_state_init_from_monoctx il2cpp_mono_thread_state_init_from_monoctx
 #define mini_jit_info_table_find il2cpp_mini_jit_info_table_find
 #define mono_restore_context il2cpp_mono_restore_context
-#define mono_find_jit_info_ext il2cpp_mono_find_jit_info_ext
 #define mono_method_get_declaring_generic_method il2cpp_mono_method_get_declaring_generic_method
 #define jinfo_get_method il2cpp_jinfo_get_method
 #define mono_defaults il2cpp_mono_defaults
@@ -453,7 +449,6 @@ gboolean il2cpp_mono_thread_state_init_from_current(MonoThreadUnwindState* ctx);
 gboolean il2cpp_mono_thread_state_init_from_monoctx(MonoThreadUnwindState* ctx, MonoContext* mctx);
 MonoJitInfo* il2cpp_mini_jit_info_table_find(MonoDomain* domain, char* addr, MonoDomain** out_domain);
 void il2cpp_mono_restore_context(MonoContext* ctx);
-gboolean il2cpp_mono_find_jit_info_ext(MonoDomain* domain, Il2CppMonoJitTlsData* jit_tls, MonoJitInfo* prev_ji, MonoContext* ctx, MonoContext* new_ctx, char** trace, MonoLMF** lmf, mgreg_t** save_locations, StackFrameInfo* frame);
 MonoMethod* il2cpp_mono_method_get_declaring_generic_method(MonoMethod* method);
 MonoMethod* il2cpp_jinfo_get_method (MonoJitInfo *ji);
 gboolean il2cpp_mono_find_prev_seq_point_for_native_offset (MonoDomain *domain, MonoMethod *method, gint32 native_offset, MonoSeqPointInfo **info, SeqPoint* seq_point);
@@ -469,7 +464,7 @@ MonoSeqPointInfo* il2cpp_mono_get_seq_points (MonoDomain *domain, MonoMethod *me
 void IL2CPP_G_BREAKPOINT();
 void il2cpp_mono_thread_info_safe_suspend_and_run (MonoNativeThreadId id, gboolean interrupt_kernel, MonoSuspendThreadCallback callback, gpointer user_data);
 void il2cpp_mono_error_cleanup (MonoError *oerror);
-Il2CppMonoException* il2cpp_mono_error_convert_to_exception (MonoError *target_error);
+MonoException* il2cpp_mono_error_convert_to_exception (MonoError *target_error);
 const char* il2cpp_mono_error_get_message (MonoError *oerror);
 void il2cpp_mono_error_assert_ok_pos (MonoError *error, const char* filename, int lineno);
 Il2CppSequencePoint* il2cpp_get_sequence_points(void* *iter);
