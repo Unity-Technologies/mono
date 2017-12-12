@@ -40,23 +40,19 @@
 #define MonoException Il2CppException
 #define MonoMarshalByRefObject Il2CppMarshalByRefObject
 
+//Unsupported in il2cpp, should never be referenced
+#define MonoCustomAttrInfo #error Custom Attributes Not Supported
+#define MonoCustomAttrEntry #error Custom Attributes Not Supported
+#define CattrNamedArg #error Custom Attributes Not Supported
+#define MonoJitTlsData #error Jit TLS Data Unsupported
+
 //still stubs everywhere
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
-typedef struct _Il2CppMonoCustomAttrInfo Il2CppMonoCustomAttrInfo;
 typedef struct _Il2CppMonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks;
-typedef struct _Il2CppMonoCustomAttrEntry Il2CppMonoCustomAttrEntry;
 typedef struct _Il2CppMonoStackFrameInfo Il2CppMonoStackFrameInfo;
 typedef struct Il2CppDefaults Il2CppMonoDefaults;
 typedef struct _Il2CppMonoMethodInflated Il2CppMonoMethodInflated;
-typedef struct _Il2CppCattrNamedArg Il2CppCattrNamedArg;
 typedef struct _Il2CppMonoTypeNameParse Il2CppMonoTypeNameParse;
-
-struct _Il2CppCattrNamedArg
-{
-	MonoType *type;
-	MonoClassField *field;
-	MonoProperty *prop;
-};
 
 struct _Il2CppMonoMethodInflated
 {
@@ -81,19 +77,6 @@ struct _Il2CppMonoStackFrameInfo
 	guint32 unwind_info_len;
 	guint8 *unwind_info;
 	mgreg_t **reg_locations;
-};
-
-struct _Il2CppMonoCustomAttrEntry
-{
-	MonoMethod *ctor;
-	uint32_t data_size;
-	const mono_byte* data;
-};
-
-struct _Il2CppMonoCustomAttrInfo
-{
-	int num_attrs;
-	Il2CppMonoCustomAttrEntry attrs [MONO_ZERO_LEN_ARRAY];
 };
 
 typedef gboolean (*Il2CppMonoInternalStackWalk) (Il2CppMonoStackFrameInfo *frame, MonoContext *ctx, gpointer data);

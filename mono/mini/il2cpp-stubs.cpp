@@ -345,17 +345,6 @@ void il2cpp_mono_reflection_free_type_info (Il2CppMonoTypeNameParse *info)
 	delete (il2cpp::vm::TypeNameParseInfo*)info->il2cppTypeNameParseInfo;
 }
 
-mono_bool il2cpp_mono_custom_attrs_has_attr (Il2CppMonoCustomAttrInfo *ainfo, MonoClass *attr_klass)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return 0;
-}
-
-void il2cpp_mono_custom_attrs_free (Il2CppMonoCustomAttrInfo *ainfo)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-}
-
 MonoDomain* il2cpp_mono_get_root_domain (void)
 {
 	return (MonoDomain*)il2cpp::vm::Domain::GetCurrent();
@@ -399,49 +388,10 @@ MonoMethod* il2cpp_mono_jit_info_get_method(MonoJitInfo* ji)
 	return NULL;
 }
 
-MonoDebugMethodInfo* il2cpp_mono_debug_lookup_method(MonoMethod* method)
-{
-	return NULL;
-}
-
-MonoDebugMethodJitInfo* il2cpp_mono_debug_find_method(MonoMethod* method, MonoDomain* domain)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
-}
-
-void il2cpp_mono_debug_free_method_jit_info(MonoDebugMethodJitInfo* jit)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-}
-
-MonoDebugLocalsInfo* il2cpp_mono_debug_lookup_locals(MonoMethod* method)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
-}
-
-MonoDebugMethodAsyncInfo* il2cpp_mono_debug_lookup_method_async_debug_info(MonoMethod* method)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
-}
-
-MonoDebugSourceLocation* il2cpp_mono_debug_method_lookup_location(MonoDebugMethodInfo* minfo, int il_offset)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-	return NULL;
-}
-
 gint32 il2cpp_mono_debug_il_offset_from_address(MonoMethod* method, MonoDomain* domain, guint32 native_offset)
 {
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 	return 0;
-}
-
-void il2cpp_mono_debug_free_source_location(MonoDebugSourceLocation* location)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
 
 void il2cpp_mono_set_is_debugger_attached(gboolean attached)
@@ -458,21 +408,6 @@ char* il2cpp_mono_type_full_name(MonoType* type)
 char* il2cpp_mono_method_full_name(MonoMethod* method, gboolean signature)
 {
 	return g_strdup(((MethodInfo*)method)->name);
-}
-
-void il2cpp_mono_debug_get_seq_points(MonoDebugMethodInfo* minfo, char** source_file, GPtrArray** source_file_list, int** source_files, MonoSymSeqPoint** seq_points, int* n_seq_points)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-}
-
-void il2cpp_mono_debug_free_locals(MonoDebugLocalsInfo* info)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-}
-
-void il2cpp_mono_debug_free_method_async_debug_info(MonoDebugMethodAsyncInfo* info)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
 
 MonoThread* il2cpp_mono_thread_current()
@@ -850,11 +785,6 @@ Il2CppMonoRuntimeExceptionHandlingCallbacks* il2cpp_mono_get_eh_callbacks()
 	return NULL;
 }
 
-void il2cpp_mono_reflection_create_custom_attr_data_args(MonoImage* image, MonoMethod* method, const guchar* data, guint32 len, MonoArray** typed_args, MonoArray** named_args, CattrNamedArg** named_arg_info, MonoError* error)
-{
-	IL2CPP_ASSERT(0 && "This method is not yet implemented");
-}
-
 void il2cpp_mono_nullable_init(guint8* buf, MonoObject* value, MonoClass* klass)
 {
 	il2cpp::vm::Object::NullableInit(buf, (Il2CppObject*)value, (Il2CppClass*)klass);
@@ -996,30 +926,6 @@ MonoType* il2cpp_mono_reflection_get_type_checked(MonoImage* rootimage, MonoImag
 		return NULL;
 
 	return (MonoType*)il2cpp::vm::Class::GetType(klass);
-}
-
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_method_checked(MonoMethod* method, MonoError* error)
-{
-	error_init(error);
-	return NULL;
-}
-
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_class_checked(MonoClass* klass, MonoError* error)
-{
-	error_init(error);
-	return NULL;
-}
-
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_property_checked(MonoClass* klass, MonoProperty* property, MonoError* error)
-{
-	error_init(error);
-	return NULL;
-}
-
-Il2CppMonoCustomAttrInfo* il2cpp_mono_custom_attrs_from_field_checked(MonoClass* klass, MonoClassField* field, MonoError* error)
-{
-	error_init(error);
-	return NULL;
 }
 
 MonoReflectionAssemblyHandle il2cpp_mono_assembly_get_object_handle(MonoDomain* domain, MonoAssembly* assembly, MonoError* error)

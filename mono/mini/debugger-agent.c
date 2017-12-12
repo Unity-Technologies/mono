@@ -53,6 +53,7 @@
 #include <sys/endian.h>
 #endif
 
+#ifndef IL2CPP_MONO_DEBUGGER
 #include <mono/metadata/mono-debug.h>
 #include <mono/metadata/debug-internals.h>
 #include <mono/metadata/gc-internals.h>
@@ -65,6 +66,7 @@
 #include <mono/metadata/reflection-internals.h>
 #include <mono/metadata/w32socket.h>
 #include <mono/metadata/w32socket-internals.h>
+#endif
 #include <mono/utils/mono-coop-mutex.h>
 #include <mono/utils/mono-coop-semaphore.h>
 #include <mono/utils/mono-error-internals.h>
@@ -138,7 +140,9 @@ typedef struct
 	 */
 	MonoMethod *api_method;
 	MonoContext ctx;
+#ifndef IL2CPP_MONO_DEBUGGER
 	MonoDebugMethodJitInfo *jit;
+#endif
 	MonoJitInfo *ji;
 	MonoInterpFrameHandle interp_frame;
 	int flags;
@@ -803,8 +807,10 @@ static void ids_cleanup (void);
 
 static void suspend_init (void);
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static void ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint *sp, MonoSeqPointInfo *info, MonoContext *ctx, DebuggerTlsData *tls, gboolean step_to_catch,
 					  StackFrame **frames, int nframes);
+#endif
 #ifdef IL2CPP_MONO_DEBUGGER
 static void ss_start_il2cpp(SingleStepReq *ss_req, DebuggerTlsData *tls);
 static void GetSequencePointsAndSourceFilesUniqueSequencePoints(MonoMethod* method, GPtrArray** sequencePoints, GPtrArray** uniqueFileSequencePoints, GArray** uniqueFileSequencePointIndices);
@@ -2553,7 +2559,7 @@ buffer_add_assemblyid (Buffer *buf, MonoDomain *domain, MonoAssembly *assembly)
 
 	id = buffer_add_ptr_id (buf, domain, ID_ASSEMBLY, assembly);
 	if (G_UNLIKELY (log_level >= 2) && assembly) {
-		DEBUG_PRINTF (2, "[dbg]   send assembly [%s][%s][%d]\n", assembly->aname.name, VM_DOMAIN_GET_NAME(domain), id);
+		DEBUG_PRINTF (2, "[dbg]   send assembly [%s][%s][%d]\n", assembly->aname.name, domain->friendly_name, id);
 	}
 }
 
@@ -3039,8 +3045,10 @@ free_frames (StackFrame **frames, int nframes)
 	int i;
 
 	for (i = 0; i < nframes; ++i) {
+#ifndef IL2CPP_MONO_DEBUGGER
 		if (frames [i]->jit)
 			mono_debug_free_method_jit_info (frames [i]->jit);
+#endif
 		g_free (frames [i]);
 	}
 	g_free (frames);
@@ -3534,6 +3542,7 @@ dbg_path_get_basename (const char *filename)
 	return g_strdup (&r[1]);
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static void
 init_jit_info_dbg_attrs (MonoJitInfo *ji)
 {
@@ -3578,6 +3587,7 @@ init_jit_info_dbg_attrs (MonoJitInfo *ji)
 	mono_memory_barrier ();
 	ji->dbg_attrs_inited = TRUE;
 }
+#endif //IL2CPP_MONO_DEBUGGER
 
 static gboolean find_source_file_in_hash_table(const char* needle, GHashTable* haystack)
 {
@@ -3672,7 +3682,9 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, DebuggerEv
 				} else if (mod->kind == MOD_KIND_SOURCE_FILE_ONLY && ei && ei->klass) {
 					gpointer iter = NULL;
 					MonoMethod *method;
+#ifndef IL2CPP_MONO_DEBUGGER
 					MonoDebugSourceInfo *sinfo;
+#endif
 					char *source_file, *s;
 					gboolean found = FALSE;
 					int i;
@@ -3718,6 +3730,7 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, DebuggerEv
 						filtered = TRUE;
 					g_free (s);
 				} else if (mod->kind == MOD_KIND_STEP) {
+#ifndef IL2CPP_MONO_DEBUGGER
 					if ((mod->data.filter & STEP_FILTER_STATIC_CTOR) && ji &&
 						(jinfo_get_method (ji)->flags & METHOD_ATTRIBUTE_SPECIAL_NAME) &&
 						!strcmp (jinfo_get_method (ji)->name, ".cctor") &&
@@ -3737,7 +3750,8 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, DebuggerEv
 						init_jit_info_dbg_attrs (ji);
 						if (ji->dbg_non_user_code)
 							filtered = TRUE;
-					}
+						}
+#endif //IL2CPP_MONO_DEBUGGER
 				}
 			}
 
@@ -4090,8 +4104,10 @@ thread_startup (MonoProfiler *prof, uintptr_t tid)
 
 	tls = (DebuggerTlsData *)mono_native_tls_get_value (debugger_tls_id);
 	if (tls) {
+#ifndef IL2CPP_MONO_DEBUGGER
 		if (!tls->terminated)
 			MONO_GC_UNREGISTER_ROOT(tls->thread);
+#endif
 #ifdef IL2CPP_MONO_DEBUGGER
 		il2cpp_gc_free_fixed (tls);
 #else
@@ -4957,6 +4973,7 @@ static void ss_calculate_framecount (DebuggerTlsData *tls, MonoContext *ctx)
 	compute_frame_info (tls->thread, tls);
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static gboolean
 ensure_jit (StackFrame* frame)
 {
@@ -4976,6 +4993,7 @@ ensure_jit (StackFrame* frame)
 	}
 	return TRUE;
 }
+#endif
 
 /*
  * ss_update:
@@ -5027,6 +5045,7 @@ ss_update (SingleStepReq *req, MonoJitInfo *ji, SeqPoint *sp, DebuggerTlsData *t
 		}
 	}
 
+#ifndef IL2CPP_MONO_DEBUGGER
 	MonoDebugMethodAsyncInfo* async_method = mono_debug_lookup_method_async_debug_info (method);
 	if (async_method) {
 		for (int i = 0; i < async_method->num_awaits; i++) {
@@ -5037,6 +5056,7 @@ ss_update (SingleStepReq *req, MonoJitInfo *ji, SeqPoint *sp, DebuggerTlsData *t
 		}
 		mono_debug_free_method_async_debug_info (async_method);
 	}
+#endif
 
 	if (req->size != STEP_SIZE_LINE)
 		return TRUE;
@@ -5286,6 +5306,7 @@ get_notify_debugger_of_wait_completion_method (void)
 	return notify_debugger_of_wait_completion_method_cache;
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static void
 process_breakpoint (DebuggerTlsData *tls, gboolean from_signal)
 {
@@ -5406,14 +5427,14 @@ process_breakpoint (DebuggerTlsData *tls, gboolean from_signal)
 			//make sure we have enough data to get current async method instance id
 			if (tls->frame_count == 0 || !ensure_jit (tls->frames [0]))
 				continue;
-
+#ifndef IL2CPP_MONO_DEBUGGER
 			//Check method is async before calling get_this_async_id
 			MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
 			if (!asyncMethod)
 				continue;
 			else
 				mono_debug_free_method_async_debug_info (asyncMethod);
-
+#endif
 			//breakpoint was hit in parallelly executing async method, ignore it
 			if (ss_req->async_id != get_this_async_id (tls->frames [0]))
 				continue;
@@ -5473,6 +5494,7 @@ process_breakpoint (DebuggerTlsData *tls, gboolean from_signal)
 		process_event (kind, method, 0, ctx, enter_leave_events, suspend_policy, 0);
 #endif
 }
+#endif
 
 /* Process a breakpoint/single step event after resuming from a signal handler */
 static void
@@ -5496,11 +5518,13 @@ process_signal_event (void (*func) (DebuggerTlsData*, gboolean))
 	g_assert_not_reached ();
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static void
 process_breakpoint_from_signal (void)
 {
 	process_signal_event (process_breakpoint);
 }
+#endif
 
 static void
 resume_from_signal_handler (void *sigctx, void *func)
@@ -5533,6 +5557,7 @@ resume_from_signal_handler (void *sigctx, void *func)
 #endif
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 void
 mono_debugger_agent_breakpoint_hit (void *sigctx)
 {
@@ -5543,6 +5568,7 @@ mono_debugger_agent_breakpoint_hit (void *sigctx)
 	 */
 	resume_from_signal_handler (sigctx, process_breakpoint_from_signal);
 }
+#endif
 
 typedef struct {
 	gboolean found;
@@ -5849,6 +5875,7 @@ debugger_agent_single_step_from_context (MonoContext *ctx, uint64_t sequencePoin
 #endif
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 void
 debugger_agent_breakpoint_from_context (MonoContext *ctx)
 {
@@ -5874,7 +5901,8 @@ debugger_agent_breakpoint_from_context (MonoContext *ctx)
 	memcpy (&tls->restore_state, &orig_restore_state, sizeof (MonoThreadUnwindState));
 	if (MONO_CONTEXT_GET_IP (ctx) == orig_ip - 1)
 		MONO_CONTEXT_SET_IP (ctx, orig_ip);
-}
+	}
+#endif
 
 /*
  * start_single_stepping:
@@ -6072,6 +6100,7 @@ is_last_non_empty (SeqPoint* sp, MonoSeqPointInfo *info)
 	return TRUE;
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 /*
  * ss_start:
  *
@@ -6335,7 +6364,7 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 	if (ss_req_bp_cache)
 		g_hash_table_destroy (ss_req_bp_cache);
 }
-
+#endif
 #ifdef IL2CPP_MONO_DEBUGGER
 
 static void
@@ -6417,7 +6446,7 @@ ss_create (MonoInternalThread *thread, StepSize size, StepDepth depth, StepFilte
 	SeqPoint local_sp;
 	gboolean found_sp;
 	MonoMethod *method = NULL;
-#ifndef IL2CPP_DEBUGGER
+#ifndef IL2CPP_MONO_DEBUGGER
 	MonoDebugMethodInfo *minfo;
 #endif
 	gboolean step_to_catch = FALSE;
@@ -7615,6 +7644,7 @@ decode_value (MonoType *t, MonoDomain *domain, guint8 *addr, guint8 *buf, guint8
 	return decode_value_internal (t, type, domain, addr, buf, endbuf, limit);
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static void
 add_var (Buffer *buf, MonoDebugMethodJitInfo *jit, MonoType *t, MonoDebugVarInfo *var, MonoContext *ctx, MonoDomain *domain, gboolean as_vtype)
 {
@@ -7701,7 +7731,9 @@ add_var (Buffer *buf, MonoDebugMethodJitInfo *jit, MonoType *t, MonoDebugVarInfo
 		g_assert_not_reached ();
 	}
 }
+#endif
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static void
 set_var (MonoType *t, MonoDebugVarInfo *var, MonoContext *ctx, MonoDomain *domain, guint8 *val, mgreg_t **reg_locations, MonoContext *restore_ctx)
 {
@@ -7805,6 +7837,7 @@ set_var (MonoType *t, MonoDebugVarInfo *var, MonoContext *ctx, MonoDomain *domai
 		g_assert_not_reached ();
 	}
 }
+#endif
 
 static void
 set_interp_var (MonoType *t, gpointer addr, guint8 *val_buf)
@@ -8361,7 +8394,9 @@ get_source_files_for_type (MonoClass *klass)
 {
 	gpointer iter = NULL;
 	MonoMethod *method;
+#ifndef IL2CPP_MONO_DEBUGGER
 	MonoDebugSourceInfo *sinfo;
+#endif
 	GPtrArray *files;
 	int i, j;
 
@@ -9115,7 +9150,7 @@ domain_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		if (err != ERR_NONE)
 			return err;
 
-		buffer_add_assemblyid (buf, domain, VM_DOMAIN_GET_CORLIB(domain));
+		buffer_add_assemblyid (buf, domain, domain->domain->mbr.obj.vtable->klass->image->assembly);
 		break;
 	}
 	case CMD_APPDOMAIN_CREATE_STRING: {
@@ -9375,6 +9410,7 @@ buffer_add_cattr_arg (Buffer *buf, MonoType *t, MonoDomain *domain, MonoObject *
 		buffer_add_value (buf, t, mono_object_unbox (val), domain);
 }
 
+#ifndef IL2CPP_MONO_DEBUGGER
 static ErrorCode
 buffer_add_cattrs (Buffer *buf, MonoDomain *domain, MonoImage *image, MonoClass *attr_klass, MonoCustomAttrInfo *cinfo)
 {
@@ -9451,6 +9487,7 @@ buffer_add_cattrs (Buffer *buf, MonoDomain *domain, MonoImage *image, MonoClass 
 
 	return ERR_NONE;
 }
+#endif //IL2CPP_MONO_DEBUGGER
 
 /* FIXME: Code duplication with icall.c */
 static void
@@ -9627,6 +9664,7 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		break;
 	}
 	case CMD_TYPE_GET_CATTRS: {
+#ifndef IL2CPP_MONO_DEBUGGER
 		MonoClass *attr_klass;
 		MonoCustomAttrInfo *cinfo;
 
@@ -9645,8 +9683,12 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		if (err != ERR_NONE)
 			return err;
 		break;
+#else
+		return ERR_NOT_IMPLEMENTED;
+#endif //IL2CPP_MONO_DEBUGGER
 	}
 	case CMD_TYPE_GET_FIELD_CATTRS: {
+#ifndef IL2CPP_MONO_DEBUGGER
 		MonoClass *attr_klass;
 		MonoCustomAttrInfo *cinfo;
 		MonoClassField *field;
@@ -9668,8 +9710,12 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		if (err != ERR_NONE)
 			return err;
 		break;
+#else
+		return ERR_NOT_IMPLEMENTED;
+#endif //IL2CPP_MONO_DEBUGGER
 	}
 	case CMD_TYPE_GET_PROPERTY_CATTRS: {
+#ifndef IL2CPP_MONO_DEBUGGER
 		MonoClass *attr_klass;
 		MonoCustomAttrInfo *cinfo;
 		MonoProperty *prop;
@@ -9691,6 +9737,9 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		if (err != ERR_NONE)
 			return err;
 		break;
+#else
+		return ERR_NOT_IMPLEMENTED;
+#endif //IL2CPP_MONO_DEBUGGER
 	}
 	case CMD_TYPE_GET_VALUES:
 	case CMD_TYPE_GET_VALUES_2: {
@@ -10531,6 +10580,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 		break;
 	}
 	case CMD_METHOD_GET_CATTRS: {
+#ifndef IL2CPP_MONO_DEBUGGER
 		MonoError error;
 		MonoClass *attr_klass;
 		MonoCustomAttrInfo *cinfo;
@@ -10550,6 +10600,9 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 		if (err != ERR_NONE)
 			return err;
 		break;
+#else
+		return ERR_NOT_IMPLEMENTED;
+#endif //IL2CPP_MONO_DEBUGGER
 	}
 	case CMD_METHOD_MAKE_GENERIC_METHOD: {
 		MonoError error;
@@ -11139,12 +11192,12 @@ array_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 
 	switch (command) {
 	case CMD_ARRAY_REF_GET_LENGTH:
-		buffer_add_int (buf, VM_ARRAY_GET_RANK(arr));
+		buffer_add_int (buf, arr->obj.vtable->klass->rank);
 		if (!arr->bounds) {
 			buffer_add_int (buf, arr->max_length);
 			buffer_add_int (buf, 0);
 		} else {
-			for (i = 0; i < VM_ARRAY_GET_RANK(arr); ++i) {
+			for (i = 0; i < arr->obj.vtable->klass->rank; ++i) {
 				buffer_add_int (buf, arr->bounds[i].length);
 				buffer_add_int (buf, arr->bounds[i].lower_bound);
 			}
