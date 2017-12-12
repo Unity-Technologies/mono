@@ -21,7 +21,6 @@
 #define VM_INFLATED_METHOD_GET_DECLARING(imethod) il2cpp_method_get_generic_definition(imethod)
 #define VM_INFLATED_METHOD_GET_CLASS_INST(imethod) il2cpp_method_get_generic_class_inst(imethod)
 #define VM_OBJECT_GET_DOMAIN(object) il2cpp_mono_domain_get()
-#define VM_OBJECT_GET_CLASS(object) il2cpp_object_get_class(object)
 #define VM_OBJECT_GET_TYPE(object) il2cpp_mono_object_get_type(object)
 #define VM_GENERIC_CLASS_GET_CONTAINER_CLASS(gklass) il2cpp_generic_class_get_container_class(gklass)
 #define VM_DEFAULTS_OBJECT_CLASS il2cpp_defaults_object_class()
@@ -40,7 +39,6 @@
 #define VM_INFLATED_METHOD_GET_DECLARING(imethod) (imethod)->declaring
 #define VM_INFLATED_METHOD_GET_CLASS_INST(imethod) (imethod)->context.class_inst
 #define VM_OBJECT_GET_DOMAIN(object) ((MonoObject*)object)->vtable->domain
-#define VM_OBJECT_GET_CLASS(object) ((MonoObject*)object)->vtable->klass
 #define VM_OBJECT_GET_TYPE(object) ((MonoReflectionType*)object->vtable->type)->type
 #define VM_GENERIC_CLASS_GET_CONTAINER_CLASS(gklass) (gklass)->container_class
 #define VM_DEFAULTS_OBJECT_CLASS mono_defaults.object_class

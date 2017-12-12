@@ -3649,9 +3649,9 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, DebuggerEv
 					if (mod->data.thread != mono_thread_internal_current ())
 						filtered = TRUE;
 				} else if (mod->kind == MOD_KIND_EXCEPTION_ONLY && ei) {
-					if (mod->data.exc_class && mod->subclasses && !mono_class_is_assignable_from (mod->data.exc_class, VM_OBJECT_GET_CLASS(ei->exc)))
+					if (mod->data.exc_class && mod->subclasses && !mono_class_is_assignable_from (mod->data.exc_class, ei->exc->vtable->klass))
 						filtered = TRUE;
-					if (mod->data.exc_class && !mod->subclasses && mod->data.exc_class !=  VM_OBJECT_GET_CLASS(ei->exc))
+					if (mod->data.exc_class && !mod->subclasses && mod->data.exc_class !=  ei->exc->vtable->klass)
 						filtered = TRUE;
 					if (ei->caught && !mod->caught)
 						filtered = TRUE;
@@ -7333,7 +7333,7 @@ buffer_add_value (Buffer *buf, MonoType *t, void *addr, MonoDomain *domain)
 static gboolean
 obj_is_of_type (MonoObject *obj, MonoType *t)
 {
-	MonoClass *klass = VM_OBJECT_GET_CLASS(obj);
+	MonoClass *klass = obj->vtable->klass;
 	if (!mono_class_is_assignable_from (mono_class_from_mono_type (t), klass)) {
 		if (mono_class_is_transparent_proxy (klass)) {
 			klass = ((MonoTransparentProxy *)obj)->remote_class->proxy_class;
@@ -7480,11 +7480,11 @@ decode_value_internal (MonoType *t, int type, MonoDomain *domain, guint8 *addr, 
 				return err;
 			if (!obj)
 				return ERR_INVALID_ARGUMENT;
-			if (VM_OBJECT_GET_CLASS(obj) != mono_class_from_mono_type (t)) {
-				DEBUG_PRINTF (1, "Expected type '%s', got object '%s'\n", mono_type_full_name (t), VM_OBJECT_GET_CLASS(obj)->name);
+			if (obj->vtable->klass != mono_class_from_mono_type (t)) {
+				DEBUG_PRINTF (1, "Expected type '%s', got object '%s'\n", mono_type_full_name (t), obj->vtable->klass->name);
 				return ERR_INVALID_ARGUMENT;
 			}
-			memcpy (addr, mono_object_unbox (obj), mono_class_value_size (VM_OBJECT_GET_CLASS(obj), NULL));
+			memcpy (addr, mono_object_unbox (obj), mono_class_value_size (obj->vtable->klass, NULL));
 		} else {
 			err = decode_vtype (t, domain, addr, buf, &buf, limit);
 			if (err != ERR_NONE)
@@ -7995,7 +7995,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 		 * Invoke this method directly, currently only Environment.Exit () is supported.
 		 */
 		this_arg = NULL;
-		DEBUG_PRINTF (1, "[%p] Invoking method '%s' on receiver '%s'.\n", (gpointer) (gsize) mono_native_thread_id_get (), mono_method_full_name (invoke->method, TRUE), this_arg ? VM_OBJECT_GET_CLASS(this_arg)->name : "<null>");
+		DEBUG_PRINTF (1, "[%p] Invoking method '%s' on receiver '%s'.\n", (gpointer) (gsize) mono_native_thread_id_get (), mono_method_full_name (invoke->method, TRUE), this_arg ? this_arg->vtable->klass->name : "<null>");
 
 		mono_runtime_try_invoke (invoke->method, NULL, invoke->args, &exc, &error);
 		mono_error_assert_ok (&error);
@@ -8069,7 +8069,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 		}
 	}
 
-	DEBUG_PRINTF (1, "[%p] Invoking method '%s' on receiver '%s'.\n", (gpointer) (gsize) mono_native_thread_id_get (), mono_method_full_name (m, TRUE), this_arg ? VM_OBJECT_GET_CLASS(this_arg)->name : "<null>");
+	DEBUG_PRINTF (1, "[%p] Invoking method '%s' on receiver '%s'.\n", (gpointer) (gsize) mono_native_thread_id_get (), mono_method_full_name (m, TRUE), this_arg ? this_arg->vtable->klass->name : "<null>");
 
 	if (this_arg && VM_OBJECT_GET_DOMAIN(this_arg) != domain)
 		NOT_IMPLEMENTED;
@@ -8162,7 +8162,7 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 		mono_error_cleanup (&error); /* FIXME report error */
 	}
 	mono_stopwatch_stop (&watch);
-	DEBUG_PRINTF (1, "[%p] Invoke result: %p, exc: %s, time: %ld ms.\n", (gpointer) (gsize) mono_native_thread_id_get (), res, exc ? VM_OBJECT_GET_CLASS (exc)->name : NULL, (long)mono_stopwatch_elapsed_ms (&watch));
+	DEBUG_PRINTF (1, "[%p] Invoke result: %p, exc: %s, time: %ld ms.\n", (gpointer) (gsize) mono_native_thread_id_get (), res, exc ? exc->vtable->klass->name : NULL, (long)mono_stopwatch_elapsed_ms (&watch));
 	if (exc) {
 		buffer_add_byte (buf, 0);
 		buffer_add_value (buf, &VM_DEFAULTS_OBJECT_CLASS->byval_arg, &exc, domain);
@@ -11158,10 +11158,10 @@ array_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		// Reordered to avoid integer overflow
 		g_assert (!(index > arr->max_length - len));
 
-		esize = mono_array_element_size (VM_OBJECT_GET_CLASS(arr));
+		esize = mono_array_element_size (arr->obj.vtable->klass);
 		for (i = index; i < index + len; ++i) {
 			elem = (gpointer*)((char*)arr->vector + (i * esize));
-			buffer_add_value (buf, &VM_OBJECT_GET_CLASS(arr)->element_class->byval_arg, elem, VM_OBJECT_GET_DOMAIN(arr));
+			buffer_add_value (buf, &arr->obj.vtable->klass->element_class->byval_arg, elem, VM_OBJECT_GET_DOMAIN(arr));
 		}
 		break;
 	case CMD_ARRAY_REF_SET_VALUES:
@@ -11172,10 +11172,10 @@ array_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		// Reordered to avoid integer overflow
 		g_assert (!(index > arr->max_length - len));
 
-		esize = mono_array_element_size (VM_OBJECT_GET_CLASS(arr));
+		esize = mono_array_element_size (arr->obj.vtable->klass);
 		for (i = index; i < index + len; ++i) {
 			elem = (gpointer*)((char*)arr->vector + (i * esize));
-			decode_value (&VM_OBJECT_GET_CLASS(arr)->element_class->byval_arg, VM_OBJECT_GET_DOMAIN(arr), (guint8 *)elem, p, &p, end);
+			decode_value (&arr->obj.vtable->klass->element_class->byval_arg, VM_OBJECT_GET_DOMAIN(arr), (guint8 *)elem, p, &p, end);
 		}
 		break;
 	default:
@@ -11269,7 +11269,7 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 	MonoClass *obj_type;
 	gboolean remote_obj = FALSE;
 
-	obj_type = VM_OBJECT_GET_CLASS(obj);
+	obj_type = obj->vtable->klass;
 	if (mono_class_is_transparent_proxy (obj_type)) {
 		obj_type = ((MonoTransparentProxy *)obj)->remote_class->proxy_class;
 		remote_obj = TRUE;
