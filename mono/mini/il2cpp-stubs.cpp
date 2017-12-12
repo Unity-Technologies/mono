@@ -171,9 +171,9 @@ gboolean il2cpp_mono_class_init (MonoClass *klass)
 	return 0;
 }
 
-Il2CppMonoVTable* il2cpp_mono_class_vtable (MonoDomain *domain, MonoClass *klass)
+MonoVTable* il2cpp_mono_class_vtable (MonoDomain *domain, MonoClass *klass)
 {
-	return (Il2CppMonoVTable*)((Il2CppClass*)klass)->vtable;
+	return (MonoVTable*)((Il2CppClass*)klass)->vtable;
 }
 
 MonoClassField* il2cpp_mono_class_get_field_from_name (MonoClass *klass, const char *name)
@@ -303,7 +303,7 @@ void il2cpp_mono_field_set_value (MonoObject *obj, MonoClassField *field, void *
 	IL2CPP_ASSERT(0 && "This method is not yet implemented");
 }
 
-void il2cpp_mono_field_static_set_value (Il2CppMonoVTable *vt, MonoClassField *field, void *value)
+void il2cpp_mono_field_static_set_value (MonoVTable *vt, MonoClassField *field, void *value)
 {
 	il2cpp::vm::Field::StaticSetValue((FieldInfo*)field, value);
 }
@@ -866,13 +866,13 @@ MonoObject* il2cpp_mono_value_box_checked(MonoDomain* domain, MonoClass* klass, 
 	return (MonoObject*)il2cpp::vm::Object::Box((Il2CppClass*)klass, value);
 }
 
-void il2cpp_mono_field_static_get_value_checked(Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
+void il2cpp_mono_field_static_get_value_checked(MonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
 {
 	error_init(error);
 	il2cpp::vm::Field::StaticGetValue((FieldInfo*)field, value);
 }
 
-void il2cpp_mono_field_static_get_value_for_thread(MonoInternalThread* thread, Il2CppMonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
+void il2cpp_mono_field_static_get_value_for_thread(MonoInternalThread* thread, MonoVTable* vt, MonoClassField* field, void* value, MonoError* error)
 {
 	error_init(error);
 	il2cpp::vm::Field::StaticGetValueForThread((FieldInfo*)field, value, (Il2CppInternalThread*)thread);

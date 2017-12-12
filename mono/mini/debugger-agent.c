@@ -9933,7 +9933,11 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		MonoVTable *vtable = mono_class_vtable (domain, klass);
 
 		if (vtable)
+#ifndef IL2CPP_MONO_DEBUGGER
 			buffer_add_int (buf, (vtable->initialized || vtable->init_failed) ? 1 : 0);
+#else
+			buffer_add_int (buf, vtable->initialized ? 1 : 0);
+#endif //IL2CPP_MONO_DEBUGGER
 		else
 			buffer_add_int (buf, 0);
 		break;
