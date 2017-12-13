@@ -810,11 +810,10 @@ static void suspend_init (void);
 #ifndef IL2CPP_MONO_DEBUGGER
 static void ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint *sp, MonoSeqPointInfo *info, MonoContext *ctx, DebuggerTlsData *tls, gboolean step_to_catch,
 					  StackFrame **frames, int nframes);
-#endif
-#ifdef IL2CPP_MONO_DEBUGGER
+#else
 static void ss_start_il2cpp(SingleStepReq *ss_req, DebuggerTlsData *tls);
 static void GetSequencePointsAndSourceFilesUniqueSequencePoints(MonoMethod* method, GPtrArray** sequencePoints, GPtrArray** uniqueFileSequencePoints, GArray** uniqueFileSequencePointIndices);
-#endif
+#endif //IL2CPP_MONO_DEBUGER
 static ErrorCode ss_create (MonoInternalThread *thread, StepSize size, StepDepth depth, StepFilter filter, EventRequest *req);
 static void ss_destroy (SingleStepReq *req);
 
@@ -5330,7 +5329,6 @@ process_breakpoint (DebuggerTlsData *tls, gboolean from_signal)
 	ip = (guint8 *)MONO_CONTEXT_GET_IP (ctx);
 	ji = mini_jit_info_table_find (mono_domain_get (), (char*)ip, NULL);
 
-#ifndef IL2CPP_MONO_DEBUGGER
 	if (!ji) {
 		/* Interpreter */
 		// FIXME: Pass a flag instead to detect this
@@ -5345,7 +5343,6 @@ process_breakpoint (DebuggerTlsData *tls, gboolean from_signal)
 		ji = mono_interp_frame_get_jit_info (frame);
 		ip = mono_interp_frame_get_ip (frame);
 	}
-#endif
 
 	g_assert (ji && !ji->is_trampoline);
 	method = jinfo_get_method (ji);
@@ -5427,14 +5424,12 @@ process_breakpoint (DebuggerTlsData *tls, gboolean from_signal)
 			//make sure we have enough data to get current async method instance id
 			if (tls->frame_count == 0 || !ensure_jit (tls->frames [0]))
 				continue;
-#ifndef IL2CPP_MONO_DEBUGGER
 			//Check method is async before calling get_this_async_id
 			MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
 			if (!asyncMethod)
 				continue;
 			else
 				mono_debug_free_method_async_debug_info (asyncMethod);
-#endif
 			//breakpoint was hit in parallelly executing async method, ignore it
 			if (ss_req->async_id != get_this_async_id (tls->frames [0]))
 				continue;
@@ -5476,23 +5471,11 @@ process_breakpoint (DebuggerTlsData *tls, gboolean from_signal)
 	 * resume.
 	 */
 	if (ss_events)
-#ifndef IL2CPP_MONO_DEBUGGER
 		process_event (EVENT_KIND_STEP, method, 0, ctx, ss_events, suspend_policy);
-#else
-		process_event (EVENT_KIND_STEP, method, 0, ctx, ss_events, suspend_policy, 0);
-#endif
 	if (bp_events)
-#ifndef IL2CPP_MONO_DEBUGGER
 		process_event (kind, method, 0, ctx, bp_events, suspend_policy);
-#else
-		process_event (kind, method, 0, ctx, bp_events, suspend_policy, 0);
-#endif
 	if (enter_leave_events)
-#ifndef IL2CPP_MONO_DEBUGGER
 		process_event (kind, method, 0, ctx, enter_leave_events, suspend_policy);
-#else
-		process_event (kind, method, 0, ctx, enter_leave_events, suspend_policy, 0);
-#endif
 }
 #endif
 
@@ -6139,12 +6122,8 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 
 		if (ctx && !frames) {
 			/* Need parent frames */
-#ifndef IL2CPP_MONO_DEBUGGER
 			if (!tls->context.valid)
 				mono_thread_state_init_from_monoctx (&tls->context, ctx);
-#else
-			NOT_IMPLEMENTED;
-#endif
 			compute_frame_info (tls->thread, tls);
 			frames = tls->frames;
 			nframes = tls->frame_count;
@@ -6216,11 +6195,7 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 				StackFrame *frame = frames [frame_index];
 
 				method = frame->method;
-#ifndef IL2CPP_MONO_DEBUGGER
 				found_sp = mono_find_prev_seq_point_for_native_offset (frame->domain, frame->method, frame->native_offset, &info, &local_sp);
-#else
-				found_sp = FALSE;
-#endif
 				sp = (found_sp)? &local_sp : NULL;
 				frame_index ++;
 				if (sp && sp->next_len != 0)
@@ -6235,11 +6210,7 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 					StackFrame *frame = frames [frame_index];
 
 					method = frame->method;
-#ifndef IL2CPP_MONO_DEBUGGER
 					found_sp = mono_find_prev_seq_point_for_native_offset (frame->domain, frame->method, frame->native_offset, &info, &local_sp);
-#else
-					found_sp = FALSE;
-#endif
 					sp = (found_sp)? &local_sp : NULL;
 					if (sp && sp->next_len != 0)
 						break;
@@ -6252,11 +6223,7 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 					StackFrame *frame = frames [frame_index];
 
 					parent_sp_method = frame->method;
-#ifndef IL2CPP_MONO_DEBUGGER
 					found_sp = mono_find_prev_seq_point_for_native_offset (frame->domain, frame->method, frame->native_offset, &parent_info, &local_parent_sp);
-#else
-					found_sp = FALSE;
-#endif
 					parent_sp = found_sp ? &local_parent_sp : NULL;
 					if (found_sp && parent_sp->next_len != 0)
 						break;
@@ -6267,7 +6234,6 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 		}
 
 		if (sp && sp->next_len > 0) {
-#ifndef IL2CPP_MONO_DEBUGGER
 			SeqPoint* next = g_new(SeqPoint, sp->next_len);
 
 			mono_seq_point_init_next (info, *sp, next);
@@ -6277,13 +6243,9 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 				ss_bp_add_one (ss_req, &ss_req_bp_count, &ss_req_bp_cache, method, next_sp->il_offset);
 			}
 			g_free (next);
-#else
-			NOT_IMPLEMENTED;
-#endif
 		}
 
 		if (parent_sp) {
-#ifndef IL2CPP_MONO_DEBUGGER
 			SeqPoint* next = g_new(SeqPoint, parent_sp->next_len);
 
 			mono_seq_point_init_next (parent_info, *parent_sp, next);
@@ -6293,9 +6255,6 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 				ss_bp_add_one (ss_req, &ss_req_bp_count, &ss_req_bp_cache, parent_sp_method, next_sp->il_offset);
 			}
 			g_free (next);
-#else
-			NOT_IMPLEMENTED;
-#endif
 		}
 
 		if (ss_req->nframes == 0)
@@ -6313,7 +6272,6 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 		}
 
 		if (ss_req->depth == STEP_DEPTH_OVER) {
-#ifndef IL2CPP_MONO_DEBUGGER
 			/* Need to stop in catch clauses as well */
 			for (i = 0; i < nframes; ++i) {
 				StackFrame *frame = frames[i];
@@ -6331,9 +6289,6 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 					}
 				}
 			}
-#else
-			NOT_IMPLEMENTED;
-#endif
 		}
 
 		if (ss_req->depth == STEP_DEPTH_INTO) {
@@ -6364,9 +6319,7 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 	if (ss_req_bp_cache)
 		g_hash_table_destroy (ss_req_bp_cache);
 }
-#endif
-#ifdef IL2CPP_MONO_DEBUGGER
-
+#else
 static void
 ss_start_il2cpp(SingleStepReq *ss_req, DebuggerTlsData *tls)
 {
