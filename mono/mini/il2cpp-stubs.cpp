@@ -1438,21 +1438,17 @@ const char** il2cpp_get_source_files_for_type(MonoClass *klass, int *count)
 	return il2cpp::utils::Debugger::GetTypeSourceFiles((Il2CppClass*)klass, *count);
 }
 
-MonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imethod)
+MonoMethod* il2cpp_method_get_generic_definition(MonoMethodInflated *method)
 {
-	MethodInfo *method = (MethodInfo*)imethod;
-
 	if (!method->is_inflated || method->is_generic)
 		return NULL;
 
-	return (MonoMethod*)((MethodInfo*)imethod)->genericMethod->methodDefinition;
+	return (MonoMethod*)((MethodInfo*)method)->genericMethod->methodDefinition;
 }
 
 
-MonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod)
+MonoGenericInst* il2cpp_method_get_generic_class_inst(MonoMethodInflated *method)
 {
-	MethodInfo *method = (MethodInfo*)imethod;
-
 	if (!method->is_inflated || method->is_generic)
 		return NULL;
 

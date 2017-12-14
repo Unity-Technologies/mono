@@ -4,10 +4,11 @@
 #if defined(RUNTIME_IL2CPP)
 #include "il2cpp-c-types.h"
 #include "il2cpp-api.h"
-#endif // RUNTIME_IL2CPP
+#else
 #include <mono/mini/mini.h>
 #include <mono/sgen/sgen-conf.h>
 #include <mono/metadata/profiler.h>
+#endif // RUNTIME_IL2CPP
 
 #ifdef IL2CPP_MONO_DEBUGGER
 
@@ -47,8 +48,6 @@
 
 #define MonoMethodSignature Il2CppMonoMethodSignature
 #define MonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks
-#define StackFrameInfo Il2CppMonoStackFrameInfo
-#define MonoMethodInflated Il2CppMonoMethodInflated
 #define debug_options il2cpp_mono_debug_options
 #define MonoTypeNameParse Il2CppMonoTypeNameParse
 
@@ -442,8 +441,8 @@ gboolean il2cpp_field_is_deleted(MonoClassField *field);
 MonoClass* il2cpp_iterate_loaded_classes(void* *iter);
 MonoAssembly* il2cpp_domain_get_assemblies_iter(MonoAppDomain *domain, void* *iter);
 const char** il2cpp_get_source_files_for_type(MonoClass *klass, int *count);
-MonoMethod* il2cpp_method_get_generic_definition(Il2CppMonoMethodInflated *imethod);
-MonoGenericInst* il2cpp_method_get_generic_class_inst(Il2CppMonoMethodInflated *imethod);
+MonoMethod* il2cpp_method_get_generic_definition(MonoMethodInflated *method);
+MonoGenericInst* il2cpp_method_get_generic_class_inst(MonoMethodInflated *method);
 MonoClass* il2cpp_generic_class_get_container_class(MonoGenericClass *gclass);
 void il2cpp_mono_thread_detach(MonoThread* thread);
 MonoClass* il2cpp_mono_get_string_class (void);

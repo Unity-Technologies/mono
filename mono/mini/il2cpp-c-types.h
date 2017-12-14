@@ -14,6 +14,7 @@
 #define MonoClass Il2CppClass
 #define MonoImage Il2CppImage
 #define MonoMethod MethodInfo
+#define MonoMethodInflated MethodInfo
 #define MonoClassField FieldInfo
 #define MonoArrayType Il2CppArrayType
 #define MonoGenericParam Il2CppGenericParameter
@@ -49,37 +50,10 @@
 //still stubs everywhere
 typedef struct _Il2CppMonoMethodSignature Il2CppMonoMethodSignature;
 typedef struct _Il2CppMonoRuntimeExceptionHandlingCallbacks Il2CppMonoRuntimeExceptionHandlingCallbacks;
-typedef struct _Il2CppMonoStackFrameInfo Il2CppMonoStackFrameInfo;
 typedef struct Il2CppDefaults Il2CppMonoDefaults;
-typedef struct _Il2CppMonoMethodInflated Il2CppMonoMethodInflated;
 typedef struct _Il2CppMonoTypeNameParse Il2CppMonoTypeNameParse;
 
-struct _Il2CppMonoMethodInflated
-{
-	MonoMethod *declaring;
-	MonoGenericContext context;
-};
-
-struct _Il2CppMonoStackFrameInfo
-{
-	MonoStackFrameType type;
-	MonoJitInfo *ji;
-	MonoMethod *method;
-	MonoMethod *actual_method;
-	MonoDomain *domain;
-	gboolean managed;
-	gboolean async_context;
-	int native_offset;
-	int il_offset;
-	gpointer interp_exit_data;
-	gpointer interp_frame;
-	gpointer lmf;
-	guint32 unwind_info_len;
-	guint8 *unwind_info;
-	mgreg_t **reg_locations;
-};
-
-typedef gboolean (*Il2CppMonoInternalStackWalk) (Il2CppMonoStackFrameInfo *frame, MonoContext *ctx, gpointer data);
+typedef gboolean (*Il2CppMonoInternalStackWalk) (MonoStackFrameInfo *frame, MonoContext *ctx, gpointer data);
 
 struct _Il2CppMonoRuntimeExceptionHandlingCallbacks
 {
@@ -114,7 +88,7 @@ typedef void (*Il2CppMonoProfileAssemblyFunc) (MonoProfiler *prof, MonoAssembly 
 typedef void (*Il2CppMonoProfileJitResult) (MonoProfiler *prof, MonoMethod *method, MonoJitInfo* jinfo, int result);
 typedef void (*Il2CppMonoProfileAssemblyResult) (MonoProfiler *prof, MonoAssembly *assembly, int result);
 typedef void (*Il2CppMonoProfileThreadFunc) (MonoProfiler *prof, uintptr_t tid);
-typedef gboolean (*Il2CppMonoJitStackWalk) (Il2CppMonoStackFrameInfo *frame, MonoContext *ctx, gpointer data);
+typedef gboolean (*Il2CppMonoJitStackWalk) (MonoStackFrameInfo *frame, MonoContext *ctx, gpointer data);
 typedef void (*Il2CppDomainFunc) (MonoDomain *domain, void* user_data);
 
 typedef void (*emit_assembly_load_callback)(void*, void*);
