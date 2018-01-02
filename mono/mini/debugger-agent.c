@@ -12071,7 +12071,7 @@ unity_process_breakpoint_inner(DebuggerTlsData *tls, gboolean from_signal, Il2Cp
 			inst = (BreakpointInstance *)g_ptr_array_index(bp->children, j);
 			if (inst->il_offset == sequencePoint->ilOffset) {
 				if (bp->req->event_kind == EVENT_KIND_STEP) {
-					for (int k = 0; j < bp->children->len; ++k)
+					for (int k = 0; k < bp->children->len; ++k)
 					{
 						BreakpointInstance *inst1 = (BreakpointInstance *)g_ptr_array_index(bp->children, k);
 						if (inst1->seq_point == sequencePoint)
