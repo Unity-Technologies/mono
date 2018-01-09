@@ -91,6 +91,35 @@ mono_100ns_datetime (void)
 
 #include <time.h>
 
+#if defined(HOST_DARWIN)
+static struct timeval time_at_boot = (struct timeval) {0};
+
+static struct timeval last_time = (struct timeval) {0};
+
+static const long max_delta_time_jump_before_cache_invalidation_us= 33000; // Span of one 30FPS frame
+
+inline void test_time_and_possibly_refresh_cache(struct timeval* now)
+{
+	struct timeval difference;
+
+	timersub(now, &last_time, &difference);
+
+	gint64 diff_microseconds = ((gint64)difference.tv_sec * 1e6) + difference.tv_usec;
+
+	if (diff_microseconds > max_delta_time_jump_before_cache_invalidation_us|| diff_microseconds < 0)
+	{
+		size_t size = sizeof(time_at_boot);
+		int mib [2];
+		mib [0] = CTL_KERN;
+		mib [1] = KERN_BOOTTIME;
+
+		sysctl(mib, 2, &time_at_boot, &size, NULL, 0);
+	}
+
+	last_time = *now;
+}
+#endif
+
 static gint64
 get_boot_time (void)
 {
@@ -129,6 +158,13 @@ get_boot_time (void)
 gint64
 mono_msec_boottime (void)
 {
+#if defined (HOST_DARWIN)
+	struct timeval now, difference;
+	gettimeofday(&now, NULL);
+	test_time_and_possibly_refresh_cache(&now);
+	timersub(&now, &time_at_boot, &difference);
+	return ((int64_t)difference.tv_sec * 1000000 + difference.tv_usec) * 10;
+#else
 	static gint64 boot_time = 0;
 	gint64 now;
 	if (!boot_time)
@@ -136,6 +172,7 @@ mono_msec_boottime (void)
 	now = mono_100ns_datetime ();
 	/*printf ("now: %llu (boot: %llu) ticks: %llu\n", (gint64)now, (gint64)boot_time, (gint64)(now - boot_time));*/
 	return (now - boot_time)/10000;
+#endif
 }
 
 /* Returns the number of 100ns ticks from unspecified time: this should be monotonic */
