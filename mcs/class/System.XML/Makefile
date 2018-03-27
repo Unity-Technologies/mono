@@ -23,6 +23,10 @@ ifeq (2.1, $(FRAMEWORK_VERSION))
 LIB_MCS_FLAGS += -d:AGCLR -d:DISABLE_XSLT_COMPILER -d:DISABLE_XSLT_SCRIPT,MONO_HYBRID_SYSTEM_XML -d:DISABLE_CAS_USE
 endif
 
+ifdef UNITY_JIT_PROFILE
+LIB_MCS_FLAGS += -d:AGCLR -d:DISABLE_XSLT_COMPILER -d:DISABLE_XSLT_SCRIPT,MONO_HYBRID_SYSTEM_XML -d:DISABLE_CAS_USE
+endif
+
 TEST_LIB_REFS = System.Data System.Core
 TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -nowarn:0618 -nowarn:219 -nowarn:169
 
@@ -31,8 +35,10 @@ LIBRARY_WARN_AS_ERROR = yes
 ifneq (bare/,$(intermediate))
 LIB_REFS += secxml/System 
 ifndef MOBILE_PROFILE
+ifndef UNITY_JIT_PROFILE
 LIB_REFS += System.Configuration
 LIB_MCS_FLAGS += -d:CONFIGURATION_DEP
+endif
 endif
 else
 LIB_REFS += $(intermediate)System
@@ -77,7 +83,9 @@ system_xml_library_deps := 				\
 	$(bare_libdir)/System.Xml.dll
 
 ifndef MOBILE_PROFILE
+ifndef UNITY_JIT_PROFILE
 system_xml_library_deps += $(the_libdir_base)System.Configuration.dll
+endif
 endif
 
 artifacts = $(system_xml_library_deps)	\

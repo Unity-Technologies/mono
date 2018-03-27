@@ -335,6 +335,7 @@ namespace System.Web.Services.Description {
                 ExtraCodeClasses.Clear();
                 soapImporter = new SoapSchemaImporter(AbstractSchemas, ServiceImporter.CodeGenerationOptions, ImportContext);
                 xmlImporter = new XmlSchemaImporter(ConcreteSchemas, ServiceImporter.CodeGenerationOptions, ServiceImporter.CodeGenerator, ImportContext);
+#if !UNITY_JIT
                 foreach (Type extensionType in ServiceImporter.Extensions) {
                     xmlImporter.Extensions.Add(extensionType.FullName, extensionType);
                 }
@@ -342,6 +343,7 @@ namespace System.Web.Services.Description {
                 // 
                 xmlImporter.Extensions.Add(TypedDataSetSchemaImporterExtension);
                 xmlImporter.Extensions.Add(new DataSetSchemaImporterExtension());
+#endif
                 xmlExporter = new XmlCodeExporter(this.CodeNamespace, ServiceImporter.CodeCompileUnit, ServiceImporter.CodeGenerator, ServiceImporter.CodeGenerationOptions, ExportContext);
                 soapExporter = new SoapCodeExporter(this.CodeNamespace, null, ServiceImporter.CodeGenerator, ServiceImporter.CodeGenerationOptions, ExportContext);
             }

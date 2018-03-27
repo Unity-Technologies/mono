@@ -73,11 +73,13 @@ namespace System.Web.Services.Description {
             get {
                 if (importer == null) {
                     importer = new XmlSchemaImporter(ImportContext.ConcreteSchemas, ImportContext.ServiceImporter.CodeGenerationOptions, ImportContext.ServiceImporter.CodeGenerator, ImportContext.ImportContext);
+#if !UNITY_JIT
                     foreach (Type extensionType in ImportContext.ServiceImporter.Extensions) {
                         importer.Extensions.Add(extensionType.FullName, extensionType);
                     }
                     importer.Extensions.Add(new System.Data.Design.TypedDataSetSchemaImporterExtension());
                     importer.Extensions.Add(new DataSetSchemaImporterExtension());
+#endif
                 }
                 return importer;
             }

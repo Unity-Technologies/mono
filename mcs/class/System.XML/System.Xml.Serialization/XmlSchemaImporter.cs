@@ -44,7 +44,7 @@ using System.Xml.Serialization.Configuration;
 namespace System.Xml.Serialization 
 {
 	public class XmlSchemaImporter
-#if !MOBILE
+#if !MOBILE && !UNITY
 		: SchemaImporter
 #endif
 	{

@@ -1,0 +1,11 @@
+#include mobile_System.Xml.dll.sources
+
+../referencesource/System.Xml/System/Xml/Serialization/Advanced/SchemaImporterExtension.cs
+
+System.Xml.Serialization/CodeExporter.cs
+System.Xml.Serialization/MapCodeGenerator.cs
+System.Xml.Serialization/XmlCodeExporter.cs
+System.Xml.Serialization/SchemaImporter.cs
+System.Xml.Serialization/SoapSchemaImporter.cs
+System.Xml.Serialization/SoapCodeExporter.cs
+System.Xml.Serialization/SoapSchemaExporter.cs
