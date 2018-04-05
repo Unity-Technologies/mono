@@ -35,6 +35,8 @@
 #include <stdio.h>
 #endif
 
+#if !defined(__APPLE__) || !defined(TARGET_ARM64)
+
 void
 mono_hwcap_arch_init (void)
 {
@@ -219,3 +221,5 @@ mono_hwcap_arch_init (void)
 	}
 #endif
 }
+
+#endif
