@@ -188,14 +188,12 @@ namespace System.Globalization {
             // Go to native side and get pointer to the native table
             byte * pDataTable = GlobalizationAssembly.GetGlobalizationResourceBytePtr(typeof(CharUnicodeInfo).Assembly, UNICODE_INFO_FILE_NAME);
 
-            UnicodeDataHeader* mainHeader = (UnicodeDataHeader*)pDataTable;
-
             // Set up the native pointer to different part of the tables.
-            s_pCategoryLevel1Index = (ushort*) (pDataTable + EndianSwap(mainHeader->OffsetToCategoriesIndex));
-            s_pCategoriesValue = (byte*) (pDataTable + EndianSwap(mainHeader->OffsetToCategoriesValue));
-            s_pNumericLevel1Index = (ushort*) (pDataTable + EndianSwap(mainHeader->OffsetToNumbericIndex));
-            s_pNumericValues = (byte*) (pDataTable + EndianSwap(mainHeader->OffsetToNumbericValue));
-            s_pDigitValues = (DigitValues*) (pDataTable + EndianSwap(mainHeader->OffsetToDigitValue));
+            s_pCategoryLevel1Index = (ushort*) (pDataTable + EndianSwap(Marshal.ReadInt32((IntPtr)pDataTable, (int)Marshal.OffsetOf(typeof(UnicodeDataHeader), "OffsetToCategoriesIndex"))));
+            s_pCategoriesValue = (byte*) (pDataTable + EndianSwap(Marshal.ReadInt32((IntPtr)pDataTable, (int)Marshal.OffsetOf(typeof(UnicodeDataHeader), "OffsetToCategoriesValue"))));
+            s_pNumericLevel1Index = (ushort*) (pDataTable + EndianSwap(Marshal.ReadInt32((IntPtr)pDataTable, (int)Marshal.OffsetOf(typeof(UnicodeDataHeader), "OffsetToNumbericIndex"))));
+            s_pNumericValues = (byte*) (pDataTable + EndianSwap(Marshal.ReadInt32((IntPtr)pDataTable, (int)Marshal.OffsetOf(typeof(UnicodeDataHeader), "OffsetToNumbericValue"))));
+            s_pDigitValues = (DigitValues*) (pDataTable + EndianSwap(Marshal.ReadInt32((IntPtr)pDataTable, (int)Marshal.OffsetOf(typeof(UnicodeDataHeader), "OffsetToDigitValue"))));
 
             return true;
         }
