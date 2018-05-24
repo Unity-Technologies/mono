@@ -28,7 +28,7 @@ static void ContextInsertClass(CollectMetadataContext* context, MonoClass* klass
 	 * If we use g_hash_table_lookup it returns the value which we were comparing to NULL. The problem is
 	 * that 0 is a valid class index and was confusing our logic.
 	*/
-	if (klass->inited && g_hash_table_lookup_extended (context->allTypes, klass, &orig_key, &value))
+	if (klass->inited && !g_hash_table_lookup_extended (context->allTypes, klass, &orig_key, &value))
 		g_hash_table_insert(context->allTypes, klass, GINT_TO_POINTER (context->currentIndex++));
 }
 
