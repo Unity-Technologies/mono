@@ -1050,24 +1050,6 @@ mono_gc_get_logfile (void)
 	return sgen_gc_debug_file;
 }
 
-void
-mono_gc_params_set (const char* options)
-{
-	if (gc_params_options)
-		g_free (gc_params_options);
-
-	gc_params_options = g_strdup (options);
-}
-
-void
-mono_gc_debug_set (const char* options)
-{
-	if (gc_debug_options)
-		g_free (gc_debug_options);
-
-	gc_debug_options = g_strdup (options);
-}
-
 static void
 scan_finalizer_entries (SgenPointerQueue *fin_queue, ScanCopyContext ctx)
 {
@@ -3396,11 +3378,7 @@ sgen_gc_init (void)
 
 	mono_coop_mutex_init (&sgen_interruption_mutex);
 
-	if ((env = g_getenv (MONO_GC_PARAMS_NAME)) || gc_params_options) {
-		params_opts = g_strdup_printf ("%s,%s", gc_params_options ? gc_params_options : "", env ? env : "");
-		g_free (env);
-	}
-
+	params_opts = mono_gc_params_get();
 	if (params_opts) {
 		opts = g_strsplit (params_opts, ",", -1);
 		for (ptr = opts; *ptr; ++ptr) {
@@ -3617,11 +3595,7 @@ sgen_gc_init (void)
 	sgen_pinning_init ();
 	sgen_cement_init (cement_enabled);
 
-	if ((env = g_getenv (MONO_GC_DEBUG_NAME)) || gc_debug_options) {
-		debug_opts = g_strdup_printf ("%s,%s", gc_debug_options ? gc_debug_options  : "", env ? env : "");
-		g_free (env);
-	}
-
+	debug_opts = mono_gc_debug_get();
 	if (debug_opts) {
 		gboolean usage_printed = FALSE;
 
