@@ -304,44 +304,42 @@ void GC_stop_world()
 	  Sleep(10);
 	thread_table[i].suspended = TRUE;
 #     else
-	/* Apparently the Windows 95 GetOpenFileName call creates	*/
-	/* a thread that does not properly get cleaned up, and		*/
-	/* SuspendThread on its descriptor may provoke a crash.		*/
-	/* This reduces the probability of that event, though it still	*/
-	/* appears there's a race here.					*/
-	DWORD exitCode; 
-	if (GetExitCodeThread(thread_table[i].handle,&exitCode) &&
-            exitCode != STILL_ACTIVE) {
+
+      while (InterlockedCompareExchange (&thread_table[i].in_use, 0, 0)) {
+        /* Apparently the Windows 95 GetOpenFileName call creates	*/
+        /* a thread that does not properly get cleaned up, and		*/
+        /* SuspendThread on its descriptor may provoke a crash.		*/
+        /* This reduces the probability of that event, though it still	*/
+        /* appears there's a race here.					*/
+        DWORD exitCode;
+        if (GetExitCodeThread (thread_table[i].handle, &exitCode) && exitCode != STILL_ACTIVE) {
           thread_table[i].stack_base = 0; /* prevent stack from being pushed */
 #         ifndef CYGWIN32
-            /* this breaks pthread_join on Cygwin, which is guaranteed to  */
-	    /* only see user pthreads 					   */
-	    thread_table[i].in_use = FALSE;
-	    CloseHandle(thread_table[i].handle);
+          /* this breaks pthread_join on Cygwin, which is guaranteed to  */
+          /* only see user pthreads 					   */
+          InterlockedExchange (&thread_table[i].in_use, FALSE);
+          CloseHandle (thread_table[i].handle);
 #         endif
-	  continue;
-	}
+          break; /* thread has exited mark it as unused and break out of while loop */
+        }
 
-	while (InterlockedCompareExchange (&thread_table[i].in_use, 0, 0)) {
-		DWORD res;
-		do {
-			res = SuspendThread (thread_table[i].handle);
-		} while (res == -1);
+        if (SuspendThread (thread_table[i].handle) == -1)
+          continue; /* retry suspension of thread if it's still running */
 
-		thread_table[i].saved_context.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
-		if (GetThreadContext (thread_table[i].handle, &thread_table[i].saved_context)) {
-			thread_table[i].suspended = TRUE;
-			break; /* success case break out of loop */
-		}
+        thread_table[i].saved_context.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
+        if (GetThreadContext (thread_table[i].handle, &thread_table[i].saved_context)) {
+          thread_table[i].suspended = TRUE;
+          break; /* success case break out of loop */
+        }
 
-		/* resume thread and try to suspend in better location */
-		if (ResumeThread (thread_table[i].handle) == (DWORD)-1)
-			ABORT ("ResumeThread failed");
+        /* resume thread and try to suspend in better location */
+        if (ResumeThread (thread_table[i].handle) == (DWORD)-1)
+          ABORT ("ResumeThread failed");
 
-		/* after a million tries something must be wrong */
-		if (iterations++ == 1000 * 1000)
-			ABORT ("SuspendThread loop failed");
-	}
+        /* after a million tries something must be wrong */
+        if (iterations++ == 1000 * 1000)
+          ABORT ("SuspendThread loop failed");
+      }
 
 #     endif
     }
