@@ -10,9 +10,9 @@ if ($externalBuildDeps ne "")
 	my $autoconfVersion = "2.69";
 	my $automakeVersion = "1.15";
 	my $libtoolVersion = "2.4.6";
-	my $autoconfDir = "$externalBuildDeps/autoconf-$autoconfVersion";
-	my $automakeDir = "$externalBuildDeps/automake-$automakeVersion";
-	my $libtoolDir = "$externalBuildDeps/libtool-$libtoolVersion";
+	my $autoconfDir = "$externalBuildDeps/autoconf-2-69/autoconf-$autoconfVersion";
+	my $automakeDir = "$externalBuildDeps/automake-1-15/automake-$automakeVersion";
+	my $libtoolDir = "$externalBuildDeps/libtool-2-4-6/libtool-$libtoolVersion";
 
 	my $builtToolsDir = "$externalBuildDeps/built-tools";
 
@@ -20,7 +20,7 @@ if ($externalBuildDeps ne "")
 
 	if (!(-d "$autoconfDir"))
 	{
-		chdir("$externalBuildDeps") eq 1 or die ("failed to chdir to external directory\n");
+		chdir("$externalBuildDeps/autoconf-2-69") eq 1 or die ("failed to chdir to external directory\n");
 		system("tar xzf autoconf-$autoconfVersion.tar.gz") eq 0  or die ("failed to extract autoconf\n");
 
 		chdir("$autoconfDir") eq 1 or die ("failed to chdir to autoconf directory\n");
@@ -35,7 +35,7 @@ if ($externalBuildDeps ne "")
 
 	if (!(-d "$automakeDir"))
 	{
-		chdir("$externalBuildDeps") eq 1 or die ("failed to chdir to external directory\n");
+		chdir("$externalBuildDeps/automake-1-15") eq 1 or die ("failed to chdir to external directory\n");
 		system("tar xzf automake-$automakeVersion.tar.gz") eq 0  or die ("failed to extract automake\n");
 
 		chdir("$automakeDir") eq 1 or die ("failed to chdir to automake directory\n");
@@ -50,7 +50,7 @@ if ($externalBuildDeps ne "")
 
 	if (!(-d "$libtoolDir"))
 	{
-		chdir("$externalBuildDeps") eq 1 or die ("failed to chdir to external directory\n");
+		chdir("$externalBuildDeps/libtool-2-4-6") eq 1 or die ("failed to chdir to external directory\n");
 		system("tar xzf libtool-$libtoolVersion.tar.gz") eq 0  or die ("failed to extract libtool\n");
 	
 		chdir("$libtoolDir") eq 1 or die ("failed to chdir to libtool directory\n");
