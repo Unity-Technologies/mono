@@ -166,8 +166,7 @@ static void AddMetadataType(gpointer key, gpointer value, gpointer user_data)
 		}
 
 		vtable = mono_class_try_get_vtable(mono_domain_get(), klass);
-		statics_data = vtable ? mono_vtable_get_static_field_data(vtable) : NULL;
-
+		statics_data = vtable ? vtable->data : NULL;
 		type->staticsSize = statics_data ? mono_class_data_size(klass) : 0;
 		type->statics = NULL;
 
