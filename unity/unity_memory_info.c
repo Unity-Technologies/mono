@@ -11,7 +11,7 @@
 #include <libgc/include/gc.h>
 #include <libgc/include/private/gc_priv.h>
 #include <mono/metadata/gc-internal.h>
-
+#include <mono/metadata/mono-debug-debugger.h>
 #include <glib.h>
 
 typedef struct CollectMetadataContext
@@ -166,7 +166,8 @@ static void AddMetadataType(gpointer key, gpointer value, gpointer user_data)
 		}
 
 		vtable = mono_class_try_get_vtable(mono_domain_get(), klass);
-		statics_data = vtable ? vtable->data : NULL;
+		statics_data = vtable ? mono_vtable_get_static_field_data(vtable) : NULL;
+
 		type->staticsSize = statics_data ? mono_class_data_size(klass) : 0;
 		type->statics = NULL;
 
