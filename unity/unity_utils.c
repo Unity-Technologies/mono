@@ -240,6 +240,13 @@ mono_unity_domain_set_config (MonoDomain *domain, const char *base_dir, const ch
 }
 
 void
+mono_unity_domain_unload (MonoDomain *domain, MonoUnityExceptionFunc callback)
+{
+	MonoObject *exc = NULL;
+	mono_domain_try_unload (domain, &exc, callback);
+}
+
+void
 mono_unity_g_free (void* ptr)
 {
 	g_free (ptr);

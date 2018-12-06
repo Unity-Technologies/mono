@@ -64,6 +64,7 @@ mono_security_set_mode
 mono_security_set_core_clr_platform_callback
 mono_domain_create_appdomain
 mono_domain_unload
+mono_unity_domain_unload
 mono_verifier_set_mode
 mono_object_get_size
 mono_type_get_name_full

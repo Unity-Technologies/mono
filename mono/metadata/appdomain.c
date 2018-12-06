@@ -2301,7 +2301,7 @@ void
 mono_domain_unload (MonoDomain *domain)
 {
 	MonoObject *exc = NULL;
-	mono_domain_try_unload (domain, &exc);
+	mono_domain_try_unload (domain, &exc, NULL);
 	if (exc)
 		mono_raise_exception ((MonoException*)exc);
 }
@@ -2326,7 +2326,7 @@ mono_domain_unload (MonoDomain *domain)
  *  process could end up trying to abort the current thread.
  */
 void
-mono_domain_try_unload (MonoDomain *domain, MonoObject **exc)
+mono_domain_try_unload (MonoDomain *domain, MonoObject **exc, MonoUnityExceptionFunc callback)
 {
 	HANDLE thread_handle;
 	gsize tid;
@@ -2366,11 +2366,19 @@ mono_domain_try_unload (MonoDomain *domain, MonoObject **exc)
 	g_assert (method);
 
 	mono_runtime_invoke (method, domain->domain, NULL, exc);
-	if (*exc) {
-		/* Roll back the state change */
-		domain->state = MONO_APPDOMAIN_CREATED;
-		mono_domain_set (caller_domain, FALSE);
-		return;
+
+	if (*exc)
+	{
+		// Eat the exception and continue unloading
+		if (callback != NULL)
+			callback(*exc);
+		else
+		{
+			domain->state = MONO_APPDOMAIN_CREATED;
+			mono_domain_set (caller_domain, FALSE);
+			mono_raise_exception (mono_class_get_exception_for_failure (method->klass));
+			return;
+		}
 	}
 	mono_domain_set (caller_domain, FALSE);
 

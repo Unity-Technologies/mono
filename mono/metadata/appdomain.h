@@ -26,6 +26,7 @@ typedef struct _MonoAppDomain MonoAppDomain;
 typedef struct _MonoJitInfo MonoJitInfo;
 
 typedef void (*MonoDomainFunc) (MonoDomain *domain, gpointer user_data);
+typedef void (*MonoUnityExceptionFunc) (MonoObject* exc);
 
 MonoDomain*
 mono_init                  (const char *filename);
@@ -86,7 +87,7 @@ void
 mono_domain_unload (MonoDomain *domain);
 
 void
-mono_domain_try_unload (MonoDomain *domain, MonoObject **exc);
+mono_domain_try_unload (MonoDomain *domain, MonoObject **exc, MonoUnityExceptionFunc callback);
 
 gboolean
 mono_domain_is_unloading   (MonoDomain *domain);
