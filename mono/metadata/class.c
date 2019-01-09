@@ -2057,7 +2057,7 @@ mono_class_layout_fields (MonoClass *klass, int base_instance_size, int packing_
 			real_size = MAX (real_size, size + field_offsets [i]);
 		}
 
-		if (klass->has_references) {
+		if (has_references) {
 			ref_bitmap = g_new0 (guint8, real_size / sizeof (gpointer));
 
 			/* Check for overlapping reference and non-reference fields */
@@ -2083,7 +2083,7 @@ mono_class_layout_fields (MonoClass *klass, int base_instance_size, int packing_
 					continue;
 
 				// FIXME: Too much code does this
-#if 0
+#if 1
 				if (!MONO_TYPE_IS_REFERENCE (field->type) && ref_bitmap [field_offsets [i] / sizeof (gpointer)]) {
 					mono_class_set_type_load_failure (klass, "Could not load type '%s' because it contains an object field at offset %d that is incorrectly aligned or overlapped by a non-object field.", klass->name, field_offsets [i]);
 				}
