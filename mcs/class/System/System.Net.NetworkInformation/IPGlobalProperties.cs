@@ -68,6 +68,8 @@ namespace System.Net.NetworkInformation {
 #if UNITY
 				} catch (EntryPointNotFoundException) {
 					return String.Empty;
+				} catch (DllNotFoundException) {
+					return String.Empty;
 				}
 #endif
 				int len = Array.IndexOf<byte> (bytes, 0);
