@@ -4844,6 +4844,87 @@ mono_type_is_native_blittable (MonoType *t)
 	return TRUE;
 }
 
+int
+mini_emit_sext_index_reg(MonoCompile *cfg, MonoInst *index)
+{
+	int index_reg = index->dreg;
+	int index2_reg;
+
+#if SIZEOF_REGISTER == 8
+	/* The array reg is 64 bits but the index reg is only 32 */
+	if (COMPILE_LLVM(cfg)) {
+		/*
+		* abcrem can't handle the OP_SEXT_I4, so add this after abcrem,
+		* during OP_BOUNDS_CHECK decomposition, and in the implementation
+		* of OP_X86_LEA for llvm.
+		*/
+		index2_reg = index_reg;
+	}
+	else {
+		index2_reg = alloc_preg(cfg);
+		MONO_EMIT_NEW_UNALU(cfg, OP_SEXT_I4, index2_reg, index_reg);
+	}
+#else
+	if (index->type == STACK_I8) {
+		index2_reg = alloc_preg(cfg);
+		MONO_EMIT_NEW_UNALU(cfg, OP_LCONV_TO_I4, index2_reg, index_reg);
+	}
+	else {
+		index2_reg = index_reg;
+	}
+#endif
+
+	return index2_reg;
+}
+
+static MonoInst*
+emit_native_array_intrinsics(MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig, MonoInst **args)
+{
+	MonoInst *ins;
+
+	MonoClassField *ptr_field = mono_class_get_field_from_name_full(cmethod->klass, "m_Buffer", NULL);
+	if (!ptr_field)
+		return NULL;
+
+	if (!strcmp(cmethod->name, "get_Item") || !strcmp(cmethod->name, "set_Item")) {
+		MonoClassField *length_field = mono_class_get_field_from_name_full(cmethod->klass, "m_Length", NULL);
+
+		g_assert(length_field);
+
+		MonoGenericClass *gclass = mono_class_get_generic_class(cmethod->klass);
+		MonoClass *param_class = mono_class_from_mono_type(gclass->context.class_inst->type_argv[0]);
+
+		if (mini_is_gsharedvt_variable_klass(param_class))
+			return NULL;
+
+		int array_reg = args[0]->dreg;
+		/* Load _pointer.Value */
+		int base_reg = alloc_preg(cfg);
+		EMIT_NEW_LOAD_MEMBASE(cfg, ins, OP_LOAD_MEMBASE, base_reg, array_reg, ptr_field->offset - sizeof(MonoObject));
+		/* Similar to mini_emit_ldelema_1_ins () */
+		int size = mono_class_array_element_size(param_class);
+		int index_reg = mini_emit_sext_index_reg(cfg, args[1]);
+
+		// FIXME: Sign extend index ?
+
+		int mult_reg = alloc_preg(cfg);
+		int add_reg = alloc_preg(cfg);
+
+		MONO_EMIT_NEW_BIALU_IMM(cfg, OP_MUL_IMM, mult_reg, index_reg, size);
+		EMIT_NEW_BIALU(cfg, ins, OP_PADD, add_reg, base_reg, mult_reg);
+
+		if (!strcmp(cmethod->name, "get_Item")) {
+			MonoInst *loadIns = mini_emit_memory_load(cfg, &param_class->byval_arg, ins, 0, 0);
+			return loadIns;
+		} else {
+			EMIT_NEW_STORE_MEMBASE_TYPE(cfg, ins, &param_class->byval_arg, add_reg, 0, args[2]->dreg);
+			return ins;
+		}
+	}
+	
+	return NULL;
+}
+
 
 static MonoInst*
 mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig, MonoInst **args)
@@ -5780,6 +5861,11 @@ mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 			if (mono_type_is_native_blittable (arg0))
 				return mini_emit_memory_load (cfg, arg0, args [0], 0, 0);
 		}
+	} else if (!strcmp(cmethod->klass->image->assembly_name, "UnityEngine.CoreModule") &&
+		!strcmp(cmethod->klass->name, "NativeArray`1")) {
+		ins = emit_native_array_intrinsics(cfg, cmethod, fsig, args);
+		if (ins)
+			return ins;
 	}
 
 #ifdef MONO_ARCH_SIMD_INTRINSICS
