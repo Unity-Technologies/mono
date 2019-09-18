@@ -969,6 +969,62 @@ mono_exception_get_managed_backtrace (MonoException *exc)
 	return g_string_free (text, FALSE);
 }
 
+typedef struct {
+	MonoInternalThread *thread;
+	GString *text;
+} ThreadDumpUserData;
+
+static G_GNUC_UNUSED gboolean
+print_stack_frame_to_string (MonoStackFrameInfo *frame, MonoContext *ctx, gpointer data)
+{
+	GString *p = (GString*)data;
+	MonoMethod *method = NULL;
+
+	if (frame->ji && frame->type != FRAME_TYPE_TRAMPOLINE)
+		method = mono_jit_info_get_method (frame->ji);
+
+	if (method && frame->domain) {
+		gchar *location = mono_debug_print_stack_frame (method, frame->native_offset, frame->domain);
+		g_string_append_printf (p, "  %s\n", location);
+		g_free (location);
+	} else
+		g_string_append_printf (p, "  at <unknown> <0x%05x>\n", frame->native_offset);
+
+	return FALSE;
+}
+
+/* This needs to be async safe */
+static SuspendThreadResult
+get_thread_dump (MonoThreadInfo *info, gpointer ud)
+{
+	ThreadDumpUserData *user_data = (ThreadDumpUserData *)ud;
+	MonoInternalThread *thread = user_data->thread;
+
+	if (thread == mono_thread_internal_current ())
+		mono_get_eh_callbacks ()->mono_walk_stack_with_ctx (print_stack_frame_to_string, NULL, MONO_UNWIND_SIGNAL_SAFE, user_data->text);
+	else
+		mono_get_eh_callbacks ()->mono_walk_stack_with_state (print_stack_frame_to_string, mono_thread_info_get_suspend_state (info), MONO_UNWIND_SIGNAL_SAFE, user_data->text);
+
+	return MonoResumeThread;
+}
+
+const char*
+mono_print_target_thread_dump (void* threadPtr)
+{
+	ThreadDumpUserData ud;
+	MonoInternalThread* thread = (MonoInternalThread*)threadPtr;
+	ud.thread = thread;
+	ud.text = g_string_new_len (NULL, 20);
+
+	if (thread == mono_thread_internal_current ()) {
+		get_thread_dump (mono_thread_info_current (), &ud);
+	} else {
+		mono_thread_info_safe_suspend_and_run (MONO_UINT_TO_NATIVE_THREAD_ID (thread->tid), FALSE, get_thread_dump, &ud);
+	}
+
+	return g_string_free (ud.text, FALSE);
+}
+
 char *
 mono_exception_handle_get_native_backtrace (MonoExceptionHandle exc)
 {

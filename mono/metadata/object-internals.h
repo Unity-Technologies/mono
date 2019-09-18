@@ -1802,6 +1802,9 @@ ves_icall_Mono_Runtime_GetNativeStackTrace (MonoExceptionHandle exc, MonoError *
 char *
 mono_exception_get_managed_backtrace (MonoException *exc);
 
+const char*
+mono_print_target_thread_dump (void* thread);
+
 void
 mono_copy_value (MonoType *type, void *dest, void *value, int deref_pointer);
 

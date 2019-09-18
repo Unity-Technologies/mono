@@ -138,6 +138,10 @@ MonoArray* mono_unity_exception_get_trace_ips(MonoException *exc);
 void mono_unity_exception_set_trace_ips(MonoException *exc, MonoArray *ips);
 MonoException* mono_unity_exception_get_marshal_directive(const char* msg);
 
+typedef void (*MonoSegFaultCallback) (void* thread);
+MONO_API void mono_unity_exception_set_segfault_callback (MonoSegFaultCallback callback);
+MONO_API void mono_unity_exception_send_segfault_alert (MonoInternalThread* thread);
+
 //defaults
 MonoClass* mono_unity_defaults_get_int_class();
 MonoClass* mono_unity_defaults_get_stack_frame_class();
@@ -174,6 +178,8 @@ MONO_API char* mono_unity_get_data_dir();
 MONO_API MonoClass* mono_unity_class_get(MonoImage* image, guint32 type_token);
 MONO_API gpointer mono_unity_alloc(gsize size);
 MONO_API void mono_unity_g_free (void *ptr);
+
+MONO_API const char* mono_unity_dump_thread(void* threadPtr);
 
 MONO_API MonoClass* mono_custom_attrs_get_attrs (MonoCustomAttrInfo *ainfo, gpointer *iter);
 

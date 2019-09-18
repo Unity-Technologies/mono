@@ -3090,7 +3090,7 @@ MONO_SIG_HANDLER_FUNC (, mono_sigsegv_signal_handler)
 	}
 #endif
 
-	/* The thread might no be registered with the runtime */
+	/* The thread might not be registered with the runtime */
 	if (!mono_domain_get () || !jit_tls) {
 		if (!mono_do_crash_chaining && mono_chain_signal (MONO_SIG_HANDLER_PARAMS))
 			return;
@@ -3140,6 +3140,11 @@ MONO_SIG_HANDLER_FUNC (, mono_sigsegv_signal_handler)
 	if (!ji) {
 		if (!mono_do_crash_chaining && mono_chain_signal (MONO_SIG_HANDLER_PARAMS))
 			return;
+
+#if defined(HOST_WIN32)
+		// Let Unity know which MonoInternalThread is suffering a sigsegv
+		mono_unity_exception_send_segfault_alert(mono_thread_internal_current ());
+#endif
 
 		mono_handle_native_crash ("SIGSEGV", ctx, info);
 

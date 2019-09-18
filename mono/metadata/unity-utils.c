@@ -43,6 +43,8 @@
 
 #undef exit
 
+static MonoSegFaultCallback gSegFaultCallback = NULL;
+
 void unity_mono_exit( int code )
 {
 	//fprintf( stderr, "mono: exit called, code %d\n", code );
@@ -145,6 +147,12 @@ MONO_API void
 mono_unity_g_free(void *ptr)
 {
 	g_free (ptr);
+}
+
+MONO_API const char*
+mono_unity_dump_thread(void* threadPtr)
+{
+	return mono_print_target_thread_dump(threadPtr);
 }
 
 
@@ -868,6 +876,22 @@ void mono_unity_exception_set_trace_ips(MonoException *exc, MonoArray *ips)
 MonoException* mono_unity_exception_get_marshal_directive(const char* msg)
 {
 	return mono_exception_from_name_msg(mono_get_corlib(), "System.Runtime.InteropServices", "MarshalDirectiveException", msg);
+}
+
+void
+mono_unity_exception_set_segfault_callback (MonoSegFaultCallback callback)
+{
+	g_assert (callback);
+
+	gSegFaultCallback = callback;
+}
+
+void
+mono_unity_exception_send_segfault_alert (MonoInternalThread* thread)
+{
+	g_assert(gSegFaultCallback);
+
+	gSegFaultCallback(thread);
 }
 
 //defaults
