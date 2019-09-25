@@ -1899,11 +1899,11 @@ init_amodule_got (MonoAotModule *amodule)
 	for (i = 0; i < npatches; ++i) {
 		ji = &patches [i];
 
-		if (ji->type == MONO_PATCH_INFO_GC_CARD_TABLE_ADDR && !mono_gc_is_moving ()) {
+		if (ji->type == MONO_PATCH_INFO_GC_CARD_TABLE_ADDR && !(mono_gc_is_moving () || mono_gc_is_incremental())) {
 			amodule->shared_got [i] = NULL;
-		} else if (ji->type == MONO_PATCH_INFO_GC_NURSERY_START && !mono_gc_is_moving ()) {
+		} else if (ji->type == MONO_PATCH_INFO_GC_NURSERY_START && !(mono_gc_is_moving () || mono_gc_is_incremental())) {
 			amodule->shared_got [i] = NULL;
-		} else if (ji->type == MONO_PATCH_INFO_GC_NURSERY_BITS && !mono_gc_is_moving ()) {
+		} else if (ji->type == MONO_PATCH_INFO_GC_NURSERY_BITS && !(mono_gc_is_moving () || mono_gc_is_incremental())) {
 			amodule->shared_got [i] = NULL;
 		} else if (ji->type == MONO_PATCH_INFO_IMAGE) {
 			amodule->shared_got [i] = amodule->assembly->image;

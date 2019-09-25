@@ -760,7 +760,7 @@ compute_class_bitmap (MonoClass *klass, gsize *bitmap, int size, int offset, int
 	}
 
 	/* An Ephemeron cannot be marked by sgen */
-	if (mono_gc_is_moving () && !static_fields && klass->image == mono_defaults.corlib && !strcmp ("Ephemeron", klass->name)) {
+	if ((mono_gc_is_moving () || mono_gc_is_incremental()) && !static_fields && klass->image == mono_defaults.corlib && !strcmp ("Ephemeron", klass->name)) {
 		*max_set = 0;
 		memset (bitmap, 0, size / 8);
 		return bitmap;
@@ -5703,7 +5703,7 @@ mono_array_full_copy (MonoArray *src, MonoArray *dest)
 static void
 array_full_copy_unchecked_size (MonoArray *src, MonoArray *dest, MonoClass *klass, uintptr_t size)
 {
-	if (mono_gc_is_moving ()) {
+	if ((mono_gc_is_moving () || mono_gc_is_incremental())) {
 		if (klass->element_class->valuetype) {
 			if (klass->element_class->has_references)
 				mono_value_copy_array (dest, 0, mono_array_addr_with_size_fast (src, 0, 0), mono_array_length (src));
@@ -6447,7 +6447,7 @@ mono_value_box_checked (MonoDomain *domain, MonoClass *klass, gpointer value, Mo
 
 	size = size - sizeof (MonoObject);
 
-	if (mono_gc_is_moving ()) {
+	if ((mono_gc_is_moving () || mono_gc_is_incremental())) {
 		g_assert (size == mono_class_value_size (klass, NULL));
 		mono_gc_wbarrier_value_copy ((char *)res + sizeof (MonoObject), value, 1, klass);
 	} else {
@@ -6810,7 +6810,7 @@ mono_string_get_pinned (MonoString *str, MonoError *error)
 	error_init (error);
 
 	/* We only need to make a pinned version of a string if this is a moving GC */
-	if (!mono_gc_is_moving ())
+	if (!(mono_gc_is_moving () || mono_gc_is_incremental()))
 		return str;
 	int size;
 	MonoString *news;

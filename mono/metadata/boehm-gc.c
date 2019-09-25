@@ -1577,11 +1577,7 @@ mono_gc_set_desktop_mode (void)
 gboolean
 mono_gc_is_moving (void)
 {
-#if HAVE_BDWGC_GC
-	return GC_is_incremental_mode ();
-#else
 	return FALSE;
-#endif		
 }
 
 gboolean

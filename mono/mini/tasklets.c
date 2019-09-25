@@ -19,7 +19,7 @@ static mono_mutex_t tasklets_mutex;
 static void
 internal_init (void)
 {
-	if (!mono_gc_is_moving ())
+	if (!(mono_gc_is_moving () || mono_gc_is_incremental()))
 		/* Boehm requires the keepalive stacks to be kept in a hash since mono_gc_alloc_fixed () returns GC memory */
 		g_assert_not_reached ();
 }

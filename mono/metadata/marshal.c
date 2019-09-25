@@ -535,11 +535,11 @@ delegate_hash_table_remove (MonoDelegate *d)
 	mono_marshal_lock ();
 	if (delegate_hash_table == NULL)
 		delegate_hash_table = delegate_hash_table_new ();
-	if (mono_gc_is_moving ())
+	if ((mono_gc_is_moving () || mono_gc_is_incremental()))
 		gchandle = GPOINTER_TO_UINT (g_hash_table_lookup (delegate_hash_table, d->delegate_trampoline));
 	g_hash_table_remove (delegate_hash_table, d->delegate_trampoline);
 	mono_marshal_unlock ();
-	if (gchandle && mono_gc_is_moving ())
+	if (gchandle && (mono_gc_is_moving () || mono_gc_is_incremental()))
 		mono_gchandle_free (gchandle);
 }
 
@@ -553,7 +553,7 @@ delegate_hash_table_add (MonoDelegateHandle d)
 	if (delegate_hash_table == NULL)
 		delegate_hash_table = delegate_hash_table_new ();
 	gpointer delegate_trampoline = MONO_HANDLE_GETVAL (d, delegate_trampoline);
-	if (mono_gc_is_moving ()) {
+	if ((mono_gc_is_moving () || mono_gc_is_incremental())) {
 		gchandle = mono_gchandle_new_weakref ((MonoObject*) MONO_HANDLE_RAW (d), FALSE);
 		old_gchandle = GPOINTER_TO_UINT (g_hash_table_lookup (delegate_hash_table, delegate_trampoline));
 		g_hash_table_insert (delegate_hash_table, delegate_trampoline, GUINT_TO_POINTER (gchandle));
@@ -636,7 +636,7 @@ mono_ftnptr_to_delegate_handle (MonoClass *klass, gpointer ftn, MonoError *error
 	if (delegate_hash_table == NULL)
 		delegate_hash_table = delegate_hash_table_new ();
 
-	if (mono_gc_is_moving ()) {
+	if ((mono_gc_is_moving () || mono_gc_is_incremental())) {
 		gchandle = GPOINTER_TO_UINT (g_hash_table_lookup (delegate_hash_table, ftn));
 		mono_marshal_unlock ();
 		if (gchandle)
@@ -4053,7 +4053,7 @@ emit_invoke_call (MonoMethodBuilder *mb, MonoMethod *method,
 
 	if (sig->hasthis) {
 		if (string_ctor) {
-			if (mono_gc_is_moving ()) {
+			if ((mono_gc_is_moving () || mono_gc_is_incremental())) {
 				mono_mb_emit_ptr (mb, &string_dummy);
 				mono_mb_emit_byte (mb, CEE_LDIND_REF);
 			} else {

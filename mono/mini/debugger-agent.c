@@ -2204,7 +2204,7 @@ get_objref (MonoObject *obj)
 	
 	/* FIXME: The tables can grow indefinitely */
 
-	if (mono_gc_is_moving ()) {
+	if ((mono_gc_is_moving () || mono_gc_is_incremental())) {
 		/*
 		 * Objects can move, so use a hash table mapping hash codes to lists of
 		 * ObjRef structures.
@@ -2235,7 +2235,7 @@ get_objref (MonoObject *obj)
 
 	g_hash_table_insert (objrefs, GINT_TO_POINTER (ref->id), ref);
 
-	if (mono_gc_is_moving ()) {
+	if ((mono_gc_is_moving () || mono_gc_is_incremental())) {
 		reflist = g_slist_append (reflist, ref);
 		g_hash_table_insert (obj_to_objref, GINT_TO_POINTER (hash), reflist);
 	} else {
