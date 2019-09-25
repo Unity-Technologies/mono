@@ -31,7 +31,7 @@
  * by mono_gc_alloc_fixed ().
  */
 /* For SGEN, the result of alloc_fixed () is not GC tracked memory */
-#define MONO_GC_ROOT_DESCR_FOR_FIXED(n) ((mono_gc_is_moving () || mono_gc_is_incremental()) ? mono_gc_make_root_descr_all_refs (0) : MONO_GC_DESCRIPTOR_NULL)
+#define MONO_GC_ROOT_DESCR_FOR_FIXED(n) (mono_gc_is_moving () ? mono_gc_make_root_descr_all_refs (0) : MONO_GC_DESCRIPTOR_NULL)
 
 /* Register a memory location holding a single object reference as a GC root */
 #define MONO_GC_REGISTER_ROOT_SINGLE(x,src,key,msg) do { \
@@ -44,12 +44,12 @@
  * when using Boehm.
  */
 #define MONO_GC_REGISTER_ROOT_IF_MOVING(x,src,key,msg) do { \
-	if ((mono_gc_is_moving () || mono_gc_is_incremental())) \
+	if (mono_gc_is_moving ()) \
 		MONO_GC_REGISTER_ROOT_SINGLE(x,src,key,msg);		\
 } while (0)
 
 #define MONO_GC_UNREGISTER_ROOT_IF_MOVING(x) do { \
-	if ((mono_gc_is_moving () || mono_gc_is_incremental())) \
+	if (mono_gc_is_moving ()) \
 		MONO_GC_UNREGISTER_ROOT (x);			\
 } while (0)
 

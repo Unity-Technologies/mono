@@ -33,7 +33,7 @@ reflected_hash (gconstpointer a);
 static inline ReflectedEntry*
 alloc_reflected_entry (MonoDomain *domain)
 {
-	if (!(mono_gc_is_moving () || mono_gc_is_incremental()))
+	if (!mono_gc_is_moving ())
 		return g_new0 (ReflectedEntry, 1);
 	else
 		return (ReflectedEntry *)mono_mempool_alloc (domain->mp, sizeof (ReflectedEntry));
@@ -42,7 +42,7 @@ alloc_reflected_entry (MonoDomain *domain)
 static void
 free_reflected_entry (ReflectedEntry *entry)
 {
-	if (!(mono_gc_is_moving () || mono_gc_is_incremental()))
+	if (!mono_gc_is_moving ())
 		g_free (entry);
 }
 

@@ -296,7 +296,7 @@ mono_ptrarray_hash (gpointer *s)
 static void*
 gc_alloc_fixed_non_heap_list (size_t size)
 {
-	if (mono_gc_is_moving () || mono_gc_is_incremental())
+	if (mono_gc_is_moving ())
 		return g_malloc0 (size);
 	else
 		return mono_gc_alloc_fixed (size, MONO_GC_DESCRIPTOR_NULL, MONO_ROOT_SOURCE_DOMAIN, NULL, "Domain List");
@@ -305,7 +305,7 @@ gc_alloc_fixed_non_heap_list (size_t size)
 static void
 gc_free_fixed_non_heap_list (void *ptr)
 {
-	if (mono_gc_is_moving () || mono_gc_is_incremental())
+	if (mono_gc_is_moving ())
 		g_free (ptr);
 	else
 		mono_gc_free_fixed (ptr);
@@ -405,7 +405,7 @@ mono_domain_create (void)
 	}
 	mono_appdomains_unlock ();
 
-	if (!(mono_gc_is_moving () || mono_gc_is_incremental()))
+	if (!mono_gc_is_moving ())
 		domain = (MonoDomain *)mono_gc_alloc_fixed (sizeof (MonoDomain), MONO_GC_DESCRIPTOR_NULL, MONO_ROOT_SOURCE_DOMAIN, NULL, "Domain Structure");
 	else
 		domain = (MonoDomain *)mono_gc_alloc_fixed (sizeof (MonoDomain), domain_gc_desc, MONO_ROOT_SOURCE_DOMAIN, NULL, "Domain Structure");
