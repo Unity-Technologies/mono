@@ -51,7 +51,9 @@ struct GC_thread_Rep {
 			/* !in_use ==> stack_base == 0	*/
   GC_bool suspended;
   GC_bool should_scan;
-
+  CONTEXT saved_context; /* populated as part of GC_suspend as          */
+                         /* resume/suspend loop may be needed for call  */
+                         /* to GetThreadContext to succeed              */
 # ifdef CYGWIN32
     void *status; /* hold exit value until join in case it's a pointer */
     pthread_t pthread_id;
@@ -323,34 +325,53 @@ void GC_stop_world()
 	while (SuspendThread(thread_table[i].handle) == (DWORD)-1)
 	  Sleep(10);
 #     else
-	/* Apparently the Windows 95 GetOpenFileName call creates	*/
-	/* a thread that does not properly get cleaned up, and		*/
-	/* SuspendThread on its descriptor may provoke a crash.		*/
-	/* This reduces the probability of that event, though it still	*/
-	/* appears there's a race here.					*/
-	DWORD exitCode; 
-	if (GetExitCodeThread(thread_table[i].handle,&exitCode) &&
-            exitCode != STILL_ACTIVE) {
-          thread_table[i].stack_base = 0; /* prevent stack from being pushed */
+	
+	int iterations = 0;
+	while (TRUE) 
+	{
+	  /* Apparently the Windows 95 GetOpenFileName call creates	*/
+	  /* a thread that does not properly get cleaned up, and		*/
+	  /* SuspendThread on its descriptor may provoke a crash.		*/
+	  /* This reduces the probability of that event, though it still	*/
+	  /* appears there's a race here.					*/
+	  DWORD exitCode; 
+	  volatile struct GC_thread_Rep* t;
+	  DWORD res;
+	  if (GetExitCodeThread(thread_table[i].handle,&exitCode) &&
+	      exitCode != STILL_ACTIVE) {
+	    thread_table[i].stack_base = 0; /* prevent stack from being pushed */
 #         ifndef CYGWIN32
-            /* this breaks pthread_join on Cygwin, which is guaranteed to  */
-	    /* only see user pthreads 					   */
-	    thread_table[i].in_use = FALSE;
-	    CloseHandle(thread_table[i].handle);
+		/* this breaks pthread_join on Cygwin, which is guaranteed to  */
+		/* only see user pthreads 					   */
+		thread_table[i].in_use = FALSE;
+		CloseHandle(thread_table[i].handle);
 #         endif
-	  continue;
-	}
-	if (SuspendThread(thread_table[i].handle) == (DWORD)-1) {
-          thread_table[i].stack_base = 0; /* prevent stack from being pushed */
-#         ifndef CYGWIN32
-            /* this breaks pthread_join on Cygwin, which is guaranteed to  */
-	    /* only see user pthreads 					   */
-	    thread_table[i].in_use = FALSE;
-	    CloseHandle(thread_table[i].handle);
-#         endif
+	    continue;
+	  }
+		
+	  t = &thread_table[i];
+          
+	  do {
+	  	res = SuspendThread (t->handle);
+	  } while (res == (DWORD)-1);
+          
+	  t->saved_context.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
+	  if (GetThreadContext (t->handle, &t->saved_context)) {
+	  	t->suspended = (unsigned char)TRUE;
+	  	break; /* success case break out of loop */
+	  }
+          
+	  /* resume thread and try to suspend in better location */
+	  if (ResumeThread (t->handle) == (DWORD)-1)
+	  	ABORT ("ResumeThread failed");
+	  
+	  /* after a million tries something must be wrong */
+	  if (iterations++ == 1000 * 1000)
+	  	ABORT ("SuspendThread loop failed");
+
 	}
 #     endif
-      thread_table[i].suspended = TRUE;
+      thread_table[i].suspended = TRUE;  
     }
 # ifndef CYGWIN32
     LeaveCriticalSection(&GC_write_cs);
@@ -437,10 +458,7 @@ void GC_push_all_stacks()
 		  continue;
 	  }
 	   else {
-        CONTEXT context;
-        context.ContextFlags = CONTEXT_INTEGER|CONTEXT_CONTROL;
-        if (!GetThreadContext(thread_table[i].handle, &context))
-	  ABORT("GetThreadContext failed");
+        CONTEXT context = thread_table[i].saved_context;
 
         /* Push all registers that might point into the heap.  Frame	*/
         /* pointer registers are included in case client code was	*/
