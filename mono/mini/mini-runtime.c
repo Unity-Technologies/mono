@@ -3141,15 +3141,17 @@ MONO_SIG_HANDLER_FUNC (, mono_sigsegv_signal_handler)
 #else
 
 	if (!ji) {
-		if (!mono_do_crash_chaining && mono_chain_signal (MONO_SIG_HANDLER_PARAMS))
-			return;
+		//if (!mono_do_crash_chaining && mono_chain_signal (MONO_SIG_HANDLER_PARAMS))
+		//	return;
 
-		mono_handle_native_crash ("SIGSEGV", ctx, info);
+		//mono_handle_native_crash ("SIGSEGV", ctx, info);
 
-		if (mono_do_crash_chaining) {
-			mono_chain_signal (MONO_SIG_HANDLER_PARAMS);
-			return;
-		}
+		//if (mono_do_crash_chaining) {
+		//	mono_chain_signal (MONO_SIG_HANDLER_PARAMS);
+		//	return;
+		//}
+		info->handled = FALSE;
+		return;
 	}
 
 	mono_arch_handle_exception (ctx, NULL);
