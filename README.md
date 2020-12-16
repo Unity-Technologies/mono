@@ -639,7 +639,7 @@ These are maintained by extracting the configuration information from
 our Makefiles, which as of May 2016 remain the canonical location for
 configuration information.
 
-When changes are made to the Makefiles, a user would need to run the
+When changess are made to the Makefiles, a user would need to run the
 following command to re-generate the solution files at the top level:
 
 	$ make update-solution-files
