@@ -9,25 +9,115 @@
  */
 
 #include "config.h"
+
+typedef struct _NullGCThreadInfo NullGCThreadInfo;
+#undef THREAD_INFO_TYPE
+#define THREAD_INFO_TYPE NullGCThreadInfo
+
 #include <glib.h>
 #include <mono/metadata/mono-gc.h>
 #include <mono/metadata/gc-internals.h>
 #include <mono/metadata/runtime.h>
 #include <mono/metadata/w32handle.h>
 #include <mono/utils/atomic.h>
+#include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-threads.h>
 #include <mono/utils/mono-counters.h>
 #include <mono/metadata/null-gc-handles.h>
 
+
+
+struct _NullGCThreadInfo {
+	MonoThreadInfo info;
+
+	/*
+	 * `skip` is set to TRUE when STW fails to suspend a thread, most probably because
+	 * the underlying thread is dead.
+	*/
+	gboolean skip, suspend_done;
+	volatile int in_critical_region;
+
+	/*
+	This is set the argument of mono_gc_set_skip_thread.
+
+	A thread that knowingly holds no managed state can call this
+	function around blocking loops to reduce the GC burden by not
+	been scanned.
+	*/
+	gboolean gc_disabled;
+//
+//#ifdef SGEN_POSIX_STW
+//	/* This is -1 until the first suspend. */
+//	int signal;
+//	/* FIXME: kill this, we only use signals on systems that have rt-posix, which doesn't have issues with duplicates. */
+//	unsigned int stop_count; /* to catch duplicate signals. */
+//#endif
+//
+//	gpointer runtime_data;
+//
+//	void* stack_end;
+//	void* stack_start;
+//	void* stack_start_limit;
+//
+//	MonoContext ctx;		/* ditto */
+};
+
 #ifdef HAVE_NULL_GC
 
 static gboolean gc_inited = FALSE;
+
+struct _GCMemChunk;
+typedef struct _GCMemChunk GCMemChunk;
+
+struct _GCMemChunk
+{
+	GCMemChunk* next;
+	char* start_of_memory;
+	char* current_memory;
+	size_t length;
+};
+
+typedef struct GCMemPool
+{
+	GCMemChunk* chunks;
+	size_t page_size;
+} GCMemPool;
+
+static mono_mutex_t nullgc_mutex;
+
+static GCMemPool* init_gc_mempool ()
+{
+	GCMemPool* mp = g_new0 (GCMemPool, 1);
+	mp->page_size = mono_pagesize ();
+
+	return mp;
+}
+
+static void gc_free_mempool (GCMemPool* mp)
+{
+	if (!mp)
+		return;
+
+	GCMemChunk* chunk = mp->chunks;
+	while (chunk) {
+
+		int res = VirtualFree (chunk->start_of_memory, chunk->length, MEM_DECOMMIT);
+		g_assert (res);
+
+		GCMemChunk* prev = chunk;
+		chunk = chunk->next;
+		g_free (prev);
+	}
+	g_free (mp);
+}
 
 void
 mono_gc_base_init (void)
 {
 	if (gc_inited)
 		return;
+
+	mono_os_mutex_init (&nullgc_mutex);
 
 	mono_counters_init ();
 
@@ -36,7 +126,7 @@ mono_gc_base_init (void)
 #endif
 
 	mono_thread_callbacks_init ();
-	mono_thread_info_init (sizeof (MonoThreadInfo));
+	mono_thread_info_init (sizeof (NullGCThreadInfo));
 
 	mono_thread_info_attach ();
 
@@ -190,22 +280,113 @@ mono_gc_make_root_descr_all_refs (int numbits)
 	return NULL;
 }
 
+#define ALIGN_TO(val,align) ((((guint64)val) + ((align) - 1)) & ~((align) - 1))
+
 void*
 mono_gc_alloc_fixed (size_t size, void *descr, MonoGCRootSource source, void *key, const char *msg)
 {
-	return g_malloc0 (size);
+	//return g_malloc0 (size);
+	size += sizeof(size_t);
+	size = ALIGN_TO (size, mono_pagesize ());
+	char* ret = VirtualAlloc (0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	*(size_t*)ret = size;
+	ret += sizeof (size_t);
+	return ret;
 }
 
 void
 mono_gc_free_fixed (void* addr)
 {
-	g_free (addr);
+	char* start = (char*)addr - sizeof (size_t);
+	size_t length = *(size_t*)start;
+	int res = VirtualFree (start, length, MEM_DECOMMIT);
+	g_assert (res);
+}
+
+/* only one can be enabled at a time */
+#define GUARD_PRELUDE 0
+#define GUARD_POSTLUDE 0
+
+static void*
+gc_mempool_alloc (MonoDomain* domain, size_t size)
+{
+	void* ret = NULL;
+	mono_os_mutex_lock (&nullgc_mutex);
+	GCMemPool* mp = domain->gc_mp;
+	if (!mp)
+		mp = domain->gc_mp = init_gc_mempool ();
+
+	// keep 16 byte alignment
+	size = ALIGN_TO (size, 16);
+
+#if GUARD_PRELUDE
+	GCMemChunk* chunk = g_new0 (GCMemChunk, 1);;
+	size_t chunk_size = MAX ((mp->page_size), ALIGN_TO (size, mp->page_size));
+	chunk_size += mp->page_size;
+
+	chunk->start_of_memory = chunk->current_memory = (char*)VirtualAlloc (0, chunk_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	chunk->current_memory += mp->page_size;
+
+	DWORD old;
+	BOOL res = VirtualProtect (chunk->start_of_memory, mp->page_size, PAGE_NOACCESS, &old);
+	g_assert (res);
+
+	ret = chunk->current_memory;
+
+
+	chunk->length = chunk_size;
+
+	chunk->next = mp->chunks;
+	mp->chunks = chunk;
+#elif GUARD_POSTLUDE
+	GCMemChunk* chunk = g_new0 (GCMemChunk, 1);
+	size_t chunk_size = MAX ((mp->page_size), ALIGN_TO (size, mp->page_size));
+	chunk_size += mp->page_size;
+
+	chunk->start_of_memory = chunk->current_memory = (char*)VirtualAlloc (0, chunk_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	/* offset to abut last page */
+	chunk->current_memory += (chunk_size - mp->page_size - size);
+
+	DWORD old;
+	BOOL res = VirtualProtect (chunk->start_of_memory + chunk_size - mp->page_size, mp->page_size, PAGE_NOACCESS, &old);
+	g_assert (res);
+
+	ret = chunk->current_memory;
+
+
+	chunk->length = chunk_size;
+
+	chunk->next = mp->chunks;
+	mp->chunks = chunk;
+#else
+
+	GCMemChunk* chunk = mp->chunks;
+	if (!chunk || ((chunk->current_memory + size) > (chunk->start_of_memory + chunk->length)))
+	{
+		chunk = g_new0 (GCMemChunk, 1);
+		size_t chunk_size = MAX ((4 * mp->page_size), ALIGN_TO (size, mp->page_size));
+		chunk->start_of_memory = chunk->current_memory = (char*)VirtualAlloc (0, chunk_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		chunk->length = chunk_size;
+
+		chunk->next = mp->chunks;
+		mp->chunks = chunk;
+	}
+
+	ret = chunk->current_memory;
+	chunk->current_memory += size;
+
+	g_assert (chunk->current_memory <= (chunk->start_of_memory + chunk->length));
+#endif
+
+	mono_os_mutex_unlock (&nullgc_mutex);
+
+	return ret;
 }
 
 void *
 mono_gc_alloc_obj (MonoVTable *vtable, size_t size)
 {
-	MonoObject *obj = g_calloc (1, size);
+	MonoObject *obj = gc_mempool_alloc (vtable->domain, size);
 
 	obj->vtable = vtable;
 
@@ -215,7 +396,7 @@ mono_gc_alloc_obj (MonoVTable *vtable, size_t size)
 void *
 mono_gc_alloc_vector (MonoVTable *vtable, size_t size, uintptr_t max_length)
 {
-	MonoArray *obj = g_calloc (1, size);
+	MonoArray *obj = gc_mempool_alloc (vtable->domain, size);
 
 	obj->obj.vtable = vtable;
 	obj->max_length = max_length;
@@ -226,7 +407,7 @@ mono_gc_alloc_vector (MonoVTable *vtable, size_t size, uintptr_t max_length)
 void *
 mono_gc_alloc_array (MonoVTable *vtable, size_t size, uintptr_t max_length, uintptr_t bounds_size)
 {
-	MonoArray *obj = g_calloc (1, size);
+	MonoArray *obj = gc_mempool_alloc (vtable->domain, size);
 
 	obj->obj.vtable = vtable;
 	obj->max_length = max_length;
@@ -240,7 +421,7 @@ mono_gc_alloc_array (MonoVTable *vtable, size_t size, uintptr_t max_length, uint
 void *
 mono_gc_alloc_string (MonoVTable *vtable, size_t size, gint32 len)
 {
-	MonoString *obj = g_calloc (1, size);
+	MonoString *obj = gc_mempool_alloc (vtable->domain, size);
 
 	obj->object.vtable = vtable;
 	obj->length = len;
@@ -317,25 +498,25 @@ mono_gc_is_critical_method (MonoMethod *method)
 }
 
 gpointer
-mono_gc_thread_attach (MonoThreadInfo* info)
+mono_gc_thread_attach (NullGCThreadInfo* info)
 {
-	info->handle_stack = mono_handle_stack_alloc ();
+	info->info.handle_stack = mono_handle_stack_alloc ();
 	return info;
 }
 
 void
-mono_gc_thread_detach (MonoThreadInfo *p)
+mono_gc_thread_detach (NullGCThreadInfo*p)
 {
 }
 
 void
-mono_gc_thread_detach_with_lock (MonoThreadInfo *p)
+mono_gc_thread_detach_with_lock (NullGCThreadInfo*p)
 {
-	mono_handle_stack_free (p->handle_stack);
+	mono_handle_stack_free (p->info.handle_stack);
 }
 
 gboolean
-mono_gc_thread_in_critical_region (MonoThreadInfo *info)
+mono_gc_thread_in_critical_region (NullGCThreadInfo*info)
 {
 	return FALSE;
 }
@@ -379,6 +560,7 @@ mono_gc_get_gc_name (void)
 void
 mono_gc_clear_domain (MonoDomain *domain)
 {
+	gc_free_mempool (domain->gc_mp);
 }
 
 void
@@ -594,6 +776,226 @@ mono_gc_pending_finalizers (void)
 {
 	return FALSE;
 }
+
+void
+mono_gc_register_obj_with_weak_fields (void* obj)
+{
+	g_error ("Weak fields not supported by null gc");
+}
+
+static gboolean
+nullgc_is_thread_in_current_stw (NullGCThreadInfo* info, int* reason)
+{
+	/*
+	A thread explicitly asked to be skiped because it holds no managed state.
+	This is used by TP and finalizer threads.
+	FIXME Use an atomic variable for this to avoid everyone taking the GC LOCK.
+	*/
+	if (info->gc_disabled) {
+		if (reason)
+			*reason = 1;
+		return FALSE;
+	}
+
+	/*
+	We have detected that this thread is failing/dying, ignore it.
+	FIXME: can't we merge this with thread_is_dying?
+	*/
+	if (info->skip) {
+		if (reason)
+			*reason = 2;
+		return FALSE;
+	}
+
+	/*
+	Suspending the current thread will deadlock us, bad idea.
+	*/
+	if (info == mono_thread_info_current ()) {
+		if (reason)
+			*reason = 3;
+		return FALSE;
+	}
+
+	/*
+	We can't suspend the workers that will do all the heavy lifting.
+	FIXME Use some state bit in SgenThreadInfo for this.
+	*/
+	//if (sgen_thread_pool_is_thread_pool_thread (mono_thread_info_get_tid (info))) {
+	//	if (reason)
+	//		*reason = 4;
+	//	return FALSE;
+	//}
+
+	/*
+	The thread has signaled that it started to detach, ignore it.
+	FIXME: can't we merge this with skip
+	*/
+	if (!mono_thread_info_is_live (info)) {
+		if (reason)
+			*reason = 5;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+
+#define THREADS_STW_DEBUG(...)
+
+void
+nullgc_unified_suspend_stop_world (void)
+{
+	int sleep_duration = -1;
+
+	mono_threads_begin_global_suspend ();
+	//	THREADS_STW_DEBUG ("[GC-STW-BEGIN][%p] *** BEGIN SUSPEND *** \n", mono_thread_info_get_tid (mono_thread_info_current ()));
+
+	FOREACH_THREAD (info) {
+		info->skip = FALSE;
+		info->suspend_done = FALSE;
+
+		int reason;
+		if (!nullgc_is_thread_in_current_stw (info, &reason)) {
+			THREADS_STW_DEBUG ("[GC-STW-BEGIN-SUSPEND] IGNORE thread %p skip %s reason %d\n", mono_thread_info_get_tid (info), info->skip ? "true" : "false", reason);
+			continue;
+		}
+
+		info->skip = !mono_thread_info_begin_suspend (info);
+
+		THREADS_STW_DEBUG ("[GC-STW-BEGIN-SUSPEND] SUSPEND thread %p skip %s\n", mono_thread_info_get_tid (info), info->client_info.skip ? "true" : "false");
+	} FOREACH_THREAD_END
+
+		mono_thread_info_current ()->suspend_done = TRUE;
+		mono_threads_wait_pending_operations ();
+
+	for (;;) {
+		gint restart_counter = 0;
+
+		FOREACH_THREAD (info) {
+			gint suspend_count;
+
+			int reason = 0;
+			if (info->suspend_done || !nullgc_is_thread_in_current_stw (info, &reason)) {
+				THREADS_STW_DEBUG ("[GC-STW-RESTART] IGNORE RESUME thread %p not been processed done %d current %d reason %d\n", mono_thread_info_get_tid (info), info->client_info.suspend_done, !sgen_is_thread_in_current_stw (info, NULL), reason);
+				continue;
+			}
+
+			/*
+			All threads that reach here are pristine suspended. This means the following:
+
+			- We haven't accepted the previous suspend as good.
+			- We haven't gave up on it for this STW (it's either bad or asked not to)
+			*/
+			if (!mono_thread_info_in_critical_location (info)) {
+				info->suspend_done = TRUE;
+
+				THREADS_STW_DEBUG ("[GC-STW-RESTART] DONE thread %p deemed fully suspended\n", mono_thread_info_get_tid (info));
+				continue;
+			}
+
+			suspend_count = mono_thread_info_suspend_count (info);
+			if (!(suspend_count == 1))
+				g_error ("[%p] suspend_count = %d, but should be 1", mono_thread_info_get_tid (info), suspend_count);
+
+			info->skip = !mono_thread_info_begin_resume (info);
+			if (!info->skip)
+				restart_counter += 1;
+
+			THREADS_STW_DEBUG ("[GC-STW-RESTART] RESTART thread %p skip %s\n", mono_thread_info_get_tid (info), info->client_info.skip ? "true" : "false");
+		} FOREACH_THREAD_END
+
+			mono_threads_wait_pending_operations ();
+
+		if (restart_counter == 0)
+			break;
+
+		if (sleep_duration < 0) {
+			mono_thread_info_yield ();
+			sleep_duration = 0;
+		}
+		else {
+			g_usleep (sleep_duration);
+			sleep_duration += 10;
+		}
+
+		FOREACH_THREAD (info) {
+			int reason = 0;
+			if (info->suspend_done || !nullgc_is_thread_in_current_stw (info, &reason)) {
+				THREADS_STW_DEBUG ("[GC-STW-RESTART] IGNORE SUSPEND thread %p not been processed done %d current %d reason %d\n", mono_thread_info_get_tid (info), info->client_info.suspend_done, !sgen_is_thread_in_current_stw (info, NULL), reason);
+				continue;
+			}
+
+			if (!mono_thread_info_is_running (info)) {
+				THREADS_STW_DEBUG ("[GC-STW-RESTART] IGNORE SUSPEND thread %p not running\n", mono_thread_info_get_tid (info));
+				continue;
+			}
+
+			/*info->client_info.skip = !*/mono_thread_info_begin_suspend (info);
+
+			//			THREADS_STW_DEBUG ("[GC-STW-RESTART] SUSPEND thread %p skip %s\n", mono_thread_info_get_tid (info), info->client_info.skip ? "true" : "false");
+		} FOREACH_THREAD_END
+
+			mono_threads_wait_pending_operations ();
+	}
+
+	FOREACH_THREAD (info) {
+		gpointer stopped_ip;
+
+		int reason = 0;
+		if (!nullgc_is_thread_in_current_stw (info, &reason)) {
+			//g_assert (!info->client_info.suspend_done || info == mono_thread_info_current ());
+
+			THREADS_STW_DEBUG ("[GC-STW-SUSPEND-END] thread %p is NOT suspended, reason %d\n", mono_thread_info_get_tid (info), reason);
+			continue;
+		}
+
+		g_assert (info->suspend_done);
+
+		//info->ctx = mono_thread_info_get_suspend_state (info)->ctx;
+
+		/* Once we remove the old suspend code, we should move sgen to directly access the state in MonoThread */
+		//info->client_info.stack_start = (gpointer)((char*)MONO_CONTEXT_GET_SP (&info->client_info.ctx) - REDZONE_SIZE);
+
+		//if (info->client_info.stack_start < info->client_info.info.stack_start_limit
+		//	|| info->client_info.stack_start >= info->client_info.info.stack_end) {
+		//	/*
+		//	 * Thread context is in unhandled state, most likely because it is
+		//	 * dying. We don't scan it.
+		//	 * FIXME We should probably rework and check the valid flag instead.
+		//	 */
+		//	info->client_info.stack_start = NULL;
+		//}
+
+		//stopped_ip = (gpointer)(MONO_CONTEXT_GET_IP (&info->client_info.ctx));
+
+		//binary_protocol_thread_suspend ((gpointer)mono_thread_info_get_tid (info), stopped_ip);
+
+		//THREADS_STW_DEBUG ("[GC-STW-SUSPEND-END] thread %p is suspended, stopped_ip = %p, stack = %p -> %p\n",
+		//	mono_thread_info_get_tid (info), stopped_ip, info->stack_start, info->stack_start ? info->info.stack_end : NULL);
+	} FOREACH_THREAD_END
+}
+
+void
+nullgc_unified_suspend_restart_world (void)
+{
+	THREADS_STW_DEBUG ("[GC-STW-END] *** BEGIN RESUME ***\n");
+	FOREACH_THREAD (info) {
+		int reason = 0;
+		if (nullgc_is_thread_in_current_stw (info, &reason)) {
+			g_assert (mono_thread_info_begin_resume (info));
+			THREADS_STW_DEBUG ("[GC-STW-RESUME-WORLD] RESUME thread %p\n", mono_thread_info_get_tid (info));
+
+			//binary_protocol_thread_restart ((gpointer)mono_thread_info_get_tid (info));
+		}
+		else {
+			THREADS_STW_DEBUG ("[GC-STW-RESUME-WORLD] IGNORE thread %p, reason %d\n", mono_thread_info_get_tid (info), reason);
+		}
+	} FOREACH_THREAD_END
+
+		mono_threads_wait_pending_operations ();
+	mono_threads_end_global_suspend ();
+}
+
 
 #else
 

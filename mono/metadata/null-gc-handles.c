@@ -23,6 +23,10 @@ static mono_mutex_t handle_section;
 #define lock_handles(handles) mono_os_mutex_lock (&handle_section)
 #define unlock_handles(handles) mono_os_mutex_unlock (&handle_section)
 
+
+void mono_gc_handle_lock () { lock_handles (NULL); }
+void mono_gc_handle_unlock () { unlock_handles (NULL); }
+
 typedef struct {
 	guint32  *bitmap;
 	gpointer *entries;
@@ -116,7 +120,7 @@ handle_data_alloc_entries (HandleData *handles)
 		handles->entries = (void **)g_malloc0 (sizeof (*handles->entries) * handles->size);
 		handles->domain_ids = (guint16 *)g_malloc0 (sizeof (*handles->domain_ids) * handles->size);
 	} else {
-		handles->entries = (void **)mono_gc_alloc_fixed (sizeof (*handles->entries) * handles->size, NULL, MONO_ROOT_SOURCE_GC_HANDLE, "GC Handle Table (Null)");
+		handles->entries = (void **)mono_gc_alloc_fixed (sizeof (*handles->entries) * handles->size, NULL, MONO_ROOT_SOURCE_GC_HANDLE, NULL, "GC Handle Table (Null)");
 	}
 	handles->bitmap = (guint32 *)g_malloc0 (handles->size / CHAR_BIT);
 }
@@ -183,7 +187,7 @@ handle_data_grow (HandleData *handles, gboolean track)
 		handles->domain_ids = domain_ids;
 	} else {
 		gpointer *entries;
-		entries = (void **)mono_gc_alloc_fixed (sizeof (*handles->entries) * new_size, NULL, MONO_ROOT_SOURCE_GC_HANDLE, "GC Handle Table (Null)");
+		entries = (void **)mono_gc_alloc_fixed (sizeof (*handles->entries) * new_size, NULL, MONO_ROOT_SOURCE_GC_HANDLE, NULL, "GC Handle Table (Null)");
 		mono_gc_memmove_aligned (entries, handles->entries, sizeof (*handles->entries) * handles->size);
 		mono_gc_free_fixed (handles->entries);
 		handles->entries = entries;
@@ -224,7 +228,7 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 #endif
 	unlock_handles (handles);
 	res = MONO_GC_HANDLE (slot, handles->type);
-	mono_profiler_gc_handle (MONO_PROFILER_GC_HANDLE_CREATED, handles->type, res, obj);
+	MONO_PROFILER_RAISE (gc_handle_created, (res, handles->type, obj));
 	return res;
 }
 
@@ -416,7 +420,7 @@ mono_gchandle_free (guint32 gchandle)
 #endif
 	/*g_print ("freed entry %d of type %d\n", slot, handles->type);*/
 	unlock_handles (handles);
-	mono_profiler_gc_handle (MONO_PROFILER_GC_HANDLE_DESTROYED, handles->type, gchandle, NULL);
+	MONO_PROFILER_RAISE (gc_handle_deleted, (gchandle, handles->type));
 }
 
 /**
@@ -431,7 +435,7 @@ mono_gchandle_free_domain (MonoDomain *domain)
 {
 	guint type;
 
-	for (type = HANDLE_TYPE_MIN; type < HANDLE_PINNED; ++type) {
+	for (type = HANDLE_TYPE_MIN; type <= HANDLE_PINNED; ++type) {
 		guint slot;
 		HandleData *handles = &gc_handles [type];
 		lock_handles (handles);
@@ -455,6 +459,31 @@ mono_gchandle_free_domain (MonoDomain *domain)
 	}
 
 }
+
+void
+mono_gc_strong_handle_foreach (GFunc func, gpointer user_data)
+{
+	int gcHandleTypeIndex;
+	uint32_t i;
+
+	lock_handles (handles);
+
+	for (gcHandleTypeIndex = HANDLE_NORMAL; gcHandleTypeIndex <= HANDLE_PINNED; gcHandleTypeIndex++)
+	{
+		HandleData* handles = &gc_handles[gcHandleTypeIndex];
+
+		for (i = 0; i < handles->size; i++)
+		{
+			if (!slot_occupied (handles, i))
+				continue;
+			if (handles->entries[i] != NULL)
+				func (handles->entries[i], user_data);
+		}
+	}
+
+	unlock_handles (handles);
+}
+
 #else
 
 MONO_EMPTY_SOURCE_FILE (null_gc_handles);

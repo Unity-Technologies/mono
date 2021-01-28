@@ -804,4 +804,10 @@ void mono_unity_free_captured_memory_snapshot(MonoManagedMemorySnapshot* snapsho
 	g_free(snapshot);
 }
 
+void
+mono_unity_class_for_each (ClassReportFunc callback, void* user_data)
+{
+
+}
+
 #endif

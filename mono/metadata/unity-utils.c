@@ -943,6 +943,7 @@ MONO_API void mono_unity_gc_set_mode(MonoGCMode mode)
 			GC_set_disable_automatic_collection(TRUE);
 			break;
 	}
+#elif defined(HAVE_NULL_GC)
 #else
 	g_assert_not_reached ();
 #endif
@@ -963,6 +964,7 @@ MONO_API void mono_unity_gc_disable()
 {
 #if HAVE_BDWGC_GC
 	GC_disable();
+#elif defined(HAVE_NULL_GC)
 #else
 	g_assert_not_reached ();
 #endif
@@ -1852,11 +1854,15 @@ mono_unity_class_field_is_literal(MonoClassField *field)
 }
 
 // GC world control
+void nullgc_unified_suspend_stop_world ();
+void nullgc_unified_suspend_restart_world ();
 MONO_API void
 mono_unity_stop_gc_world()
 {
 #if HAVE_BDWGC_GC
 	GC_stop_world_external();
+#elif defined(HAVE_NULL_GC)
+	nullgc_unified_suspend_stop_world ();
 #else
 	g_assert_not_reached();
 #endif
@@ -1867,6 +1873,8 @@ mono_unity_start_gc_world()
 {
 #if HAVE_BDWGC_GC
 	GC_start_world_external();
+#elif defined(HAVE_NULL_GC)
+	nullgc_unified_suspend_restart_world ();
 #else
 	g_assert_not_reached();
 #endif
@@ -1893,6 +1901,7 @@ mono_unity_gc_heap_foreach(GFunc callback, gpointer user_data)
 	ctx.user_data = user_data;
 
 	GC_foreach_heap_section(&ctx, handle_gc_heap_chunk);
+#elif defined(HAVE_NULL_GC)
 #else
 	g_assert_not_reached();
 #endif
@@ -1914,6 +1923,7 @@ mono_unity_gc_handles_foreach_get_target(GFunc callback, gpointer user_data)
 	ctx.callback = callback;
 	ctx.user_data = user_data;
 	mono_gc_strong_handle_foreach(handle_gc_handle, &ctx);
+#elif defined(HAVE_NULL_GC)
 #else
 	g_assert_not_reached();
 #endif

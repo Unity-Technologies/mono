@@ -315,6 +315,7 @@ struct _MonoDomain {
 	MonoCoopMutex    lock;
 	MonoMemPool        *mp;
 	MonoCodeManager    *code_mp;
+	void               *gc_mp;
 	/*
 	 * keep all the managed objects close to each other for the precise GC
 	 * For the Boehm GC we additionally keep close also other GC-tracked pointers.

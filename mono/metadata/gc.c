@@ -453,7 +453,7 @@ mono_domain_finalize (MonoDomain *domain, guint32 timeout)
 
 	/* We don't support domain finalization without a GC */
 	if (mono_gc_is_null ())
-		return FALSE;
+		return TRUE;
 
 	mono_gc_collect (mono_gc_max_generation ());
 
