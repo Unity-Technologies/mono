@@ -128,9 +128,9 @@ static void mono_threads_unlock (void);
 static MonoCoopMutex threads_mutex;
 
 /* Controls access to the 'joinable_threads' hash table */
-#define joinable_threads_lock() mono_os_mutex_lock (&joinable_threads_mutex)
-#define joinable_threads_unlock() mono_os_mutex_unlock (&joinable_threads_mutex)
-static mono_mutex_t joinable_threads_mutex;
+#define joinable_threads_lock() mono_coop_mutex_lock (&joinable_threads_mutex)
+#define joinable_threads_unlock() mono_coop_mutex_unlock (&joinable_threads_mutex)
+static MonoCoopMutex joinable_threads_mutex;
 
 /* Holds current status of static data heap */
 static StaticDataInfo thread_static_info;
@@ -161,6 +161,7 @@ static MonoGHashTable *threads_starting_up = NULL;
 static GHashTable *joinable_threads;
 static gint32 joinable_thread_count;
 
+
 static GHashTable *pending_joinable_threads;
 static gint32 pending_joinable_thread_count;
 
@@ -168,6 +169,15 @@ static mono_cond_t zero_pending_joinable_thread_event;
 
 static void threads_add_pending_joinable_runtime_thread (MonoThreadInfo *mono_thread_info);
 static gboolean threads_wait_pending_joinable_threads (uint32_t timeout);
+
+/* mono_threads_join_threads will take threads from joinable_threads list and wait for them. */
+/* When this happens, the tid is not on the list anymore so mono_thread_join assumes the thread has complete */
+/* and will return back to the caller. This could cause a race since caller of join assumes thread has completed */
+/* and on some OS it could cause errors. Keeping the tid's currently pending a native thread join call */
+/* in a separate table (only affecting callers interested in this internal join detail) and look at that table in mono_thread_join */
+/* will close this race. */
+static GHashTable *pending_native_thread_join_calls;
+static MonoCoopCond pending_native_thread_join_calls_event;
 
 #define SET_CURRENT_OBJECT(x) mono_tls_set_thread (x)
 #define GET_CURRENT_OBJECT() (MonoInternalThread*) mono_tls_get_thread ()
@@ -3036,7 +3046,7 @@ void mono_thread_init (MonoThreadStartCB start_cb,
 	mono_coop_mutex_init_recursive (&threads_mutex);
 
 	mono_os_mutex_init_recursive(&interlocked_mutex);
-	mono_os_mutex_init_recursive(&joinable_threads_mutex);
+	mono_coop_mutex_init_recursive(&joinable_threads_mutex);
 	
 	mono_os_event_init (&background_change_event, FALSE);
 	
@@ -5344,6 +5354,39 @@ mono_threads_add_joinable_runtime_thread (gpointer thread_info)
 	}
 }
 
+static void
+threads_add_pending_native_thread_join_call_nolock (gpointer tid)
+{
+	if (!pending_native_thread_join_calls)
+		pending_native_thread_join_calls = g_hash_table_new (NULL, NULL);
+
+	gpointer orig_key;
+	gpointer value;
+
+	if (!g_hash_table_lookup_extended (pending_native_thread_join_calls, tid, &orig_key, &value))
+		g_hash_table_insert (pending_native_thread_join_calls, tid, tid);
+}
+
+static void
+threads_remove_pending_native_thread_join_call_nolock (gpointer tid)
+{
+	if (pending_native_thread_join_calls)
+		g_hash_table_remove (pending_native_thread_join_calls, tid);
+
+	mono_coop_cond_broadcast (&pending_native_thread_join_calls_event);
+}
+
+static void
+threads_wait_pending_native_thread_join_call_nolock (gpointer tid)
+{
+	gpointer orig_key;
+	gpointer value;
+
+	while (g_hash_table_lookup_extended (pending_native_thread_join_calls, tid, &orig_key, &value)) {
+		mono_coop_cond_wait (&pending_native_thread_join_calls_event, &joinable_threads_mutex);
+	}
+}
+
 /*
  * mono_add_joinable_thread:
  *
@@ -5375,9 +5418,9 @@ void
 mono_threads_join_threads (void)
 {
 	GHashTableIter iter;
-	gpointer key;
-	gpointer value;
-	gboolean found;
+	gpointer key = NULL;
+	gpointer value = NULL;
+	gboolean found = FALSE;
 
 	/* Fastpath */
 	if (!UnlockedRead (&joinable_thread_count))
@@ -5385,6 +5428,10 @@ mono_threads_join_threads (void)
 
 	while (TRUE) {
 		joinable_threads_lock ();
+		if (found) {
+			// Previous native thread join call completed.
+			threads_remove_pending_native_thread_join_call_nolock (key);
+		}
 		found = FALSE;
 		if (g_hash_table_size (joinable_threads)) {
 			g_hash_table_iter_init (&iter, joinable_threads);
@@ -5392,6 +5439,9 @@ mono_threads_join_threads (void)
 			g_hash_table_remove (joinable_threads, key);
 			UnlockedDecrement (&joinable_thread_count);
 			found = TRUE;
+
+			// Add to table of tid's with pending native thread join call.
+			threads_add_pending_native_thread_join_call_nolock (key);
 		}
 		joinable_threads_unlock ();
 		if (found)
@@ -5422,13 +5472,27 @@ mono_thread_join (gpointer tid)
 		g_hash_table_remove (joinable_threads, tid);
 		UnlockedDecrement (&joinable_thread_count);
 		found = TRUE;
+
+		// Add to table of tid's with pending native join call.
+		threads_add_pending_native_thread_join_call_nolock (tid);
 	}
+
+	if (!found) {
+		// Wait for any pending native thread join call not yet completed for this tid.
+		threads_wait_pending_native_thread_join_call_nolock (tid);
+	}
+
 	joinable_threads_unlock ();
 
 	if (!found)
 		return;
 
 	threads_native_thread_join_nolock (tid, value);
+
+	joinable_threads_lock ();
+	// Native thread join call completed for this tid.
+	threads_remove_pending_native_thread_join_call_nolock (tid);
+	joinable_threads_unlock ();
 }
 
 void
