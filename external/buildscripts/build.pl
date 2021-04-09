@@ -1387,7 +1387,9 @@ if ($build)
 			system("mkdir -p $profileDestDir/Facades") eq 0 or die("failed to make directory $profileDestDir/Facades\n");
 
 			system("cp $monoroot/mcs/class/lib/$profileName/*.dll $profileDestDir") eq 0 or die("Failed copying dlls from $monoroot/mcs/class/lib/$profileName to $profileDestDir\n");
+			system("cp $monoroot/mcs/class/lib/$profileName/*.pdb $profileDestDir") eq 0 or die("Failed copying pdbs from $monoroot/mcs/class/lib/$profileName to $profileDestDir\n");
 			system("cp $monoroot/mcs/class/lib/$profileName/Facades/*.dll $profileDestDir/Facades") eq 0 or die("Failed copying dlls from $monoroot/mcs/class/lib/$profileName/Facades to $profileDestDir/Facades\n");
+			system("cp $monoroot/mcs/class/lib/$profileName/Facades/*.pdb $profileDestDir/Facades") eq 0 or die("Failed copying pdbs from $monoroot/mcs/class/lib/$profileName/Facades to $profileDestDir/Facades\n");
 		}
 
 		chdir("$monoroot");
