@@ -7144,7 +7144,7 @@ unity_debugger_agent_handle_exception(MonoException *exc)
 
 	mono_loader_lock();
 
-	MonoMethod *method = tls->il2cpp_context->executionContexts[tls->il2cpp_context->frameCount - 1]->method;
+	MonoMethod *method = tls->il2cpp_context->frameCount > 0 ? tls->il2cpp_context->executionContexts[tls->il2cpp_context->frameCount - 1]->method : NULL;
 
 	/* Treat exceptions which are caught in non-user code as unhandled */
 	for (i = 0; i < event_requests->len; ++i)
