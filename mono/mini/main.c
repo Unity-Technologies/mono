@@ -178,7 +178,7 @@ save_library (int fd, uint64_t offset, uint64_t size, const char *destfname)
 	}
 	// Register the name with "." as this is how it will be found when embedded
 	internal_path = g_build_filename (".", destfname, NULL);
- 	mono_loader_register_module (internal_path, lib);
+	mono_loader_register_embedded_module (internal_path, lib);
 	g_free (internal_path);
 	bundle_library_paths = g_slist_append (bundle_library_paths, file);
 	

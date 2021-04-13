@@ -1936,6 +1936,13 @@ mono_image_close_except_pools_all (MonoImage**images, int image_count)
 	}
 }
 
+static void
+remove_cached_module(gpointer key, gpointer value, gpointer user_data)
+{
+	g_free(key);
+	mono_dl_close((MonoDl*)value);
+}
+
 /*
  * Returns whether mono_image_close_finish() must be called as well.
  * We must unload images in two steps because clearing the domain in
@@ -2075,6 +2082,10 @@ mono_image_close_except_pools (MonoImage *image)
 	if (image->name_cache) {
 		g_hash_table_foreach (image->name_cache, free_hash_table, NULL);
 		g_hash_table_destroy (image->name_cache);
+	}
+	if (image->module_map) {
+		g_hash_table_foreach (image->module_map, remove_cached_module, NULL);
+		g_hash_table_destroy (image->module_map);
 	}
 
 	free_hash (image->runtime_invoke_vcall_cache);

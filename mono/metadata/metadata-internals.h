@@ -376,6 +376,9 @@ struct _MonoImage {
 	/* dll map entries */
 	MonoDllMap *dll_map;
 
+	/* used to track native modules */
+	GHashTable *module_map;
+
 	/* interfaces IDs from this image */
 	/* protected by the classes lock */
 	MonoBitSet *interface_bitset;
@@ -960,7 +963,7 @@ MonoImageSet *
 mono_find_image_set_owner (void *ptr);
 
 MONO_API void
-mono_loader_register_module (const char *name, MonoDl *module);
+mono_loader_register_embedded_module (const char *name, MonoDl *module);
 
 gboolean
 mono_assembly_is_problematic_version (const char *name, guint16 major, guint16 minor, guint16 build, guint16 revision);
