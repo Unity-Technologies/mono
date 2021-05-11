@@ -1300,6 +1300,11 @@ mono_unity_thread_fast_detach ()
 	mono_thread_pop_appdomain_ref ();
 }
 
+MONO_API void unity_mono_install_memory_callbacks(MonoMemoryCallbacks* callbacks)
+{
+	mono_set_allocator_vtable(callbacks);
+}
+
 // hack, FIXME jon
 
 /*

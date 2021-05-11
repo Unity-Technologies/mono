@@ -7,11 +7,13 @@
 #include <mono/metadata/marshal.h>
 
 typedef void(*vprintf_func)(const char* msg, va_list args);
+
 typedef struct {
-	void* (*malloc_func)(size_t size);
-	void(*free_func)(void *ptr);
-	void* (*calloc_func)(size_t nmemb, size_t size);
-	void* (*realloc_func)(void *ptr, size_t size);
+	int version;
+	void *(*malloc_func)      (size_t size);
+	void *(*realloc_func)     (void* ptr, size_t count);
+	void (*free_func)         (void* ptr);
+	void *(*calloc_func)      (size_t nmemb, size_t size);
 } MonoMemoryCallbacks;
 
 /**
@@ -33,9 +35,6 @@ FILE* unity_fopen( const char *name, const char *mode );
 extern gboolean mono_unity_socket_security_enabled_get (void);
 MONO_API extern void mono_unity_socket_security_enabled_set (gboolean enabled);
 MONO_API void mono_unity_set_vprintf_func(vprintf_func func);
-
-
-void unity_mono_install_memory_callbacks(MonoMemoryCallbacks* callbacks);
 
 MONO_API gboolean
 unity_mono_method_is_generic (MonoMethod* method);
