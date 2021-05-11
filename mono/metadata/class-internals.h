@@ -225,6 +225,7 @@ typedef enum {
 	MONO_EXCEPTION_OUT_OF_MEMORY = 14,
 	MONO_EXCEPTION_INLINE_FAILED = 15,
 	MONO_EXCEPTION_MONO_ERROR = 16,
+	MONO_EXCEPTION_MEMBER_ACCESS = 17,
 	/* add other exception type */
 } MonoExceptionType;
 
