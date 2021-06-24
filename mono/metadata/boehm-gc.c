@@ -1174,15 +1174,81 @@ mono_gc_get_write_barrier (void)
 	if (*write_barrier_method_addr)
 		return *write_barrier_method_addr;
 
+	/* GC_dirty(ptr) -> GC_dirty_inner -> 
+	 * 
+	 * word index = PHT_HASH(p); -> # define PHT_HASH(addr) ((((word)(addr)) >> LOG_HBLKSIZE) & (PHT_ENTRIES - 1))
+	 * async_set_pht_entry_from_index(GC_dirty_pages, index); #   define async_set_pht_entry_from_index(db, index) \ set_pht_entry_from_index_concurrent(db, index)
+	 *
+	 * # define set_pht_entry_from_index_concurrent(bl, index) \
+                AO_or((volatile AO_t *)&(bl)[divWORDSZ(index)], \
+                      (AO_t)((word)1 << modWORDSZ(index)))
+	 /
+
 	/* Create the IL version of mono_gc_barrier_generic_store () */
 	sig = mono_metadata_signature_alloc(mono_defaults.corlib, 1);
 	sig->ret = mono_get_void_type();
 	sig->params[0] = mono_get_int_type();
 
+	/*MonoClass* interlocked = mono_class_from_name (mono_defaults.corlib, "System.Threading", "Interlocked");
+	void* iter = NULL;
+	MonoMethod* method_iter = NULL;
+	MonoMethod* interlocked_or = NULL;
+	while (method_iter = mono_class_get_methods (interlocked, &iter))
+	{
+		if (strcmp(method_iter->name, "Or"))
+			continue;
+		if (method_iter->signature->param_count != 2)
+			continue;
+		if (method_iter->signature->params[0]->type != MONO_TYPE_U8 || method_iter->signature->params[1]->type != MONO_TYPE_U8)
+			continue;
+		interlocked_or = method_iter;
+	}
+
+	g_assert (interlocked_or);*/
+
 	mb = mono_mb_new (mono_defaults.object_class, "wbarrier_conc", MONO_WRAPPER_WRITE_BARRIER);
+	int index = mono_mb_add_local (mb, m_class_get_byval_arg (mono_defaults.uint_class));
+	int div_wordszs = mono_mb_add_local (mb, m_class_get_byval_arg (mono_defaults.uint_class));
+	int mod_wordszs = mono_mb_add_local (mb, m_class_get_byval_arg (mono_defaults.uint_class));
+	int page_ptr = mono_mb_add_local (mb, m_class_get_byval_arg (mono_defaults.uint_class));
 
 	mono_mb_emit_ldarg (mb, 0);
-	mono_mb_emit_icall (mb, mono_gc_wbarrier_generic_nostore_internal);
+	mono_mb_emit_icon (mb, LOG_HBLKSIZE);
+	mono_mb_emit_byte (mb, MONO_CEE_SHR_UN);
+	mono_mb_emit_icon (mb, PHT_ENTRIES - 1);
+	mono_mb_emit_byte (mb, MONO_CEE_AND);
+	mono_mb_emit_stloc (mb, index);
+
+	mono_mb_emit_ldloc (mb, index);
+	mono_mb_emit_icon (mb, LOGWL);
+	mono_mb_emit_byte (mb, MONO_CEE_SHR_UN);
+	mono_mb_emit_stloc (mb, div_wordszs);
+
+	mono_mb_emit_icon8 (mb, (gint64)GC_dirty_pages_addr());
+	mono_mb_emit_ldloc (mb, div_wordszs);
+	mono_mb_emit_icon (mb, 8);
+	mono_mb_emit_byte (mb, MONO_CEE_MUL);
+	mono_mb_emit_byte (mb, MONO_CEE_ADD);
+	mono_mb_emit_stloc (mb, page_ptr);
+
+	mono_mb_emit_icon (mb, 1);
+	mono_mb_emit_byte (mb, MONO_CEE_CONV_I);
+	mono_mb_emit_ldloc (mb, index);
+	mono_mb_emit_icon (mb, 0x3f);
+	mono_mb_emit_byte (mb, MONO_CEE_AND);
+	mono_mb_emit_byte (mb, MONO_CEE_SHL);
+	mono_mb_emit_stloc (mb, mod_wordszs);
+
+	mono_mb_emit_ldloc (mb, page_ptr);
+
+	mono_mb_emit_ldloc (mb, mod_wordszs);
+	mono_mb_emit_ldloc (mb, page_ptr);
+	mono_mb_emit_byte (mb, MONO_CEE_LDIND_I);
+	/* FIXME: this needs to be atomic */
+	mono_mb_emit_byte (mb, MONO_CEE_OR);
+
+	mono_mb_emit_byte (mb, MONO_CEE_STIND_I);
+
 	mono_mb_emit_byte (mb, MONO_CEE_RET);
 
 	res = mono_mb_create_method (mb, sig, 16);
