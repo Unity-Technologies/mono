@@ -1,0 +1,18 @@
+name: AOT ClassLibs Windows x64
+
+agent:
+  type: Unity::VM
+  image: platform-foundation/windows-vs2019-il2cpp-bokken:stable
+  flavor: b1.xlarge
+
+dependencies:
+  - .yamato/Build Classlibs OSX.yml
+  - .yamato/Build Windows x64.yml
+  
+commands:
+  - cd external\buildscripts\bcl_aot && ..\bee.exe
+
+artifacts: 
+  win64:
+    paths:
+      - incomingbuilds\aot-classlibs-win64\**

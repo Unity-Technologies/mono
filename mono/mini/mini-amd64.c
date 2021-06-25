@@ -3064,7 +3064,8 @@ emit_call (MonoCompile *cfg, MonoCallInst *call, guint8 *code, MonoJitICallId ji
 
 				MonoMethod* const method = call->method;
 
-				if (m_class_get_image (method->klass)->aot_module)
+				// JON FIXME
+				//if (m_class_get_image (method->klass)->aot_module)
 					/* The callee might be an AOT method */
 					near_call = FALSE;
 				if (method->dynamic)

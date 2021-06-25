@@ -457,7 +457,7 @@ struct _MonoImage {
 	MonoImage **files;
 	guint32 file_count;
 
-	MonoAotModule *aot_module;
+	//MonoAotModule *aot_module;
 
 	guint8 aotid[16];
 

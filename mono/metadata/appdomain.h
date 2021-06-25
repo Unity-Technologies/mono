@@ -29,6 +29,9 @@ typedef void (*MonoDomainFunc) (MonoDomain *domain, void* user_data);
 typedef void (*MonoJitInfoFunc)(MonoDomain *domain, MonoMethod* method, MonoJitInfo* jinfo, void* user_data);
 typedef void (*MonoUnityExceptionFunc) (MonoObject* exc);
 typedef void (*MonoDomainAssemblyFunc) (MonoAssembly *assembly, void* user_data);
+typedef void (*MonoDomainAssemblyLoadedFunc) (MonoDomain* domain, MonoAssembly* assembly);
+typedef void (*MonoImageAOTModuleDestroyFunc) (MonoDomain* domain, MonoImage* image);
+typedef void (*MonoAOTResetFunc) ();
 
 MONO_API MonoDomain*
 mono_init                  (const char *filename);
@@ -64,6 +67,9 @@ mono_runtime_is_shutting_down (void);
 MONO_API const char*
 mono_check_corlib_version (void);
 
+void
+mono_domain_install_aot_callbacks (MonoDomainAssemblyLoadedFunc image_loaded, MonoAOTResetFunc aot_reset, MonoImageAOTModuleDestroyFunc image_aot_module_destroy);
+
 MONO_API MonoDomain *
 mono_domain_create         (void);
 
@@ -72,6 +78,15 @@ mono_domain_create_appdomain (char *friendly_name, char *configuration_file);
 
 MONO_API MONO_RT_EXTERNAL_ONLY void
 mono_domain_set_config (MonoDomain *domain, const char *base_dir, const char *config_file_name);
+
+MONO_API MonoDomain*
+mono_aot_domain_get (void);
+
+MONO_API void
+mono_aot_domain_set (MonoDomain* domain);
+
+MONO_API void
+mono_aot_domain_init_root_domain_set (mono_bool init_root_domain);
 
 MONO_API MonoDomain *
 mono_domain_get            (void);

@@ -1249,7 +1249,8 @@ mono_gc_is_moving (void)
 gboolean 
 mono_gc_needs_write_barriers(void)
 {
-	return GC_is_incremental_mode ();
+	/* FIXME: Jon can we detect we are doing AOT compile and force this? */
+	/*return GC_is_incremental_mode ();*/ return TRUE;
 }
 
 gboolean

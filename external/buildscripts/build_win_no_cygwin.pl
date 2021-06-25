@@ -126,6 +126,20 @@ if ($build)
 	my $archNameForBuild = $arch32 ? 'Win32' : 'x64';
 	my $configDirName = $debug ? "Debug" : "Release";
 
+	if ($arch32)
+	{
+		
+	} else {
+		print(">>> copying llvm binaries...\n");
+		copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/opt.exe", "$monoprefix/bin/opt.exe") or die ("failed copying opt.exe\n");
+		copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/llvm-as.exe", "$monoprefix/bin/llvm-as.exe") or die ("failed copying llvm-as.exe\n");
+		copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/llvm-dis.exe", "$monoprefix/bin/llvm-dis.exe") or die ("failed copying llvm-dis.exe\n");
+		copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/llvm-mc.exe", "$monoprefix/bin/llvm-mc.exe") or die ("failed copying llvm-mc.exe\n");		
+		copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/llc.exe", "$monoprefix/bin/llc.exe") or die ("failed copying llc.exe\n");
+	}
+	
+	print(">>> copying mono binaries...\n");
+	
 	copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/mono-bdwgc.exe", "$monoprefix/bin/mono-bdwgc.exe") or die ("failed copying mono-bdwgc.exe\n");
 	copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/mono-2.0-bdwgc.dll", "$monoprefix/bin/mono-2.0-bdwgc.dll") or die ("failed copying mono-2.0-bdwgc.dll\n");
 	copy("$monoroot/msvc/build/boehm/$archNameForBuild/bin/$configDirName/mono-2.0-bdwgc.pdb", "$monoprefix/bin/mono-2.0-bdwgc.pdb") or die ("failed copying mono-2.0-bdwgc.pdb\n");
@@ -221,6 +235,16 @@ if ($artifact)
 	copy("$monoprefix/bin/MonoPosixHelper.dll", "$distDirArchBin/.") or die ("failed copying MonoPosixHelper.dll\n");
 	copy("$monoprefix/bin/MonoPosixHelper.pdb", "$distDirArchBin/.") or die ("failed copying MonoPosixHelper.pdb\n");
 
+	if ($arch32)
+	{
+	} else {
+		print(">>> copying llvm binaries to monodistribution...\n");
+		copy("$monoprefix/bin/opt.exe", "$distDirArchBin/.") or die ("failed copying opt.exe\n");
+		copy("$monoprefix/bin/llvm-as.exe", "$distDirArchBin/.") or die ("failed copying llvm-as.exe\n");
+		copy("$monoprefix/bin/llvm-dis.exe", "$distDirArchBin/.") or die ("failed copying llvm-dis.exe\n");
+		copy("$monoprefix/bin/llvm-mc.exe", "$distDirArchBin/.") or die ("failed copying llvm-mc.exe\n");		
+		copy("$monoprefix/bin/llc.exe", "$distDirArchBin/.") or die ("failed copying llc.exe\n");
+	}
 
 	# Output version information
 	print(">>> Creating version file : $versionsOutputFile\n");

@@ -9344,6 +9344,7 @@ mono_llvm_check_method_supported (MonoCompile *cfg)
 	if (cfg->disable_llvm)
 		return;
 
+
 	/*
 	 * Nested clauses where one of the clauses is a finally clause is
 	 * not supported, because LLVM can't figure out the control flow,
@@ -9364,6 +9365,38 @@ mono_llvm_check_method_supported (MonoCompile *cfg)
 			}
 		}
 	}
+	if (cfg->disable_llvm)
+		return;
+
+	MonoClass* klass = cfg->method->klass;
+	MonoType* type = m_class_get_byval_arg(klass);
+	int32_t instance_size = mono_class_instance_size(klass);
+	if (MONO_TYPE_ISSTRUCT(type) )
+	{
+		const int size_threshold = 256;
+		if (instance_size > size_threshold)
+		{
+			printf("Disabling LLVM compilation for %s.%s (struct size %d > %d)\n", 
+				m_class_get_name(klass), cfg->method->name, instance_size, size_threshold);
+			cfg->disable_llvm = TRUE;
+		}
+
+		if (strcmp(mono_method_get_name(cfg->method), "Execute") == 0)
+		{
+			printf("Disabling LLVM compilation for %s.%s (in case it references a large struct)\n",
+				m_class_get_name(klass), cfg->method->name);
+			cfg->disable_llvm = TRUE;
+		}
+	}
+
+
+	if (strstr(klass->name_space, "") != NULL)
+	{
+		//printf("Disabling LLVM compilation for %s.%s (in global namespace)\n", 
+		//	m_class_get_name(klass), cfg->method->name, instance_size);
+		cfg->disable_llvm = TRUE;
+	}
+
 	if (cfg->disable_llvm)
 		return;
 

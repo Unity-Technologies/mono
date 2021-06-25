@@ -406,6 +406,8 @@ struct _MonoDomain {
 	MonoJitInfoTable *
 	  volatile          aot_modules;
 	GSList		   *jit_info_free_queue;
+	/* maps MonoImage to MonoAotModule */
+	GHashTable*         aot_module_hash;
 	/* Used when loading assemblies */
 	gchar **search_path;
 	gchar *private_bin_path;

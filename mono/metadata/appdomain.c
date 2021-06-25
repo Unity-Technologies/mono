@@ -817,6 +817,9 @@ mono_domain_create_appdomain_internal (char *friendly_name, MonoAppDomainSetupHa
 	data->domain = MONO_HANDLE_RAW (ad);
 	mono_gc_wbarrier_generic_nostore_internal (&data->domain);	
 	data->friendly_name = g_strdup (friendly_name);
+	// hack to setup AOT domain earlier than Unity can with embedding API.
+	if (!strcmp(data->friendly_name, "Unity Child Domain"))
+		mono_aot_domain_set (data);
 
 	MONO_PROFILER_RAISE (domain_name, (data, data->friendly_name));
 
@@ -1604,6 +1607,7 @@ mono_domain_assembly_postload_search (MonoAssemblyLoadContext *alc, MonoAssembly
 	return assembly;
 }
 	
+extern MonoDomainAssemblyLoadedFunc domain_image_loaded;
 /*
  * LOCKING: assumes assemblies_lock in the domain is already locked.
  */
@@ -1631,6 +1635,8 @@ add_assemblies_to_domain (MonoDomain *domain, MonoAssembly *ass, GHashTable *ht)
 		g_hash_table_add (ht, ass);
 		domain->domain_assemblies = g_slist_append (domain->domain_assemblies, ass);
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_ASSEMBLY, "Assembly %s[%p] added to domain %s, ref_count=%d", ass->aname.name, ass, domain->friendly_name, ass->ref_count);
+		if (domain_image_loaded)
+			domain_image_loaded (domain, ass);
 	}
 
 #ifndef ENABLE_NETCORE

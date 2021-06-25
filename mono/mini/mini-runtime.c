@@ -868,7 +868,7 @@ mono_jit_thread_attach (MonoDomain *domain)
 
 	if (!domain) {
 		/* Happens when called from AOTed code which is only used in the root domain. */
-		domain = mono_get_root_domain ();
+		domain = mono_aot_domain_get ();
 	}
 
 	g_assert (domain);
@@ -878,7 +878,7 @@ mono_jit_thread_attach (MonoDomain *domain)
 	if (!attached) {
 		// #678164
 		gboolean background = TRUE;
-		mono_thread_attach_external_native_thread (mono_get_root_domain (), background);
+		mono_thread_attach_external_native_thread (mono_aot_domain_get (), background);
 
 		/* mono_jit_thread_attach is external-only and not called by
 		 * the runtime on any of our own threads.  So if we get here,
@@ -2622,7 +2622,7 @@ lookup_start:
 			g_assert (info);
 			if (info->subtype == WRAPPER_SUBTYPE_INTERP_IN || info->subtype == WRAPPER_SUBTYPE_INTERP_LMF)
 				/* AOT'd wrappers for interp must be owned by root domain */
-				domain = mono_get_root_domain ();
+				domain = mono_aot_domain_get ();
 		}
 
 		if (!domain)

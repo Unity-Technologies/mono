@@ -303,8 +303,8 @@ mono_jit_info_table_find_internal (MonoDomain *domain, gpointer addr, gboolean t
 		return ji;
 
 	/* Maybe its an AOT module */
-	if (try_aot && mono_get_root_domain () && mono_get_root_domain ()->aot_modules) {
-		table = (MonoJitInfoTable *)mono_get_hazardous_pointer ((gpointer volatile*)&mono_get_root_domain ()->aot_modules, hp, JIT_INFO_TABLE_HAZARD_INDEX);
+	if (try_aot && mono_aot_domain_get () && mono_aot_domain_get ()->aot_modules) {
+		table = (MonoJitInfoTable *)mono_get_hazardous_pointer ((gpointer volatile*)&mono_aot_domain_get ()->aot_modules, hp, JIT_INFO_TABLE_HAZARD_INDEX);
 		module_ji = jit_info_table_find (table, hp, (gint8*)addr);
 		if (module_ji)
 			ji = jit_info_find_in_aot_func (domain, module_ji->d.image, addr);
@@ -809,7 +809,7 @@ void
 mono_jit_info_add_aot_module (MonoImage *image, gpointer start, gpointer end)
 {
 	MonoJitInfo *ji;
-	MonoDomain *domain = mono_get_root_domain ();
+	MonoDomain *domain = mono_aot_domain_get ();
 
 	g_assert (domain);
 	mono_domain_lock (domain);
