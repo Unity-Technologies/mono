@@ -4,3 +4,8 @@
 ../System.Web/System.Web.Util/HttpEncoder.cs
 System.CodeDom/CodeCompileUnit.cs
 System.CodeDom/CodeTypeDeclaration.cs
+#include mono_fsw.sources
+
+../../../external/corefx-bugfix/src/System.IO.FileSystem.Watcher/src/System/IO/FileSystemWatcher.cs
+../../../external/corefx-bugfix/src/System.IO.FileSystem.Watcher/src/System/IO/FileSystemWatcher.UnknownUnix.cs
+
