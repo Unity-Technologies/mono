@@ -17,17 +17,14 @@ my $buildMachine = $ENV{UNITY_THISISABUILDMACHINE};
 
 my $build = 0;
 my $clean = 0;
-my $arch32 = 0;
+my $targetArch = "";
 my $debug = 0;
 my $gc = "bdwgc";
-my @vsVersions = (2019, 2022, 2017);
-my @vsEditions = ("Professional", "Enterprise", "Community");
-my @vsBaseFolder = ("ProgramFiles(x86)", "ProgramFiles");
 
 GetOptions(
 	'build=i'=>\$build,
 	'clean=i'=>\$clean,
-	'arch32=i'=>\$arch32,
+	'targetarch=s'=>\$targetArch,
 	'debug=i'=>\$debug,
 	'gc=s'=>\$gc,
 ) or die ("illegal cmdline options");
@@ -41,27 +38,19 @@ sub CompileVCProj
 {
 	my $sln = shift;
 	my $config;
+	my $vsInstallRoot = $ENV{"ProgramFiles(x86)"} . "/Microsoft Visual Studio";
 
-        my $msbuild = "";
-	MSBUILDLOOP: foreach my $vsFolder (@vsBaseFolder)
-        {
-		foreach my $vsEdition (@vsEditions)
-		{
-			foreach my $vsVersion (@vsVersions)
-			{
-				$msbuild = "$ENV{$vsFolder}/Microsoft Visual Studio/$vsVersion/$vsEdition/MSBuild/Current/Bin/MSBuild.exe";
-				last MSBUILDLOOP if (-e -x $msbuild)
-			}
-		}
-        }
+	my $msbuild = "$vsInstallRoot/2019/Professional/MSBuild/Current/Bin/MSBuild.exe";
 
 	if (!(-e -x $msbuild))
 	{
-		print (">>> Unable to find executable MSBuild\n");
+		print (">>> Unable to find executable MSBuild for vs19 at: $msbuild\nFalling back to vs17\n");
+		$msbuild = "$vsInstallRoot/2017/Professional/MSBuild/15.0/Bin/MSBuild.exe";
 	}
 
-	$config = $debug ? "Debug" : "Release";
-	my $arch = $arch32 ? "Win32" : "x64";
+    $config = $debug ? "Debug" : "Release";
+	my $arch = $targetArch;
+
 	my $target = $clean ? "/t:Clean,Build" :"/t:Build";
 	my $properties = "/p:Configuration=$config;Platform=$arch;MONO_TARGET_GC=$gc;MONO_USE_STATIC_C_RUNTIME=true";
 
