@@ -2084,6 +2084,8 @@ mono_arch_flush_icache (guint8 *code, gint size)
 
 	asm volatile ("dsb ish" : : : "memory");
 	asm volatile ("isb" : : : "memory");
+#elif HOST_WIN32	
+	FlushInstructionCache(code, NULL, size);
 #endif
 #endif
 }
