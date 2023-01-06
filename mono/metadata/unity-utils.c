@@ -18,7 +18,6 @@
 #include <mono/metadata/object.h>
 #include <mono/metadata/metadata.h>
 #include <mono/metadata/tabledefs.h>
-#include <mono/metadata/assembly-internals.h>
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/class-init.h>
 #include <mono/metadata/object-internals.h>
@@ -359,12 +358,6 @@ MonoBoolean mono_unity_class_is_class_type(MonoClass* klass)
 }
 
 MONO_API gboolean
-mono_unity_class_is_inited(MonoClass* klass)
-{
-	return m_class_is_inited (klass);
-}
-
-MONO_API gboolean
 mono_class_is_generic(MonoClass *klass)
 {
 	g_assert(klass);
@@ -375,8 +368,6 @@ MONO_API gboolean
 mono_class_is_blittable(MonoClass *klass)
 {
 	g_assert(klass);
-	if (!klass->fields_inited)
-		mono_class_setup_fields(klass);
 	return klass->blittable;
 }
 
@@ -966,6 +957,7 @@ MONO_API void mono_unity_gc_set_mode(MonoGCMode mode)
 	}
 }
 
+// Deprecated. Remove when Unity has switched to mono_unity_gc_set_mode
 MONO_API void mono_unity_gc_enable()
 {
 #if HAVE_BOEHM_GC
@@ -975,6 +967,7 @@ MONO_API void mono_unity_gc_enable()
 #endif
 }
 
+// Deprecated. Remove when Unity has switched to mono_unity_gc_set_mode
 MONO_API void mono_unity_gc_disable()
 {
 #if HAVE_BOEHM_GC
@@ -1107,21 +1100,6 @@ void* mono_unity_get_field_address(MonoObject *obj, MonoVTable *vt, MonoClassFie
 	}
 
 	return src;
-}
-
-MONO_API gboolean mono_unity_assembly_get_assemblyref_checked(MonoImage* image, int index, MonoAssemblyName* aname, MonoError* error)
-{
-	return mono_assembly_get_assemblyref_checked(image, index, aname, error);
-}
-
-MONO_API MonoClass* mono_unity_class_get_checked(MonoImage *image, guint32 token, MonoError *error)
-{
-	return mono_class_get_checked(image, token, error);
-}
-
-MONO_API MonoMethod* mono_unity_get_method_checked(MonoImage *image, guint32 token, MonoClass *klass, MonoGenericContext *context, MonoError *error)
-{
-	return mono_get_method_checked(image, token, klass, context, error);
 }
 
 MONO_API MonoClassField* mono_unity_field_from_token_checked(MonoImage *image, guint32 token, MonoClass **retklass, MonoGenericContext *context, MonoError *error)
@@ -1893,13 +1871,6 @@ MONO_API void
 mono_unity_stop_gc_world()
 {
 #if HAVE_BOEHM_GC
-	// Metadata access does mono_loader_lock. We access it when we capture classes 
-	// and other information. So does the debugger, which can create a deadlock.
-	mono_loader_lock();
-	// We need to lock domain sooner, to make sure than no other thread is currently
-	// holding lock, as mono_unity_domain_mempool_chunk_foreach will need it for:
-	// mono_unity_domain_mempool_chunk_foreach -> mono_mem_manager_lock -> mono_domain_lock
-	mono_domain_lock(mono_domain_get());
 	GC_stop_world_external();
 #else
 	g_assert_not_reached();
@@ -1911,8 +1882,6 @@ mono_unity_start_gc_world()
 {
 #if HAVE_BOEHM_GC
 	GC_start_world_external();
-	mono_domain_unlock(mono_domain_get());
-	mono_loader_unlock();
 #else
 	g_assert_not_reached();
 #endif
@@ -2012,7 +1981,7 @@ mono_unity_class_has_failure(const MonoClass* klass)
 static android_network_up_state network_up_state_func = NULL;
 
 MONO_API void
-mono_unity_set_android_network_up_state_func (android_network_up_state func)
+mono_unity_set_android_network_up_state_func(android_network_up_state func)
 {
 	network_up_state_func = func;
 }
@@ -2022,20 +1991,11 @@ ves_icall_Unity_Android_Network_Interface_Up_State (MonoString *ifName, MonoBool
 {
 	if (network_up_state_func)
 	{
-		ERROR_DECL(unused);
-		char* ifNameUtf = mono_string_to_utf8_checked(ifName, unused);
-		mono_error_cleanup(unused);
-		MonoBoolean retVal = network_up_state_func(ifNameUtf, is_up);
-		mono_free(ifNameUtf);
-		return retVal;
+		MonoError unused;
+		char* ifNameUtf = mono_string_to_utf8_checked(ifName, &unused);
+		mono_error_cleanup(&unused);
+		return network_up_state_func(ifNameUtf, is_up);
 	}
-	return FALSE;
-}
-#else
-MonoBoolean
-ves_icall_Unity_Android_Network_Interface_Up_State (MonoString *ifName, MonoBoolean* is_up)
-{
-	//No-op to avoid error message on linux. This is not called at runtime.
 	return FALSE;
 }
 #endif

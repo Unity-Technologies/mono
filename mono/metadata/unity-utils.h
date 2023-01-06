@@ -66,14 +66,13 @@ MONO_API void mono_unity_set_vprintf_func(vprintf_func func);
 
 void unity_mono_install_memory_callbacks(MonoMemoryCallbacks* callbacks);
 
-MONO_API extern void burst_mono_simulate_burst_debug_domain_reload();
 MONO_API extern void burst_mono_install_hooks(BurstMonoDebuggerCallbacks* callbacks, void* extra);
 MONO_API extern void burst_mono_update_tracking_pointers(MonoDomain* domain,MonoClass* klass);
 
 MONO_API gboolean
 unity_mono_method_is_generic (MonoMethod* method);
 
-typedef const char*(*UnityFindPluginCallback)(const char*, gboolean*);
+typedef const char*(*UnityFindPluginCallback)(const char*);
 
 MONO_API void
 mono_set_find_plugin_callback(UnityFindPluginCallback find);
@@ -104,7 +103,6 @@ MonoClass* mono_unity_class_get_castclass(MonoClass *klass);
 guint32 mono_unity_class_get_native_size(MonoClass* klass);
 MonoBoolean mono_unity_class_is_string(MonoClass* klass);
 MonoBoolean mono_unity_class_is_class_type(MonoClass* klass);
-MONO_API gboolean mono_unity_class_is_inited(MonoClass* klass);
 MONO_API gboolean mono_class_is_generic(MonoClass *klass);
 MONO_API gboolean mono_class_is_blittable(MonoClass *klass);
 MONO_API gboolean mono_class_is_inflated(MonoClass *klass);
@@ -218,12 +216,7 @@ MonoException* mono_unity_thread_check_exception();
 MonoObject* mono_unity_delegate_get_target(MonoDelegate *delegate);
 gchar* mono_unity_get_runtime_build_info(const char *date, const char *time);
 void* mono_unity_get_field_address(MonoObject *obj, MonoVTable *vt, MonoClassField *field);
-
-MONO_API gboolean mono_unity_assembly_get_assemblyref_checked(MonoImage* image, int index, MonoAssemblyName* aname, MonoError* error);
-MONO_API MonoClass* mono_unity_class_get_checked(MonoImage* image, guint32 token, MonoError* error);
-MONO_API MonoMethod* mono_unity_get_method_checked(MonoImage* image, guint32 token, MonoClass* klass, MonoGenericContext* context, MonoError* error);
 MONO_API MonoClassField* mono_unity_field_from_token_checked(MonoImage *image, guint32 token, MonoClass **retklass, MonoGenericContext *context, MonoError *error);
-
 gboolean mono_unity_thread_state_init_from_handle(MonoThreadUnwindState *tctx, MonoThreadInfo *info, void* fixme);
 void mono_unity_stackframe_set_method(MonoStackFrame *sf, MonoMethod *method);
 MonoType* mono_unity_reflection_type_get_type(MonoReflectionType *type);
@@ -265,13 +258,13 @@ MONO_API gboolean mono_unity_class_is_open_constructed_type (MonoClass *klass);
 MONO_API gboolean mono_unity_class_has_failure (const MonoClass* klass);
 
 #ifdef ANDROID
-typedef uint8_t (*android_network_up_state)(const char* ifName, uint8_t* is_up);
+typedef mono_bool (*android_network_up_state)(const char* ifName, uint8_t* is_up);
 
 MONO_API void
 mono_unity_set_android_network_up_state_func(android_network_up_state func);
-#endif
 
 MonoBoolean
 ves_icall_Unity_Android_Network_Interface_Up_State (MonoString *ifName, MonoBoolean* is_up);
+#endif
 
 #endif
