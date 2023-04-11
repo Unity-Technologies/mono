@@ -82,9 +82,12 @@ if ($buildArm64)
 if ($artifact)
 {
 	print(">>> Moving built binaries to final output directories\n");
-
-	CopyEmbedRuntimeBinaries($embedDirSourceARM64, "$embedDirRoot/osx-arm64");
-
+    
+    if ($buildArm64)
+    {
+        CopyEmbedRuntimeBinaries($embedDirSourceARM64, "$embedDirRoot/osx-arm64");
+    }
+    
 	# Merge stuff in the monodistribution directory
 	my $distDirRoot = "$buildsroot/monodistribution";
 	my $distDirDestinationBin = "$buildsroot/monodistribution/bin";
