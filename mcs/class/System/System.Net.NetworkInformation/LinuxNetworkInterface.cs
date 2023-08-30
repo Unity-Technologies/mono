@@ -261,7 +261,7 @@ namespace System.Net.NetworkInformation {
 		bool android_use_java_api;
 #endif
 
-#if UNITY
+#if UNITY_ANDROID
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern static bool unitydroid_get_network_interface_up_state (string ifname, ref bool is_up);
 #endif
@@ -314,7 +314,7 @@ namespace System.Net.NetworkInformation {
 						return OperationalStatus.Unknown;
 				}
 #endif
-#if UNITY
+#if UNITY_ANDROID
 				// Similar to above we need to go into java but in a Unity context we don't have access to Xamarin.Android
 				if (Console.IsRunningOnAndroid)
 				{

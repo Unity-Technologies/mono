@@ -2078,6 +2078,12 @@ if test "x$unity_define" = "xyes"; then
    AC_MSG_NOTICE([Building for Unity])
 fi
 
+AC_ARG_ENABLE(unity-android-define,[  --enable-unity-android-define have UNITY_ANDROID defined], unity_android_define=$enableval, unity_android_define=no)
+if test "x$unity_android_define" = "xyes"; then
+   AC_DEFINE(UNITY_ANDROID, 1, [Building for Unity Android])
+   AC_MSG_NOTICE([Building for Unity Android])
+fi
+
 AC_ARG_ENABLE(executables, [  --disable-executables disable the build of the runtime executables], enable_executables=$enableval, enable_executables=yes)
 AM_CONDITIONAL(DISABLE_EXECUTABLES, test x$enable_executables = xno)
 

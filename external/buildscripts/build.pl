@@ -873,6 +873,7 @@ if ($build)
 		push @configureparams, "ac_cv_header_zlib_h=no" if($runningOnWindows);
 		push @configureparams, "--disable-btls";
 		push @configureparams, "--with-sgen=no";
+		push @configureparams, "--enable-unity-android-define=yes";
 	}
 	elsif ($tizen)
 	{
