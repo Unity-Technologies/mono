@@ -3,6 +3,9 @@ agent:
   type: Unity::VM
   image: platform-foundation/windows-vs2019-prtools-bokken:latest
   flavor: b1.xlarge 
+variables:
+  MONO_REV: "latest"
+  BACKPORT_BRANCH: "2023.3"
 dependencies:
   - .yamato/Publish To Stevedore.yml
 commands:
