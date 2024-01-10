@@ -194,6 +194,9 @@ win32_handle_stack_overflow (EXCEPTION_POINTERS* ep, CONTEXT *sctx)
  */
 LONG CALLBACK seh_vectored_exception_handler(EXCEPTION_POINTERS* ep)
 {
+	if (ep->ExceptionRecord->ExceptionCode == DBG_PRINTEXCEPTION_C)
+		return EXCEPTION_CONTINUE_SEARCH;
+
 	EXCEPTION_RECORD* er;
 	CONTEXT* ctx;
 	LONG res;
