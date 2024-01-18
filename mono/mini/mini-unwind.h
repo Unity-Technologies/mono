@@ -77,9 +77,22 @@
  * Mono extension, Windows x64 unwind ABI needs some more details around sp alloc size and fp offset.
  */
 #if defined(TARGET_WIN32) && defined(TARGET_AMD64)
-#define DW_CFA_mono_sp_alloc_info_win64 (DW_CFA_lo_user + 1)
-#define DW_CFA_mono_fp_alloc_info_win64 (DW_CFA_lo_user + 2)
+#define DW_CFA_mono_sp_alloc_info_win64_amd64 (DW_CFA_lo_user + 1)
+#define DW_CFA_mono_fp_alloc_info_win64_amd64 (DW_CFA_lo_user + 2)
 #endif
+
+/*
+ * Mono extenions, Windows ARM64 unwind ABI needs details about regs restored in the epilog
+ * This may be different for methods with LMF data
+*/
+#if defined(TARGET_WIN32) && defined(TARGET_ARM64)
+#define DW_CFA_mono_restore_offset_win64_arm64 (DW_CFA_lo_user + 1)
+#define DW_CFA_mono_prolog_nop_win64_arm64 (DW_CFA_lo_user + 2)
+#define DW_CFA_mono_epilog_nop_win64_arm64 (DW_CFA_lo_user + 3)
+#define DW_CFA_mono_fp_alloc_info_win64_arm64 (DW_CFA_lo_user + 4)
+#endif
+
+#define DW_CFA_offset             0x80
 
 /* Represents one unwind instruction */
 typedef struct {
@@ -116,12 +129,14 @@ typedef struct {
  */
 #define mono_emit_unwind_op_mark_loc(cfg,ip,n) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_advance_loc, 0, (n))
 
-#if defined(TARGET_WIN32) && defined(TARGET_AMD64)
-#define mono_emit_unwind_op_sp_alloc(cfg,ip,size) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_sp_alloc_info_win64, 0, (size))
-#define mono_emit_unwind_op_fp_alloc(cfg,ip,reg,size) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_fp_alloc_info_win64, (reg), (size))
+#if defined(TARGET_AMD64)
+#if defined(TARGET_WIN32)
+#define mono_emit_unwind_op_sp_alloc(cfg,ip,size) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_sp_alloc_info_win64_amd64, 0, (size))
+#define mono_emit_unwind_op_fp_alloc(cfg,ip,reg,size) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_fp_alloc_info_win64_amd64, (reg), (size))
 #else
 #define mono_emit_unwind_op_sp_alloc(cfg,ip,size)
 #define mono_emit_unwind_op_fp_alloc(cfg,ip,reg,size)
+#endif
 #endif
 
 /* Similar macros usable when a cfg is not available, like for trampolines */
@@ -131,12 +146,28 @@ typedef struct {
 #define mono_add_unwind_op_same_value(op_list,code,buf,reg) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_same_value, (reg), 0)); } while (0)
 #define mono_add_unwind_op_offset(op_list,code,buf,reg,offset) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_offset, (reg), (offset))); } while (0)
 
-#if defined(TARGET_WIN32) && defined(TARGET_AMD64)
-#define mono_add_unwind_op_sp_alloc(op_list,code,buf,size) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_mono_sp_alloc_info_win64, 0, (size))); } while (0)
-#define mono_add_unwind_op_fp_alloc(op_list,code,buf,reg,size) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_mono_fp_alloc_info_win64, (reg), (size))); } while (0)
+#if defined(TARGET_AMD64)
+#if defined(TARGET_WIN32)
+#define mono_add_unwind_op_sp_alloc(op_list,code,buf,size) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_mono_sp_alloc_info_win64_amd64, 0, (size))); } while (0)
+#define mono_add_unwind_op_fp_alloc(op_list,code,buf,reg,size) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_mono_fp_alloc_info_win64_amd64, (reg), (size))); } while (0)
 #else
 #define mono_add_unwind_op_sp_alloc(op_list,code,buf,size)
 #define mono_add_unwind_op_fp_alloc(op_list,code,buf,reg,size)
+#endif
+#endif
+
+#if defined(TARGET_ARM64)
+#if defined(TARGET_WIN32) 
+#define mono_emit_unwind_op_restore_offset(cfg,ip,reg,offset) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_restore_offset_win64_arm64, (reg), (offset))
+#define mono_emit_unwind_op_prolog_nop(cfg,ip,ins_count) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_prolog_nop_win64_arm64, 0, (ins_count))
+#define mono_emit_unwind_op_epilog_nop(cfg,ip,ins_count) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_epilog_nop_win64_arm64, 0, (ins_count))
+#define mono_emit_unwind_op_fp_alloc(cfg,ip,size) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_fp_alloc_info_win64_arm64, 0, (size))
+#else
+#define mono_emit_unwind_op_restore_offset(cfg,ip,reg,offset)
+#define mono_emit_unwind_op_prolog_nop(cfg,ip,ins_count)
+#define mono_emit_unwind_op_epilog_nop(cfg,ip,ins_count)
+#define mono_emit_unwind_op_fp_alloc(cfg,ip,size)
+#endif
 #endif
 
 #define mono_free_unwind_info(op_list) do { GSList *l; for (l = op_list; l; l = l->next) g_free (l->data); g_slist_free (op_list); op_list = NULL; } while (0)

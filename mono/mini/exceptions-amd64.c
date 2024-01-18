@@ -963,12 +963,12 @@ initialize_unwind_info_internal_ex (GSList *unwind_ops, PUNWIND_INFO unwindinfo)
 						mono_arch_unwindinfo_add_push_nonvol (unwindinfo, unwind_op_data);
 					break;
 				}
-				case DW_CFA_mono_sp_alloc_info_win64 : {
+				case DW_CFA_mono_sp_alloc_info_win64_amd64 : {
 					mono_arch_unwindinfo_add_alloc_stack (unwindinfo, unwind_op_data);
 					sp_alloced = TRUE;
 					break;
 				}
-				case DW_CFA_mono_fp_alloc_info_win64 : {
+				case DW_CFA_mono_fp_alloc_info_win64_amd64 : {
 					mono_arch_unwindinfo_add_set_fpreg (unwindinfo, unwind_op_data);
 					fp_alloced = TRUE;
 					break;

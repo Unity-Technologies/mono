@@ -5122,6 +5122,66 @@ emit_store_regset_cfa (MonoCompile *cfg, guint8 *code, guint64 regs, int basereg
 	return code;
 }
 
+/* Same as emit_load_regset, but emit unwind info too */
+/* and emit the load in reverse order to satisfy win32 unwind info */
+/* CFA_OFFSET is the offset between the CFA and basereg */
+static __attribute__((__warn_unused_result__)) guint8*
+emit_load_regset_cfa (MonoCompile* cfg, guint8* code, guint64 stored_regs, guint64 regs, int basereg, int offset, int cfa_offset, guint64 no_cfa_regset) {
+
+	int i, j, pos, nregs;
+	guint32 cfa_regset = regs & ~no_cfa_regset;
+	guint32 cfa_stored_regset = stored_regs & ~no_cfa_regset;
+
+	pos = -1;
+
+	for (i = 0; i < 32; ++i) {
+		if (cfa_stored_regset & (1 << i)) {
+			pos += 1;
+		}
+	}
+
+	for (i = 32; i >= 0; --i) {
+		nregs = 1;
+		if (cfa_regset & (1 << i)) {
+			if (pos > 0 && pos % 2 && (cfa_regset & (1 << (i - 1))) && (i - 1 != ARMREG_SP)) {
+				if (offset < 256) {
+					arm_ldpx(code, i - 1, i, basereg, offset + (pos * 8) - 8);
+				}
+				else {
+					code = emit_ldrx(code, i, basereg, offset + (pos * 8));
+					code = emit_ldrx(code, i - 1, basereg, offset + (pos * 8) - 8);
+				}
+				nregs = 2;
+			}
+			else if (i == ARMREG_SP) {
+				arm_movspx(code, ARMREG_IP1, ARMREG_SP);
+				code = emit_ldrx(code, ARMREG_IP1, basereg, offset + (pos * 8));
+			}
+			else {
+				code = emit_ldrx(code, i, basereg, offset + (pos * 8));
+			}
+
+			if (mono_arch_unwindinfo_emit_epilog_codes(cfa_regset, cfa_stored_regset))
+			{
+				// if we loaded a different set of registers that we stored, we need to record what is actualy in the epilog
+				for (j = 0; j < nregs; ++j) {
+					if (cfa_regset & (1 << (i - j)))
+						mono_emit_unwind_op_restore_offset(cfg, code, i + j, (-cfa_offset) + offset + ((pos + j) * 8));
+				}
+			}
+
+			i -= nregs - 1;
+			pos -= nregs;
+		}
+		else if (cfa_stored_regset & (1 << i))
+		{
+			pos -= 1;
+		}
+
+	}
+	return code;
+}
+
 /*
  * emit_setup_lmf:
  *
@@ -5142,6 +5202,10 @@ emit_setup_lmf (MonoCompile *cfg, guint8 *code, gint32 lmf_offset, int cfa_offse
 	/* pc */
 	arm_adrx (code, ARMREG_LR, code);
 	code = emit_strx (code, ARMREG_LR, ARMREG_FP, lmf_offset + MONO_STRUCT_OFFSET (MonoLMF, pc));
+
+	const int num_save_lmf_instructions = 2;
+	mono_emit_unwind_op_prolog_nop(cfg, code, num_save_lmf_instructions); 
+
 	/* gregs + fp + sp */
 	/* Don't emit unwind info for sp/fp, they are already handled in the prolog */
 	code = emit_store_regset_cfa (cfg, code, MONO_ARCH_LMF_REGS, ARMREG_FP, lmf_offset + MONO_STRUCT_OFFSET (MonoLMF, gregs), cfa_offset, (1 << ARMREG_FP) | (1 << ARMREG_SP));
@@ -5207,6 +5271,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	if (cfg->arch.args_reg) {
 		/* The register was already saved above */
 		code = emit_addx_imm (code, cfg->arch.args_reg, ARMREG_FP, cfg->stack_offset);
+		mono_emit_unwind_op_fp_alloc(cfg, code, cfg->arch.args_reg);
 	}
 
 	/* Save return area addr received in R8 */
@@ -5300,10 +5365,10 @@ mono_arch_emit_epilog (MonoCompile *cfg)
 	code = realloc_code (cfg, max_epilog_size);
 
 	if (cfg->method->save_lmf) {
-		code = mono_arm_emit_load_regarray (code, MONO_ARCH_CALLEE_SAVED_REGS & cfg->used_int_regs, ARMREG_FP, cfg->lmf_var->inst_offset + MONO_STRUCT_OFFSET (MonoLMF, gregs) - (MONO_ARCH_FIRST_LMF_REG * 8));
+		code = emit_load_regset_cfa (cfg, code, MONO_ARCH_LMF_REGS, MONO_ARCH_CALLEE_SAVED_REGS & cfg->used_int_regs, ARMREG_FP, cfg->lmf_var->inst_offset + MONO_STRUCT_OFFSET (MonoLMF, gregs), cfg->stack_offset, (1 << ARMREG_FP) | (1 << ARMREG_SP));
 	} else {
 		/* Restore gregs */
-		code = emit_load_regset (code, MONO_ARCH_CALLEE_SAVED_REGS & cfg->used_int_regs, ARMREG_FP, cfg->arch.saved_gregs_offset);
+		code = emit_load_regset_cfa (cfg, code, MONO_ARCH_CALLEE_SAVED_REGS & cfg->used_int_regs, MONO_ARCH_CALLEE_SAVED_REGS & cfg->used_int_regs, ARMREG_FP, cfg->arch.saved_gregs_offset, cfg->stack_offset, 0);
 	}
 
 	/* Load returned vtypes into registers if needed */
@@ -5314,6 +5379,7 @@ mono_arch_emit_epilog (MonoCompile *cfg)
 
 		for (i = 0; i < cinfo->ret.nregs; ++i)
 			code = emit_ldrx (code, cinfo->ret.reg + i, ins->inst_basereg, ins->inst_offset + (i * 8));
+		mono_emit_unwind_op_epilog_nop(cfg, code, cinfo->ret.nregs);
 		break;
 	}
 	case ArgHFA: {
@@ -5325,6 +5391,7 @@ mono_arch_emit_epilog (MonoCompile *cfg)
 			else
 				code = emit_ldrfpx (code, cinfo->ret.reg + i, ins->inst_basereg, ins->inst_offset + cinfo->ret.foffsets [i]);
 		}
+		mono_emit_unwind_op_epilog_nop(cfg, code, cinfo->ret.nregs);
 		break;
 	}
 	default:

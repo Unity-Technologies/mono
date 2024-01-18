@@ -489,8 +489,17 @@ mono_unwind_ops_encode_full (GSList *unwind_ops, guint32 *out_len, gboolean enab
 			*p ++ = op->op;
 			break;
 #if defined(TARGET_WIN32) && defined(TARGET_AMD64)
-		case DW_CFA_mono_sp_alloc_info_win64:
-		case DW_CFA_mono_fp_alloc_info_win64:
+		case DW_CFA_mono_sp_alloc_info_win64_amd64:
+		case DW_CFA_mono_fp_alloc_info_win64_amd64:
+			// Drop Windows specific unwind op's. These op's are currently
+			// only used when registering unwind info with Windows OS unwinder.
+			break;
+#endif
+#if defined(TARGET_WIN32) && defined(TARGET_ARM64)
+		case DW_CFA_mono_restore_offset_win64_arm64:
+		case DW_CFA_mono_prolog_nop_win64_arm64:
+		case DW_CFA_mono_epilog_nop_win64_arm64:
+		case DW_CFA_mono_fp_alloc_info_win64_arm64:
 			// Drop Windows specific unwind op's. These op's are currently
 			// only used when registering unwind info with Windows OS unwinder.
 			break;

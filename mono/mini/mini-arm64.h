@@ -127,6 +127,9 @@ typedef struct {
 	MonoInst *bp_tramp_var;
 	guint8 *thunks;
 	int thunks_size;
+#ifdef HOST_WIN32
+	void* unwindinfo;
+#endif
 } MonoCompileArch;
 
 #define MONO_ARCH_EMULATE_FCONV_TO_U4 1
@@ -313,5 +316,58 @@ GSList* mono_arm_get_exception_trampolines (gboolean aot);
 void mono_arm_resume_unwind (gpointer arg, host_mgreg_t pc, host_mgreg_t *int_regs, gdouble *fp_regs, gboolean corlib, gboolean rethrow);
 
 CallInfo* mono_arch_get_call_info (MonoMemPool *mp, MonoMethodSignature *sig);
+
+#if defined(TARGET_WIN32) && !defined(DISABLE_JIT)
+
+#define MONO_ARCH_HAVE_UNWIND_TABLE 1
+#define MONO_ARCH_HAVE_CODE_CHUNK_TRACKING 1
+
+#define MONO_ARM64_UNWIND_WORD_SIZE	4
+#define MONO_ARM64_UNWIND_LARGE_FUNCTION_SIZE 0xFFFFC
+
+// This is the maximum size of the unwind codes
+// The maximum size of the unwind codes is 31 * 4 bytes
+#define MONO_ARM64_MAX_UNWIND_CODE_SIZE (31 * MONO_ARM64_UNWIND_WORD_SIZE)
+
+typedef struct _UnwindInfoEpilogInfo {
+	uint32_t epilog_start_index : 10;
+	uint32_t reserved : 4;
+	uint32_t epilog_start_offset : 18;
+} UnwindInfoEpilogInfo;
+
+typedef struct _UnwindData
+{
+	RUNTIME_FUNCTION pdata;
+	IMAGE_ARM64_RUNTIME_FUNCTION_ENTRY_XDATA xdata;		// Optional
+	guint8 unwind_codes[MONO_ARM64_MAX_UNWIND_CODE_SIZE];		// Optional - variable size
+} UnwindData, *PUnwindData;
+
+typedef struct _UnwindInfo
+{
+	UnwindData* unwind_data;
+	guint32     count;
+} UnwindInfo, *PUnwindInfo;
+
+void
+mono_arch_unwindinfo_install_method_unwind_info (PUnwindInfo* monoui, gpointer code, guint code_size);
+
+guint32
+mono_arch_unwindinfo_get_end_address (gpointer rvaRtoot, PRUNTIME_FUNCTION func);
+
+gboolean
+mono_arch_unwindinfo_emit_epilog_codes(guint64 saved_regset, guint64 restore_regset);
+
+// Trampolines are small enough that we can encode them in a comprressed format
+#define MONO_TRAMPOLINE_UNWINDINFO_SIZE (sizeof(RUNTIME_FUNCTION))
+
+#else // defined(TARGET_WIN32) && !defined(DISABLE_JIT)
+      //
+#define MONO_TRAMPOLINE_UNWINDINFO_SIZE 0
+
+inline gboolean
+mono_arch_unwindinfo_emit_epilog_codes (guint64 saved_regset, guint64 restore_regset) {
+	return FALSE;
+}
+#endif
 
 #endif /* __MONO_MINI_ARM64_H__ */
