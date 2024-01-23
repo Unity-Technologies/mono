@@ -418,7 +418,10 @@ mono_ppdb_lookup_location (MonoDebugMethodInfo *minfo, uint32_t offset)
 		if (!first && delta_il == 0) {
 			/* document-record */
 			docidx = mono_metadata_decode_value (ptr, &ptr);
-			docname = get_docname (ppdb, image, docidx);
+			// check the current offset to ensure that we do not update docname after the target
+			// offset has been reached (the updated docname will be for the next point)
+			if (iloffset < offset)
+				docname = get_docname (ppdb, image, docidx);
 			continue;
 		}
 		if (!first && iloffset + delta_il > offset)
