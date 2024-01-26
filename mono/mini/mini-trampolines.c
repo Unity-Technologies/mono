@@ -697,7 +697,7 @@ common_call_trampoline (host_mgreg_t *regs, guint8 *code, MonoMethod *m, MonoVTa
 #ifdef MONO_ARCH_HAVE_PATCH_JUMP_TRAMPOLINE
 		if (!mono_aot_only) {
 			mono_domain_lock(domain);
-			gpointer jump_tramp = g_hash_table_lookup(domain_jit_info(domain)->jump_target_got_slot_hash, m);
+			gpointer jump_tramp = g_hash_table_lookup(domain_jit_info(domain)->jump_trampoline_hash, m);
 			mono_domain_unlock(domain);
 
 			if (jump_tramp)
