@@ -877,9 +877,9 @@ mono_arm_emit_destroy_frame (guint8 *code, int stack_offset, guint64 temp_regs)
 }
 
 static guint8 *
-emit_prolog_setup_sp_win64(MonoCompile* cfg, guint8* code, guint alloc_size)
+emit_prolog_setup_sp_win64 (MonoCompile* cfg, guint8* code, guint alloc_size)
 {
-	#ifdef TARGET_WIN32
+#ifdef TARGET_WIN32
 	if (alloc_size > 0x1000) {
 		/* Allocate windows stack frame using stack probing method */
 		arm_stpx_pre(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, -16);
@@ -890,8 +890,6 @@ emit_prolog_setup_sp_win64(MonoCompile* cfg, guint8* code, guint alloc_size)
 #endif
 	return code;
 }
-
-
 
 #define is_call_imm(diff) ((gint)(diff) >= -33554432 && (gint)(diff) <= 33554431)
 
