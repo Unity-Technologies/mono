@@ -876,6 +876,23 @@ mono_arm_emit_destroy_frame (guint8 *code, int stack_offset, guint64 temp_regs)
 	return code;
 }
 
+static guint8 *
+emit_prolog_setup_sp_win64(MonoCompile* cfg, guint8* code, guint alloc_size)
+{
+	#ifdef TARGET_WIN32
+	if (alloc_size > 0x1000) {
+		/* Allocate windows stack frame using stack probing method */
+		arm_stpx_pre(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, -16);
+		code = emit_imm(code, ARMREG_R15, alloc_size / 16);
+		code = emit_call(cfg, code, MONO_PATCH_INFO_JIT_ICALL_ID, GUINT_TO_POINTER(MONO_JIT_ICALL_mono_chkstk_win64));
+		arm_ldpx_post(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, 16);
+	}
+#endif
+	return code;
+}
+
+
+
 #define is_call_imm(diff) ((gint)(diff) >= -33554432 && (gint)(diff) <= 33554431)
 
 static guint8*
@@ -3385,6 +3402,9 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			arm_patch_rel (buf [1], code, MONO_R_ARM64_BCC);
 
 			arm_movspx (code, dreg, ARMREG_SP);
+
+			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area);
+
 			if (cfg->param_area)
 				code = emit_subx_sp_imm (code, cfg->param_area);
 			break;
@@ -3404,6 +3424,9 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 				arm_stpx (code, ARMREG_RZR, ARMREG_RZR, ARMREG_SP, offset);
 			}
 			arm_movspx (code, dreg, ARMREG_SP);
+
+			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area);
+
 			if (cfg->param_area)
 				code = emit_subx_sp_imm (code, cfg->param_area);
 			break;
@@ -5120,21 +5143,6 @@ emit_setup_lmf (MonoCompile *cfg, guint8 *code, gint32 lmf_offset, int cfa_offse
 	return code;
 }
 
-#ifdef TARGET_WIN32
-static guint8 *
-emit_prolog_setup_sp_win64(MonoCompile* cfg, guint8* code, guint alloc_size)
-{
-	if (alloc_size > 0x1000) {
-		/* Allocate windows stack frame using stack probing method */
-		arm_stpx_pre(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, -16);
-		code = emit_imm(code, ARMREG_R15, alloc_size / 16);
-		code = emit_call(cfg, code, MONO_PATCH_INFO_JIT_ICALL_ID, GUINT_TO_POINTER(MONO_JIT_ICALL_mono_chkstk_win64));
-		arm_ldpx_post(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, 16);
-	}
-	return code;
-}
-#endif
-
 guint8 *
 mono_arch_emit_prolog (MonoCompile *cfg)
 {
@@ -5160,9 +5168,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	if (enable_ptrauth)
 		arm_pacibsp (code);
 
-#ifdef TARGET_WIN32
 	code = emit_prolog_setup_sp_win64 (cfg, code, cfg->stack_offset + cfg->param_area);
-#endif
 
 	/* Setup frame */
 	if (arm_is_ldpx_imm (-cfg->stack_offset)) {
