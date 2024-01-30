@@ -44,47 +44,6 @@ struct sigcontext {
 
 LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 
-typedef struct {
-	SRWLOCK lock;
-	PVOID handle;
-	gsize begin_range;
-	gsize end_range;
-	PRUNTIME_FUNCTION rt_funcs;
-	DWORD rt_funcs_current_count;
-	DWORD rt_funcs_max_count;
-} DynamicFunctionTableEntry;
-
-#define MONO_UNWIND_INFO_RT_FUNC_SIZE 128
-
-typedef BOOLEAN (WINAPI* RtlInstallFunctionTableCallbackPtr)(
-	DWORD64 TableIdentifier,
-	DWORD64 BaseAddress,
-	DWORD Length,
-	PGET_RUNTIME_FUNCTION_CALLBACK Callback,
-	PVOID Context,
-	PCWSTR OutOfProcessCallbackDll);
-
-typedef BOOLEAN (WINAPI* RtlDeleteFunctionTablePtr)(
-	PRUNTIME_FUNCTION FunctionTable);
-
-// On Win8/Win2012Server and later we can use dynamic growable function tables
-// instead of RtlInstallFunctionTableCallback. This gives us the benefit to
-// include all needed unwind upon registration.
-typedef DWORD (NTAPI* RtlAddGrowableFunctionTablePtr)(
-    PVOID * DynamicTable,
-    PRUNTIME_FUNCTION FunctionTable,
-    DWORD EntryCount,
-    DWORD MaximumEntryCount,
-    ULONG_PTR RangeBase,
-    ULONG_PTR RangeEnd);
-
-typedef VOID (NTAPI* RtlGrowFunctionTablePtr)(
-    PVOID DynamicTable,
-    DWORD NewEntryCount);
-
-typedef VOID (NTAPI* RtlDeleteGrowableFunctionTablePtr)(
-    PVOID DynamicTable);
-
 #endif /* HOST_WIN32 */
 
 #ifdef sun    // Solaris x86
@@ -526,10 +485,6 @@ mono_amd64_get_tls_gs_offset (void);
 #define MONO_ARCH_HAVE_UNWIND_TABLE 1
 #define MONO_ARCH_HAVE_CODE_CHUNK_TRACKING 1
 
-#ifdef ENABLE_CHECKED_BUILD
-#define ENABLE_CHECKED_BUILD_UNWINDINFO
-#endif
-
 #define MONO_MAX_UNWIND_CODES 22
 
 typedef enum _UNWIND_OP_CODES {
@@ -568,6 +523,11 @@ typedef struct _UNWIND_INFO {
  *	};
  *	OPTIONAL ULONG ExceptionData[]; */
 } UNWIND_INFO, *PUNWIND_INFO;
+
+inline guint32
+mono_arch_unwindinfo_get_end_address(gpointer rvaRtoot, PRUNTIME_FUNCTION func) {
+	return func->EndAddress;
+}
 
 static inline guint
 mono_arch_unwindinfo_get_size (guchar code_count)
