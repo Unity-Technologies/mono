@@ -303,21 +303,9 @@ mono_arch_cpu_optimizations (guint32 *exclude_mask)
 	return 0;
 }
 
-G_BEGIN_DECLS
-void __chkstk (void);
-void ___chkstk_ms (void);
-G_END_DECLS
-
 void
 mono_arch_register_lowlevel_calls (void)
 {
-#if defined(TARGET_WIN32) || defined(HOST_WIN32)
-#if _MSC_VER
-	mono_register_jit_icall_info(&mono_get_jit_icall_info()->mono_chkstk_win64, __chkstk, "mono_chkstk_win64", NULL, TRUE, "__chkstk");
-#else
-	mono_register_jit_icall_info(&mono_get_jit_icall_info()->mono_chkstk_win64, ___chkstk_ms, "mono_chkstk_win64", NULL, TRUE, "___chkstk_ms");
-#endif
-#endif
 }
 
 void
@@ -873,21 +861,6 @@ mono_arm_emit_destroy_frame (guint8 *code, int stack_offset, guint64 temp_regs)
 			arm_addx_imm (code, ARMREG_SP, temp, imm);
 		}
 	}
-	return code;
-}
-
-static guint8 *
-emit_prolog_setup_sp_win64 (MonoCompile* cfg, guint8* code, guint alloc_size)
-{
-#ifdef TARGET_WIN32
-	if (alloc_size > 0x1000) {
-		/* Allocate windows stack frame using stack probing method */
-		arm_stpx_pre(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, -16);
-		code = emit_imm(code, ARMREG_R15, alloc_size / 16);
-		code = emit_call(cfg, code, MONO_PATCH_INFO_JIT_ICALL_ID, GUINT_TO_POINTER(MONO_JIT_ICALL_mono_chkstk_win64));
-		arm_ldpx_post(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, 16);
-	}
-#endif
 	return code;
 }
 
@@ -3387,22 +3360,19 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			arm_subx (code, ARMREG_IP1, ARMREG_IP1, ARMREG_IP0);
 			arm_movspx (code, ARMREG_SP, ARMREG_IP1);
 
-			/* Init - (from high to low for Windows stack probes */
-			/* ip1 = start, ip0 = pointer */
+			/* Init */
+			/* ip1 = pointer, ip0 = end */
 			arm_addx (code, ARMREG_IP0, ARMREG_IP1, ARMREG_IP0);
 			buf [0] = code;
 			arm_cmpx (code, ARMREG_IP1, ARMREG_IP0);
 			buf [1] = code;
 			arm_bcc (code, ARMCOND_EQ, 0);
-			arm_subx_imm (code, ARMREG_IP0, ARMREG_IP0, 16);
-			arm_stpx (code, ARMREG_RZR, ARMREG_RZR, ARMREG_IP0, 0);
+			arm_stpx (code, ARMREG_RZR, ARMREG_RZR, ARMREG_IP1, 0);
+			arm_addx_imm (code, ARMREG_IP1, ARMREG_IP1, 16);
 			arm_b (code, buf [0]);
 			arm_patch_rel (buf [1], code, MONO_R_ARM64_BCC);
 
 			arm_movspx (code, dreg, ARMREG_SP);
-
-			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area);
-
 			if (cfg->param_area)
 				code = emit_subx_sp_imm (code, cfg->param_area);
 			break;
@@ -3414,17 +3384,14 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			g_assert (arm_is_arith_imm (imm));
 			arm_subx_imm (code, ARMREG_SP, ARMREG_SP, imm);
 
-			/* Init - (from high to low for Windows stack probes */
+			/* Init */
 			g_assert (MONO_ARCH_FRAME_ALIGNMENT == 16);
-			offset = imm;
-			while (offset > 0) {
-				offset -= 16;
+			offset = 0;
+			while (offset < imm) {
 				arm_stpx (code, ARMREG_RZR, ARMREG_RZR, ARMREG_SP, offset);
+				offset += 16;
 			}
 			arm_movspx (code, dreg, ARMREG_SP);
-
-			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area);
-
 			if (cfg->param_area)
 				code = emit_subx_sp_imm (code, cfg->param_area);
 			break;
@@ -5165,8 +5132,6 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 
 	if (enable_ptrauth)
 		arm_pacibsp (code);
-
-	code = emit_prolog_setup_sp_win64 (cfg, code, cfg->stack_offset + cfg->param_area);
 
 	/* Setup frame */
 	if (arm_is_ldpx_imm (-cfg->stack_offset)) {
