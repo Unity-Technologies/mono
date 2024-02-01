@@ -89,7 +89,6 @@
 #define DW_CFA_mono_restore_offset_win64_arm64 (DW_CFA_lo_user + 1)
 #define DW_CFA_mono_prolog_nop_win64_arm64 (DW_CFA_lo_user + 2)
 #define DW_CFA_mono_epilog_nop_win64_arm64 (DW_CFA_lo_user + 3)
-#define DW_CFA_mono_fp_alloc_info_win64_arm64 (DW_CFA_lo_user + 4)
 #endif
 
 #define DW_CFA_offset             0x80
@@ -161,12 +160,10 @@ typedef struct {
 #define mono_emit_unwind_op_restore_offset(cfg,ip,reg,offset) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_restore_offset_win64_arm64, (reg), (offset))
 #define mono_emit_unwind_op_prolog_nop(cfg,ip,ins_count) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_prolog_nop_win64_arm64, 0, (ins_count))
 #define mono_emit_unwind_op_epilog_nop(cfg,ip,ins_count) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_epilog_nop_win64_arm64, 0, (ins_count))
-#define mono_emit_unwind_op_fp_alloc(cfg,ip,size) mono_emit_unwind_op (cfg, (ip) - (cfg)->native_code, DW_CFA_mono_fp_alloc_info_win64_arm64, 0, (size))
 #else
 #define mono_emit_unwind_op_restore_offset(cfg,ip,reg,offset)
 #define mono_emit_unwind_op_prolog_nop(cfg,ip,ins_count)
 #define mono_emit_unwind_op_epilog_nop(cfg,ip,ins_count)
-#define mono_emit_unwind_op_fp_alloc(cfg,ip,size)
 #endif
 #endif
 

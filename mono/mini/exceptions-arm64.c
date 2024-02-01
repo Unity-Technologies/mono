@@ -911,15 +911,16 @@ typedef struct _InitilizedWindowInfoResult {
 	guint32 cfa_offset;
 	gboolean can_use_packed_format;
 	gboolean needs_seperate_epilog;
+	gboolean has_restore_reg_ops;
 } InitilizedWindowInfoResult;
 
 static InitilizedWindowInfoResult
 initialize_unwind_info_prolog (GSList* unwind_ops, guint8 *unwind_codes, guint32 *unwind_code_size) {
 
-	InitilizedWindowInfoResult res;
-	res.saved_int_regs = 0;
+	InitilizedWindowInfoResult res = { 0 };
 	res.needs_seperate_epilog = FALSE;
 	res.can_use_packed_format = TRUE;
+	res.has_restore_reg_ops = FALSE;
 
 	if (enable_ptrauth)
 		mono_arch_unwind_add_pac_sign_lr (unwind_codes, unwind_code_size);
@@ -943,11 +944,9 @@ initialize_unwind_info_prolog (GSList* unwind_ops, guint8 *unwind_codes, guint32
 		case DW_CFA_mono_epilog_nop_win64_arm64:
 			res.needs_seperate_epilog = TRUE;
 			break;
-		case DW_CFA_mono_fp_alloc_info_win64_arm64:
-			mono_arch_unwind_add_alloc_x (unwind_codes, unwind_code_size, unwind_op_data->val, TRUE);
-			break;
 		case DW_CFA_mono_restore_offset_win64_arm64: 
 			res.needs_seperate_epilog = TRUE;
+			res.has_restore_reg_ops = TRUE;
 			break;
 		case DW_CFA_def_cfa_offset:
 			cfa_offset = unwind_op_data->val;
@@ -994,10 +993,12 @@ initialize_unwind_info_prolog (GSList* unwind_ops, guint8 *unwind_codes, guint32
 }
 
 static void
-initialize_unwind_info_epilog (GSList* unwind_ops, gint cfa_offset, guint8 *unwind_codes, guint32 *unwind_code_size) {
+initialize_unwind_info_epilog (GSList* unwind_ops, gint cfa_offset, guint8 *unwind_codes, guint32 *unwind_code_size, gboolean has_restore_reg_ops) {
 	
 	MonoUnwindOp* unwind_op_data;
 	MonoUnwindOp* last_saved_regp = NULL;
+
+	guint32 dwa_cfa_offset_start = *unwind_code_size;
 
 	// Replay collected unwind info and setup Windows format.
 	for (GSList* l = unwind_ops; l; l = l->next) {
@@ -1007,16 +1008,35 @@ initialize_unwind_info_epilog (GSList* unwind_ops, gint cfa_offset, guint8 *unwi
 		case DW_CFA_mono_epilog_nop_win64_arm64:
 			mono_arch_unwind_add_nops (unwind_codes, unwind_code_size, unwind_op_data->val);
 			break;
-		case DW_CFA_mono_fp_alloc_info_win64_arm64:
-			mono_arch_unwind_add_alloc_x (unwind_codes, unwind_code_size, unwind_op_data->val, FALSE);
-			break;
+		case DW_CFA_offset:
 		case DW_CFA_mono_restore_offset_win64_arm64: {
+
+			// If the method has restore codes process them
+			// otherwise process the 
+			if (has_restore_reg_ops && unwind_op_data->op == DW_CFA_offset)
+				break;
+
 			int reg_count;
-			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, cfa_offset, unwind_codes, unwind_code_size, &last_saved_regp, FALSE);
+			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, cfa_offset, unwind_codes, unwind_code_size, &last_saved_regp, !has_restore_reg_ops);
 			while (--reg_count > 0)
 				l = l->next;
+
 			break;
 		}
+		}
+
+	}
+
+	if (!has_restore_reg_ops)
+	{
+		guint32 dwa_cfa_offset_end = *unwind_code_size;
+
+		// We processed DW_CFA_offsets, which are in the oposize order we need them, reverse them now
+		for (int i = 0; i < (dwa_cfa_offset_end - dwa_cfa_offset_start) / 2; i++)
+		{
+			guint8 swap = unwind_codes[dwa_cfa_offset_start + i];
+			unwind_codes[dwa_cfa_offset_start + i] = unwind_codes[dwa_cfa_offset_end - i - 1];
+			unwind_codes[dwa_cfa_offset_end - i - 1] = swap;
 		}
 	}
 
@@ -1121,7 +1141,7 @@ mono_arch_unwindinfo_init_method_unwind_info_ex (GSList* unwind_ops, guint epilo
 			current--;
 
 			current->xdata.EpilogCount = code_word_size;	// When EpilogInHeader is true, EpilogCount is an offset into unwind codes
-			initialize_unwind_info_epilog (unwind_ops, res.cfa_offset, current->unwind_codes, &code_word_size);
+			initialize_unwind_info_epilog (unwind_ops, res.cfa_offset, current->unwind_codes, &code_word_size, res.has_restore_reg_ops);
 			mono_arch_unwind_add_end (current->unwind_codes, &code_word_size);
 
 			// Count of 32 bit words
