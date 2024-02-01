@@ -640,6 +640,8 @@ mono_arch_unwind_add_assert (guint32 unwind_code_size, guint32 max_offset, guint
 static void
 mono_arch_unwind_add_nop (guint8* unwind_codes, guint32* unwind_code_size) {
 	mono_arch_unwind_add_assert(1, 0, *unwind_code_size, 0);
+
+	// nop: 11100011: no unwind operation is required.
 	unwind_codes[(*unwind_code_size)++] = 0b11100011;
 }
 
@@ -649,29 +651,35 @@ mono_arch_unwind_add_nops (guint8* unwind_codes, guint32* unwind_code_size, int 
 		mono_arch_unwind_add_nop (unwind_codes, unwind_code_size);
 }
 
-
 static void
 mono_arch_unwind_add_set_fp (guint8* unwind_codes, guint32* unwind_code_size) {
 	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+
+	// set_fp: 11100001: set up x29 with mov x29,sp
 	unwind_codes[(*unwind_code_size)++] = 0b11100001;
 }
 
 static void
 mono_arch_unwind_add_pac_sign_lr (guint8* unwind_codes, guint32* unwind_code_size) {
 	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+
+	// pac_sign_lr: 11111100: sign the return address in lr with pacibsp
 	unwind_codes[(*unwind_code_size)++] = 0b11111100;
 }
-
 
 static void
 mono_arch_unwind_add_end (guint8* unwind_codes, guint32* unwind_code_size) {
 	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+
+	// end: 11100100: end of unwind code. Implies ret in epilog.
 	unwind_codes[(*unwind_code_size)++] = 0b11100100;
 }
 
 static void
 mono_arch_unwind_add_end_c (guint8* unwind_codes, guint32* unwind_code_size) {
 	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+
+	// end_c: 11100101: end of unwind code in current chained scope.
 	unwind_codes[(*unwind_code_size)++] = 0b11100101;
 }
 
@@ -680,6 +688,7 @@ mono_arch_unwind_add_save_fplr (guint8* unwind_codes, guint32* unwind_code_size,
 
 	mono_arch_unwind_add_assert (1, 504, *unwind_code_size, offset);
 
+	// save_fplr: 01zzzzzz: save <x29,lr> pair at [sp+#Z*8], offset <= 504.
 	unwind_codes[(*unwind_code_size)++] = 0b01000000 | offset / 8;
 }
 
@@ -688,6 +697,7 @@ mono_arch_unwind_add_save_fplr_x (guint8* unwind_codes, guint32* unwind_code_siz
 
 	mono_arch_unwind_add_assert (1, 512, *unwind_code_size, offset);
 
+	// save_fplr_x: 10zzzzzz: save <x29, lr> pair at[sp - (#Z + 1) * 8]!, pre - indexed offset >= -512
 	unwind_codes[(*unwind_code_size)++] = 0b10000000 | (offset-8) / 8;
 }
 
@@ -699,8 +709,10 @@ mono_arch_unwind_add_save_reg (guint8* unwind_codes, guint32* unwind_code_size, 
 	guint8 reg_offset = reg - ARMREG_R19;
 	int order = reverse ? 1 : 0;
 
-	unwind_codes[*unwind_code_size + order] = 0b11010000 | reg_offset / 8;
-	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x8) << 5 | (offset / 8);
+	// save_reg: 110100xx'xxzzzzzz: save reg x(19+#X) at [sp+#Z*8], offset <= 504
+	unwind_codes[*unwind_code_size + order] = 0b11010000 | reg_offset / 4;
+	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x3) << 6 | (offset / 8);
+
 	*(unwind_code_size) += 2;
 }
 
@@ -712,8 +724,10 @@ mono_arch_unwind_add_save_reg_x (guint8* unwind_codes, guint32* unwind_code_size
 	guint8 reg_offset = reg - ARMREG_R19;
 	int order = reverse ? 1 : 0;
 
-	unwind_codes[*unwind_code_size + order] = 0b11010000 | reg_offset / 8;
-	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x8) << 5 | (offset / 8);
+	// save_reg_x: 1101010x'xxxzzzzz: save reg x(19+#X) at [sp-(#Z+1)*8]!, pre-indexed offset >= -256
+	unwind_codes[*unwind_code_size + order] = 0b11010100 | reg_offset / 8;
+	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x7) << 5 | (offset / 8);
+
 	*(unwind_code_size) += 2;
 }
 
@@ -725,8 +739,9 @@ mono_arch_unwind_add_save_regp (guint8* unwind_codes, guint32* unwind_code_size,
 	guint8 reg_offset = reg - ARMREG_R19;
 	int order = reverse ? 1 : 0;
 
-	unwind_codes[*unwind_code_size + order] = 0b11001000 | reg_offset / 8;
-	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x8) << 5 | (offset / 8);
+	// save_regp: 110010xx'xxzzzzzz: save x(19+#X) pair at [sp+#Z*8], offset <= 504
+	unwind_codes[*unwind_code_size + order] = 0b11001000 | reg_offset / 4;
+	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x3) << 6 | (offset / 8);
 	*(unwind_code_size) += 2;
 }
 
@@ -738,15 +753,31 @@ mono_arch_unwind_add_save_regp_x (guint8* unwind_codes, guint32* unwind_code_siz
 	guint8 reg_offset = reg - ARMREG_R19;
 	int order = reverse ? 1 : 0;
 
-	unwind_codes[*unwind_code_size + order] = 0b11001100 | reg_offset / 8;
-	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x8) << 5 | (offset / 8);
+	g_assert(offset % 8 == 0);
+
+	// save_regp_x 110011xx'xxzzzzzz: save pair x(19+#X) at [sp-(#Z+1)*8]!, pre-indexed offset >= -512
+	unwind_codes[*unwind_code_size + order] = 0b11001100 | reg_offset / 4;
+	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x3) << 6 | (offset / 8);
+
 	*(unwind_code_size) += 2;
+}
+
+static void 
+mono_arch_unwind_add_save_next(guint8* unwind_codes, guint32* unwind_code_size) {
+
+	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+
+	// save_next: 11100110: save next non-volatile Int or FP register pair.
+	unwind_codes[(*unwind_code_size)++] = 0b11100110;
 }
 
 static void
 mono_arch_unwind_add_alloc_s (guint8* unwind_codes, guint32* unwind_code_size, guint32 size) {
 
 	mono_arch_unwind_add_assert (1, 511, *unwind_code_size, size);
+	g_assert(size % MONO_ARCH_FRAME_ALIGNMENT == 0);
+
+	// alloc_s: 000xxxxx: allocate small stack with size < 512 (2^5 * 16).
 	unwind_codes[(*unwind_code_size)++] = 0b00000000 | (size / MONO_ARCH_FRAME_ALIGNMENT);
 }
 
@@ -754,10 +785,15 @@ static void
 mono_arch_unwind_add_alloc_m (guint8* unwind_codes, guint32* unwind_code_size, guint32 size, gboolean reverse) {
 
 	mono_arch_unwind_add_assert (2, 0x7FFF, *unwind_code_size, size);
+	g_assert(size % MONO_ARCH_FRAME_ALIGNMENT == 0);
+
 	int order = reverse ? 1 : 0;
-	size = size / 16; // Size is multiples of 16
+	size = size / MONO_ARCH_FRAME_ALIGNMENT; // Size is multiples of 16
+
+	// alloc_m: 11000xxx'xxxxxxxx: allocate large stack with size < 32K (2^11 * 16).
 	unwind_codes[*unwind_code_size + order] = 0b11000000 | (size >> 8);
 	unwind_codes[*unwind_code_size + 1 - order] = size & 0xFF;
+
 	*(unwind_code_size) += 2;
 }
 
@@ -765,9 +801,12 @@ static void
 mono_arch_unwind_add_alloc_l (guint8* unwind_codes, guint32* unwind_code_size, guint32 size, gboolean reverse) {
 
 	mono_arch_unwind_add_assert (4, 0x0FFFFFFF, *unwind_code_size, size);
-	int order = reverse ? 1 : 0;
+	g_assert(size % MONO_ARCH_FRAME_ALIGNMENT == 0);
 
-	size = size / 16; // Size is multiples of 16
+	int order = reverse ? 1 : 0;
+	size = size / MONO_ARCH_FRAME_ALIGNMENT; // Size is multiples of 16
+
+	// alloc_l: 11100000'xxxxxxxx'xxxxxxxx'xxxxxxxx: allocate large stack with size < 256M (2^24 * 16)
 	unwind_codes[*unwind_code_size + order * 3] = 0b11100000;
 	unwind_codes[*unwind_code_size + 1 + order] = size >> 16;
 	unwind_codes[*unwind_code_size + 2 - order] = (size >> 8) & 0xFF;
@@ -788,7 +827,7 @@ mono_arch_unwind_add_alloc_x (guint8* unwind_codes, guint32* unwind_code_size, g
 }
 
 static int
-mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gint stack_offset, guint8 *unwind_codes, guint32 *unwind_code_size, gboolean reverse) {
+mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gint stack_offset, guint8 *unwind_codes, guint32 *unwind_code_size, MonoUnwindOp** last_saved_regp, gboolean reverse) {
 
 	if (unwind_op_data->reg == ARMREG_SP) {
 		g_assert("I don't believe there is a way to encode this in the unwind info");
@@ -800,9 +839,9 @@ mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gin
 		return 0;
 	}
 
-	if (unwind_op_data->reg >= ARMREG_R19 && unwind_op_data->reg <= ARMREG_R28) {
+	if (unwind_op_data->reg < ARMREG_R19 && unwind_op_data->reg > ARMREG_R28) {
 		// Only the presreved registers have unwind codes
-		// We shoulded hit here, but emit a nop if we do
+		// We shouldn't hit here, but emit a nop if we do
 		g_assert(unwind_op_data->reg >= ARMREG_R19 && unwind_op_data->reg <= ARMREG_R28);
 		mono_arch_unwind_add_nop(unwind_codes, unwind_code_size);
 		return 1;
@@ -815,13 +854,19 @@ mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gin
 		next_unwind_op_data = (MonoUnwindOp*)next->data;
 
 	if (next_unwind_op_data && unwind_op_data->reg % 2 && next_unwind_op_data->op == DW_CFA_offset && next_unwind_op_data->reg == unwind_op_data->reg + 1 && next_unwind_op_data->val == unwind_op_data->val + sizeof(host_mgreg_t)) {
-		if (offset)
+
+		if (*last_saved_regp && (*last_saved_regp)->reg == unwind_op_data->reg - 2 && unwind_op_data->val == (*last_saved_regp)->val + 2*sizeof(host_mgreg_t))
+			mono_arch_unwind_add_save_next(unwind_codes, unwind_code_size);
+		else if (offset)
 			mono_arch_unwind_add_save_regp_x(unwind_codes, unwind_code_size, unwind_op_data->reg, offset, reverse);
 		else
 			mono_arch_unwind_add_save_regp(unwind_codes, unwind_code_size, unwind_op_data->reg, offset, reverse);
 
+		*last_saved_regp = unwind_op_data;
 		return 2;
 	}
+
+	*last_saved_regp = NULL;
 
 	if (offset)
 		mono_arch_unwind_add_save_reg_x(unwind_codes, unwind_code_size, unwind_op_data->reg, offset, reverse);
@@ -898,6 +943,7 @@ initialize_unwind_info_prolog (GSList* unwind_ops, gint stack_offset, guint para
 	guint32 last_saved_reg_offset = -1;
 	
 	MonoUnwindOp* unwind_op_data;
+	MonoUnwindOp* last_saved_regp = NULL;;
 
 	// Replay collected unwind info and setup Windows format.
 	for (GSList* l = unwind_ops; l; l = l->next) {
@@ -921,7 +967,7 @@ initialize_unwind_info_prolog (GSList* unwind_ops, gint stack_offset, guint para
 			guint offset = stack_offset + unwind_op_data->val;
 			int reg_count;
 
-			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, stack_offset, unwind_codes, unwind_code_size, TRUE);
+			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, stack_offset, unwind_codes, unwind_code_size, &last_saved_regp, TRUE);
 
 			if (reg_count > 0) {
 				if (last_saved_in_order_reg == -1)
@@ -948,6 +994,7 @@ static void
 initialize_unwind_info_epilog (GSList* unwind_ops, gint stack_offset, gint param_area, guint8 *unwind_codes, guint32 *unwind_code_size) {
 	
 	MonoUnwindOp* unwind_op_data;
+	MonoUnwindOp* last_saved_regp = NULL;
 
 	// Replay collected unwind info and setup Windows format.
 	for (GSList* l = unwind_ops; l; l = l->next) {
@@ -962,7 +1009,7 @@ initialize_unwind_info_epilog (GSList* unwind_ops, gint stack_offset, gint param
 			break;
 		case DW_CFA_mono_restore_offset_win64_arm64: {
 			int reg_count;
-			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, stack_offset, unwind_codes, unwind_code_size, FALSE);
+			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, stack_offset, unwind_codes, unwind_code_size, &last_saved_regp, FALSE);
 			while (--reg_count > 0)
 				l = l->next;
 			break;
