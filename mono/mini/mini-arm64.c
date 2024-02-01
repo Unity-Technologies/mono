@@ -5283,7 +5283,6 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	if (cfg->arch.args_reg) {
 		/* The register was already saved above */
 		code = emit_addx_imm (code, cfg->arch.args_reg, ARMREG_FP, cfg->stack_offset);
-		mono_emit_unwind_op_fp_alloc(cfg, code, cfg->arch.args_reg);
 	}
 
 	/* Save return area addr received in R8 */
