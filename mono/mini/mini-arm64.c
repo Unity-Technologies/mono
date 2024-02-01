@@ -5128,22 +5128,35 @@ emit_store_regset_cfa (MonoCompile *cfg, guint8 *code, guint64 regs, int basereg
 static __attribute__((__warn_unused_result__)) guint8*
 emit_load_regset_cfa (MonoCompile* cfg, guint8* code, guint64 stored_regs, guint64 regs, int basereg, int offset, int cfa_offset, guint64 no_cfa_regset) {
 
+	// regs are the registers we need to load
+	// stored_regs are the registers stored in the prolog - these may be different - e.g. LMF functions store all preserved regs, but only load what they used
+
 	int i, j, pos, nregs;
 	guint32 cfa_regset = regs & ~no_cfa_regset;
 	guint32 cfa_stored_regset = stored_regs & ~no_cfa_regset;
 
+	// stored_regs must include the regs we expect to restore
+	g_assert((regs & stored_regs) == regs);
+
 	pos = -1;
 
+	// count how many registers were stored, we need to keep track of the posistion where they
+	// where stored by emit_store_regset_cfa.  We need to decrement pos, so we need to start
+	// with the maximum value
 	for (i = 0; i < 32; ++i) {
 		if (cfa_stored_regset & (1 << i)) {
 			pos += 1;
 		}
 	}
 
-	for (i = 32; i >= 0; --i) {
-		nregs = 1;
+	for (i = 31; i >= 0; --i) {
+
+		nregs = 0;
 		if (cfa_regset & (1 << i)) {
-			if (pos > 0 && pos % 2 && (cfa_regset & (1 << (i - 1))) && (i - 1 != ARMREG_SP)) {
+
+			g_assert(pos >= 0);
+			nregs = 1;
+			if (i > 0 && pos > 0 && pos % 2 && (cfa_regset & (1 << (i - 1))) && (i - 1 != ARMREG_SP)) {
 				if (offset < 256) {
 					arm_ldpx(code, i - 1, i, basereg, offset + (pos * 8) - 8);
 				}
@@ -5163,7 +5176,6 @@ emit_load_regset_cfa (MonoCompile* cfg, guint8* code, guint64 stored_regs, guint
 
 			if (mono_arch_unwindinfo_emit_epilog_codes(cfa_regset, cfa_stored_regset))
 			{
-				// if we loaded a different set of registers that we stored, we need to record what is actualy in the epilog
 				for (j = 0; j < nregs; ++j) {
 					if (cfa_regset & (1 << (i - j)))
 						mono_emit_unwind_op_restore_offset(cfg, code, i + j, (-cfa_offset) + offset + ((pos + j) * 8));
