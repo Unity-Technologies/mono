@@ -881,11 +881,19 @@ emit_prolog_setup_sp_win64 (MonoCompile* cfg, guint8* code, guint alloc_size)
 {
 #ifdef TARGET_WIN32
 	if (alloc_size > 0x1000) {
-		/* Allocate windows stack frame using stack probing method */
-		arm_stpx_pre(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, -16);
+
+		gboolean save_r15 = cfg->rgctx_var && MONO_ARCH_RGCTX_REG == ARMREG_R15;
+		gint stack_offset = save_r15 ? 32 : 16;
+
+		arm_stpx_pre(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, -stack_offset);
+		if (save_r15)
+			arm_strx(code, ARMREG_R15, ARMREG_SP, 16);
 		code = emit_imm(code, ARMREG_R15, alloc_size / 16);
 		code = emit_call(cfg, code, MONO_PATCH_INFO_JIT_ICALL_ID, GUINT_TO_POINTER(MONO_JIT_ICALL_mono_chkstk_win64));
-		arm_ldpx_post(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, 16);
+		if (save_r15)
+			arm_ldrx(code, ARMREG_R15, ARMREG_SP, 16);
+		arm_ldpx_post(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, stack_offset);
+
 	}
 #endif
 	return code;
