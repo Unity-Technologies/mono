@@ -5211,12 +5211,13 @@ emit_setup_lmf (MonoCompile *cfg, guint8 *code, gint32 lmf_offset, int cfa_offse
 	 * need to be restored during EH.
 	 */
 
+	guint8* start = code;
+
 	/* pc */
 	arm_adrx (code, ARMREG_LR, code);
 	code = emit_strx (code, ARMREG_LR, ARMREG_FP, lmf_offset + MONO_STRUCT_OFFSET (MonoLMF, pc));
 
-	const int num_save_lmf_instructions = 2;
-	mono_emit_unwind_op_prolog_nop(cfg, code, num_save_lmf_instructions); 
+	mono_emit_unwind_op_prolog_nop(cfg, code, (code - start) / 4); 
 
 	/* gregs + fp + sp */
 	/* Don't emit unwind info for sp/fp, they are already handled in the prolog */
