@@ -971,7 +971,7 @@ initialize_unwind_info_prolog (GSList* unwind_ops, gint stack_offset, guint para
 
 			if (reg_count > 0) {
 				if (last_saved_in_order_reg == -1)
-					res.can_use_packed_format = (unwind_op_data->reg == ARMREG_R19);
+					res.can_use_packed_format = res.can_use_packed_format && (unwind_op_data->reg == ARMREG_R19);
 				else if (unwind_op_data->reg != last_saved_in_order_reg + 1 || offset != last_saved_reg_offset + sizeof(host_mgreg_t))
 					res.can_use_packed_format = FALSE;
 
