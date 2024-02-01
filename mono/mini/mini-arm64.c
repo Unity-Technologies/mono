@@ -877,13 +877,15 @@ mono_arm_emit_destroy_frame (guint8 *code, int stack_offset, guint64 temp_regs)
 }
 
 static guint8 *
-emit_prolog_setup_sp_win64 (MonoCompile* cfg, guint8* code, guint alloc_size)
+emit_prolog_setup_sp_win64 (MonoCompile* cfg, guint8* code, guint alloc_size, gboolean emit_unwind_codes)
 {
 #ifdef TARGET_WIN32
 	if (alloc_size > 0x1000) {
 
 		gboolean save_r15 = cfg->rgctx_var && MONO_ARCH_RGCTX_REG == ARMREG_R15;
 		gint stack_offset = save_r15 ? 32 : 16;
+
+		guint8* start = code;
 
 		arm_stpx_pre(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, -stack_offset);
 		if (save_r15)
@@ -894,6 +896,8 @@ emit_prolog_setup_sp_win64 (MonoCompile* cfg, guint8* code, guint alloc_size)
 			arm_ldrx(code, ARMREG_R15, ARMREG_SP, 16);
 		arm_ldpx_post(code, ARMREG_FP, ARMREG_LR, ARMREG_SP, stack_offset);
 
+		if (emit_unwind_codes)
+			mono_emit_unwind_op_prolog_nop(cfg, code, (code - start) / 4); 
 	}
 #endif
 	return code;
@@ -3409,7 +3413,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 
 			arm_movspx (code, dreg, ARMREG_SP);
 
-			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area);
+			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area, FALSE);
 
 			if (cfg->param_area)
 				code = emit_subx_sp_imm (code, cfg->param_area);
@@ -3431,7 +3435,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			}
 			arm_movspx (code, dreg, ARMREG_SP);
 
-			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area);
+			code = emit_prolog_setup_sp_win64 (cfg, code, cfg->param_area, FALSE);
 
 			if (cfg->param_area)
 				code = emit_subx_sp_imm (code, cfg->param_area);
@@ -5251,7 +5255,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	if (enable_ptrauth)
 		arm_pacibsp (code);
 
-	code = emit_prolog_setup_sp_win64 (cfg, code, cfg->stack_offset + cfg->param_area);
+	code = emit_prolog_setup_sp_win64 (cfg, code, cfg->stack_offset + cfg->param_area, TRUE);
 
 	/* Setup frame */
 	if (arm_is_ldpx_imm (-cfg->stack_offset)) {
@@ -5268,16 +5272,19 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	mono_emit_unwind_op_offset (cfg, code, ARMREG_LR, (- cfa_offset) + 8);
 	arm_movspx (code, ARMREG_FP, ARMREG_SP);
 	mono_emit_unwind_op_def_cfa_reg (cfg, code, ARMREG_FP);
-	if (cfg->param_area) {
-		/* The param area is below the frame pointer */
-		code = emit_subx_sp_imm (code, cfg->param_area);
-	}
 
 	if (cfg->method->save_lmf) {
 		code = emit_setup_lmf (cfg, code, cfg->lmf_var->inst_offset, cfa_offset);
 	} else {
 		/* Save gregs */
 		code = emit_store_regset_cfa (cfg, code, MONO_ARCH_CALLEE_SAVED_REGS & cfg->used_int_regs, ARMREG_FP, cfg->arch.saved_gregs_offset, cfa_offset, 0);
+	}
+
+	/* Frame setup complete - anything below here should not be part of the cfa/have unwind codes */
+
+	if (cfg->param_area) {
+		/* The param area is below the frame pointer */
+		code = emit_subx_sp_imm (code, cfg->param_area);
 	}
 
 	/* Setup args reg */

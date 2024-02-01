@@ -890,14 +890,31 @@ mono_arch_unwind_add_emit_subx_sp_imm (gint offset, guint8* unwind_codes, guint3
 	mono_arch_unwind_add_alloc_x (unwind_codes, unwind_code_size, offset, reverse);
 }
 
+static void 
+mono_arch_uwwind_add_frame_setup(guint cfa_offset, guint8* unwind_codes, guint32* unwind_code_size, gboolean reverse) {
+
+	// Frame Setup
+	if (arm_is_ldpx_imm(-cfa_offset)) {
+		if (cfa_offset > 0)
+			mono_arch_unwind_add_save_fplr_x(unwind_codes, unwind_code_size, cfa_offset);
+		else
+			mono_arch_unwind_add_save_fplr(unwind_codes, unwind_code_size, 0);
+	}
+	else {
+		mono_arch_unwind_add_emit_subx_sp_imm(cfa_offset, unwind_codes, unwind_code_size, reverse);
+		mono_arch_unwind_add_save_fplr(unwind_codes, unwind_code_size, 0);
+	}
+}
+
 typedef struct _InitilizedWindowInfoResult {
 	gint32 saved_int_regs;
+	guint32 cfa_offset;
 	gboolean can_use_packed_format;
 	gboolean needs_seperate_epilog;
 } InitilizedWindowInfoResult;
 
 static InitilizedWindowInfoResult
-initialize_unwind_info_prolog (GSList* unwind_ops, gint stack_offset, guint param_area, guint8 *unwind_codes, guint32 *unwind_code_size) {
+initialize_unwind_info_prolog (GSList* unwind_ops, guint8 *unwind_codes, guint32 *unwind_code_size) {
 
 	InitilizedWindowInfoResult res;
 	res.saved_int_regs = 0;
@@ -907,40 +924,9 @@ initialize_unwind_info_prolog (GSList* unwind_ops, gint stack_offset, guint para
 	if (enable_ptrauth)
 		mono_arch_unwind_add_pac_sign_lr (unwind_codes, unwind_code_size);
 
-	// Stack probes
-	if (stack_offset + param_area > 0x1000) {
-		//  stp    fp,lr,[sp,#-16]
-		//  ld imm	(1 or 2 instructions)
-		//  call __chkstk
-		//  ldp    fp,lr,[sp,#16]
-		guint probe_size = (stack_offset + param_area) / 16;
-		mono_arch_unwind_add_nops(unwind_codes, unwind_code_size, probe_size > 0xFFFF ? 5 : 4);
-		res.can_use_packed_format = FALSE;
-		res.needs_seperate_epilog = TRUE;
-	}
-
-	// Frame Setup
-	if (arm_is_ldpx_imm(-stack_offset)) {
-		if (stack_offset > 0)
-			mono_arch_unwind_add_save_fplr_x (unwind_codes, unwind_code_size, stack_offset);
-		else
-			mono_arch_unwind_add_save_fplr (unwind_codes, unwind_code_size, 0);
-	}
-	else {
-		mono_arch_unwind_add_emit_subx_sp_imm(stack_offset, unwind_codes, unwind_code_size, TRUE);
-		mono_arch_unwind_add_save_fplr (unwind_codes, unwind_code_size, 0);
-		res.can_use_packed_format = FALSE;
-	}
-
-	mono_arch_unwind_add_set_fp (unwind_codes, unwind_code_size);
-
-	if (param_area) {
-		mono_arch_unwind_add_emit_subx_sp_imm(param_area, unwind_codes, unwind_code_size, TRUE);
-		res.can_use_packed_format = FALSE;
-	}
-
 	gint32 last_saved_in_order_reg = -1;
 	guint32 last_saved_reg_offset = -1;
+	guint cfa_offset = -1;
 	
 	MonoUnwindOp* unwind_op_data;
 	MonoUnwindOp* last_saved_regp = NULL;;
@@ -963,11 +949,27 @@ initialize_unwind_info_prolog (GSList* unwind_ops, gint stack_offset, guint para
 		case DW_CFA_mono_restore_offset_win64_arm64: 
 			res.needs_seperate_epilog = TRUE;
 			break;
+		case DW_CFA_def_cfa_offset:
+			cfa_offset = unwind_op_data->val;
+			break;
 		case DW_CFA_offset: {
-			guint offset = stack_offset + unwind_op_data->val;
+
+			// DW_CFA_def_cfa_offset must have been emitted before any DW_CFA_offset
+			// We expect the stack frame to be setup before saving any regs
+			g_assert(cfa_offset >= 0);
+
+			guint offset = cfa_offset + unwind_op_data->val;
 			int reg_count;
 
-			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, stack_offset, unwind_codes, unwind_code_size, &last_saved_regp, TRUE);
+			if (unwind_op_data->reg == ARMREG_FP)
+			{
+				mono_arch_uwwind_add_frame_setup(cfa_offset, unwind_codes, unwind_code_size, TRUE);
+				mono_arch_unwind_add_set_fp(unwind_codes, unwind_code_size);
+
+				break;
+			}
+
+			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, cfa_offset, unwind_codes, unwind_code_size, &last_saved_regp, TRUE);
 
 			if (reg_count > 0) {
 				if (last_saved_in_order_reg == -1)
@@ -987,11 +989,12 @@ initialize_unwind_info_prolog (GSList* unwind_ops, gint stack_offset, guint para
 		}
 	}
 
+	res.cfa_offset = cfa_offset > 0 ? cfa_offset : 0;
 	return res;
 }
 
 static void
-initialize_unwind_info_epilog (GSList* unwind_ops, gint stack_offset, gint param_area, guint8 *unwind_codes, guint32 *unwind_code_size) {
+initialize_unwind_info_epilog (GSList* unwind_ops, gint cfa_offset, guint8 *unwind_codes, guint32 *unwind_code_size) {
 	
 	MonoUnwindOp* unwind_op_data;
 	MonoUnwindOp* last_saved_regp = NULL;
@@ -1009,7 +1012,7 @@ initialize_unwind_info_epilog (GSList* unwind_ops, gint stack_offset, gint param
 			break;
 		case DW_CFA_mono_restore_offset_win64_arm64: {
 			int reg_count;
-			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, stack_offset, unwind_codes, unwind_code_size, &last_saved_regp, FALSE);
+			reg_count = mono_arch_unwind_add_reg_offset(unwind_op_data, l->next, cfa_offset, unwind_codes, unwind_code_size, &last_saved_regp, FALSE);
 			while (--reg_count > 0)
 				l = l->next;
 			break;
@@ -1017,23 +1020,8 @@ initialize_unwind_info_epilog (GSList* unwind_ops, gint stack_offset, gint param
 		}
 	}
 
-	if (param_area)
-		mono_arch_unwind_add_emit_subx_sp_imm(param_area, unwind_codes, unwind_code_size, FALSE);
-
 	mono_arch_unwind_add_set_fp (unwind_codes, unwind_code_size);
-
-	// Frame Setup
-	if (arm_is_ldpx_imm(-stack_offset)) {
-		if (stack_offset > 0)
-			mono_arch_unwind_add_save_fplr_x (unwind_codes, unwind_code_size, stack_offset);
-		else
-			mono_arch_unwind_add_save_fplr (unwind_codes, unwind_code_size, 0);
-	}
-	else {
-		mono_arch_unwind_add_emit_subx_sp_imm(param_area, unwind_codes, unwind_code_size, FALSE);
-		mono_arch_unwind_add_save_fplr (unwind_codes, unwind_code_size, 0);
-	}
-
+	mono_arch_uwwind_add_frame_setup(cfa_offset, unwind_codes, unwind_code_size, FALSE);
 	if (enable_ptrauth)
 		mono_arch_unwind_add_pac_sign_lr (unwind_codes, unwind_code_size);
 }
@@ -1056,7 +1044,7 @@ mono_arch_unwindinfo_get_size (UnwindInfo* unwindinfo) {
 }
 
 PUnwindInfo
-mono_arch_unwindinfo_init_method_unwind_info_ex (GSList* unwind_ops, gint stack_offset, guint param_area, guint epilog_start, guint epilog_end, guint code_len) {
+mono_arch_unwindinfo_init_method_unwind_info_ex (GSList* unwind_ops, guint epilog_start, guint epilog_end, guint code_len) {
 
 	guint32 code_word_size = 0, epliog_unwind_codes_start = 0;
 	InitilizedWindowInfoResult res;
@@ -1067,15 +1055,15 @@ mono_arch_unwindinfo_init_method_unwind_info_ex (GSList* unwind_ops, gint stack_
 	if (unwind_ops == NULL)
 		return 0;
 
-	res = initialize_unwind_info_prolog (unwind_ops, stack_offset, param_area, unwind_codes, &code_word_size);
+	res = initialize_unwind_info_prolog (unwind_ops, unwind_codes, &code_word_size);
 
-	if (res.can_use_packed_format && !res.needs_seperate_epilog && code_len < 0x2000 && stack_offset < 0x2000 && epilog_end == code_len) {
+	if (res.can_use_packed_format && !res.needs_seperate_epilog && code_len < 0x2000 && res.cfa_offset < 0x2000 && epilog_end == code_len) {
 
 		unwinddata = (PUnwindData)g_new0(RUNTIME_FUNCTION, 1);
 		// We can use the packed format
 		unwinddata->pdata.Flag = PdataPackedUnwindFunction;
 		unwinddata->pdata.FunctionLength = code_len / MONO_ARM64_UNWIND_WORD_SIZE;
-		unwinddata->pdata.FrameSize = stack_offset / MONO_ARCH_FRAME_ALIGNMENT;
+		unwinddata->pdata.FrameSize = res.cfa_offset / MONO_ARCH_FRAME_ALIGNMENT;
 		unwinddata->pdata.CR = enable_ptrauth ? PdataCrChainedWithPac : PdataCrChained;
 		unwinddata->pdata.RegI = res.saved_int_regs;
 		unwinddata->pdata.RegF = 0; // No floating point registers saved
@@ -1133,7 +1121,7 @@ mono_arch_unwindinfo_init_method_unwind_info_ex (GSList* unwind_ops, gint stack_
 			current--;
 
 			current->xdata.EpilogCount = code_word_size;	// When EpilogInHeader is true, EpilogCount is an offset into unwind codes
-			initialize_unwind_info_epilog (unwind_ops, stack_offset, param_area, current->unwind_codes, &code_word_size);
+			initialize_unwind_info_epilog (unwind_ops, res.cfa_offset, current->unwind_codes, &code_word_size);
 			mono_arch_unwind_add_end (current->unwind_codes, &code_word_size);
 
 			// Count of 32 bit words
@@ -1153,7 +1141,7 @@ mono_arch_unwindinfo_init_method_unwind_info (gpointer cfg) {
 
 	MonoCompile* current_cfg = (MonoCompile*)cfg;
 
-	UnwindInfo* unwindinfo = mono_arch_unwindinfo_init_method_unwind_info_ex (current_cfg->unwind_ops, current_cfg->stack_offset, current_cfg->param_area, current_cfg->epilog_begin, current_cfg->epilog_end, current_cfg->code_len);
+	UnwindInfo* unwindinfo = mono_arch_unwindinfo_init_method_unwind_info_ex (current_cfg->unwind_ops, current_cfg->epilog_begin, current_cfg->epilog_end, current_cfg->code_len);
 
 	current_cfg->arch.unwindinfo = unwindinfo;
 
@@ -1169,7 +1157,7 @@ mono_arch_unwindinfo_install_tramp_unwind_info (GSList* unwind_ops, gpointer cod
 	if (unwind_ops == NULL)
 		return;
 
-	UnwindInfo* unwindinfo = mono_arch_unwindinfo_init_method_unwind_info_ex (unwind_ops, 0, 0, 0, code_size, code_size);
+	UnwindInfo* unwindinfo = mono_arch_unwindinfo_init_method_unwind_info_ex (unwind_ops, 0, code_size, code_size);
 	if (unwindinfo != NULL)
 	{
 		// We only allocate enough data for the compressed unwind info for trampolines -- see MONO_TRAMPOLINE_UNWINDINFO_SIZE
