@@ -2156,7 +2156,12 @@ emit_native_wrapper_ilgen (MonoImage *image, MonoMethodBuilder *mb, MonoMethodSi
 		mono_mb_emit_calli (mb, csig);
 	} else if (MONO_CLASS_IS_IMPORT (mb->method->klass)) {
 #ifndef DISABLE_COM
-		mono_mb_emit_ldloc (mb, gc_safe_transition_builder.coop_cominterop_fnptr);
+		if (need_gc_safe) {
+			mono_mb_emit_ldloc (mb, gc_safe_transition_builder.coop_cominterop_fnptr);
+		} else {
+			mono_mb_emit_cominterop_get_function_pointer (mb, &piinfo->method);
+		}
+
 		if (piinfo->piflags & PINVOKE_ATTRIBUTE_SUPPORTS_LAST_ERROR) {
 			mono_mb_emit_byte (mb, MONO_CUSTOM_PREFIX);
 			mono_mb_emit_byte (mb, CEE_MONO_SAVE_LAST_ERROR);
