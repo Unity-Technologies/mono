@@ -364,7 +364,7 @@ mono_arch_unwindinfo_emit_epilog_codes(guint64 saved_regset, guint64 restore_reg
       //
 #define MONO_TRAMPOLINE_UNWINDINFO_SIZE 0
 
-inline gboolean
+static inline gboolean
 mono_arch_unwindinfo_emit_epilog_codes (guint64 saved_regset, guint64 restore_regset) {
 	return FALSE;
 }
