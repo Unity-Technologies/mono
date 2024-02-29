@@ -1837,9 +1837,6 @@ type_from_parsed_name (MonoTypeNameParse *info, MonoStackCrawlMark *stack_mark, 
 	if (assembly) {
 		type_resolve = TRUE;
 		rootimage = assembly->image;
-	} else {
-		// FIXME: once wasm can use stack marks, consider turning all this into an assert
-		g_warning (G_STRLOC);
 	}
 
 	*caller_assembly = assembly;
