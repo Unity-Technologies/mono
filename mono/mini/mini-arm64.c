@@ -4992,6 +4992,17 @@ emit_load_regarray (guint8 *code, guint64 regs, int basereg, int offset)
 
 	for (i = 0; i < 32; ++i) {
 		if (regs & (1 << i)) {
+
+#ifdef TARGET_WIN32
+			// R18 is the TEB pointer on Windows, there is no reason to ever touch it
+			// GetThreadContext will not return it by default
+			if (i + 1 == ARMREG_R18)
+			{
+				i++;
+				continue;
+			}
+#endif
+
 			if ((regs & (1 << (i + 1))) && (i + 1 != ARMREG_SP)) {
 				if (offset + (i * 8) < 500)
 					arm_ldpx (code, i, i + 1, basereg, offset + (i * 8));
