@@ -1,0 +1,117 @@
+# Creates an IL2CPP branch test-mono-il2cpp-deps-[unity-version] and updates stevedore / il2cpp deps file with
+# the latest commit hash from the corresponding Mono branch. Does not push the branch, but runs the IL2CPP
+# bee-update-verification tests on it 'locally'.
+# Intended to be used for testing Mono changes when used within IL2CPP (i.e. to test what 'Update Il2cpp-deps'
+# will do when run 'for real').
+name: Test Mono Il2cpp-deps [Manual] [Existing-Branch]
+
+agent:
+  type: Unity::VM
+  image: platform-foundation/windows-vs2019-prtools-bokken:latest
+  flavor: b1.xlarge 
+
+variables:
+  BACKPORT_BRANCH: "2023.3"
+
+dependencies:
+  - .yamato/Publish To Stevedore.yml
+
+triggers:
+  pull_requests:
+    - targets:
+        only:
+          - "unity-2023.3-mbe"
+
+# YAMATO_SOURCE_DIR=C:\build\output\Unity-Technologies\mono (mono repo checkout) - all command steps start in here
+# YAMATO_WORK_DIR=C:\build\output
+# UNITY_SOURCE_PRTOOLS_DIR=C:\buildslave\unity\build
+# PRTOOLS_BUILD_DIR=C:\buildslave\unity
+commands:
+
+    # Step 1 - clone PRTools into $env:YAMATO_WORK_DIR\prtools (C:\build\output\prtools)
+    - command: |
+
+        cd $env:YAMATO_WORK_DIR
+
+        git clone git@github.cds.internal.unity3d.com:unity/prtools.git
+        cd prtools
+        git checkout add-TestMonoIl2cppDeps-option
+
+    # Step 2 - clone unity/il2cpp into $env:PRTOOLS_BUILD_DIR\il2cpp (C:\buildslave\unity\il2cpp)
+    - command: |
+
+        cd $env:PRTOOLS_BUILD_DIR
+
+        git clone --recurse-submodules https://github.cds.internal.unity3d.com/unity/il2cpp.git il2cpp
+
+    # Step 3 - With working dir $env:UNITY_SOURCE_PRTOOLS_DIR (C:\buildslave\unity\build) run PRTools from $env:YAMATO_WORK_DIR\prtools (C:\build\output\prtools) (--test-mono-il2cpp-deps)
+    # pointing PRTools to the IL2CPP checkout we did above (in $env:PRTOOLS_BUILD_DIR\il2cpp (C:\buildslave\unity\il2cpp))
+    # We don't push the IL2CPP test-mono-il2cpp-deps-***** branch this creates, since we're just going to run tests on it 'locally' (see the --bee-update-verification step below)
+    - command: |
+
+        cd $env:UNITY_SOURCE_PRTOOLS_DIR
+        git config --global core.longpaths true
+        cmd /v /c dotnet run --project $env:YAMATO_WORK_DIR\prtools\PRTools\PRTools.csproj --test-mono-il2cpp-deps=$env:YAMATO_SOURCE_DIR/stevedore/artifactid.txt --backport=$env:BACKPORT_BRANCH --custom-il2cpp-repo-path=$env:PRTOOLS_BUILD_DIR/il2cpp --github-api-token=$env:IL2CPP_GITHUB_TOKEN --yamato-api-token=$env:YAMATO_TOKEN --yamato-long-lived-token --il2cpp-deps-manifest-file=il2cpp-deps.stevedore --yamato-owner-email=$env:YAMATO_OWNER_EMAIL --no-slack --no-push
+        if ($LASTEXITCODE -ne 0) { echo "PRTools failed"; exit $LASTEXITCODE }
+
+    # Step 4 - Copy stevedore.conf:
+    - command: |
+
+        cd $env:PRTOOLS_BUILD_DIR/il2cpp
+        echo "Current Git state:"
+        git log -1
+        git submodule update --init --recursive
+        Copy-Item ".yamato\files\Slough-Stevedore.conf" -Destination "$Env:USERPROFILE\Stevedore.conf"
+
+    # Step 5 - Run bootstrap:
+    - command: |
+
+        cd $env:PRTOOLS_BUILD_DIR/il2cpp
+        .\bootstrap.cmd
+
+      timeout: 0
+      retries: 10
+
+    # Step 6 - Run bee-update-verification
+    - command: |
+
+        cd $env:PRTOOLS_BUILD_DIR/il2cpp
+
+        perl test.pl --build-machine --bee-update-verification; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+after:
+
+    # This is just collecting up 'ReportedArtifacts' and CrashDumps (if present) and copying them to somewhere
+    # the Yamato job can use them in the 'artifacts' section
+    - command: |
+
+        if (-not (Test-Path -Path "$env:YAMATO_SOURCE_DIR\build\ReportedArtifacts")) {
+            New-Item -Path "$env:YAMATO_SOURCE_DIR\build\ReportedArtifacts" -ItemType Directory
+        }
+
+        Copy-Item -Path "$env:PRTOOLS_BUILD_DIR\il2cpp\build\ReportedArtifacts\*" -Destination "$env:YAMATO_SOURCE_DIR\build\ReportedArtifacts" -Recurse -ErrorAction SilentlyContinue
+
+        $licenseLogPath = Join-Path -Path $Env:HOMEDRIVE$Env:HOMEPATH -ChildPath "AppData\Local\Unity\Unity.Licensing.Client.log"
+        if (Test-Path -Path $licenseLogPath) {
+            Copy-Item -Path $licenseLogPath -Destination "$env:YAMATO_SOURCE_DIR\build\ReportedArtifacts" -ErrorAction SilentlyContinue
+        }
+
+        if (-not (Test-Path -Path "$env:YAMATO_SOURCE_DIR\build\CrashDumps")) { New-Item -Path "$env:YAMATO_SOURCE_DIR\build\CrashDumps" -ItemType Directory }
+        Copy-Item -Path "C:\CrashDump\*" -Destination "$env:YAMATO_SOURCE_DIR\build\CrashDumps" -Recurse -ErrorAction SilentlyContinue
+        Copy-Item -Path "$env:PRTOOLS_BUILD_DIR\il2cpp\CrashDumps\*" -Destination "$env:YAMATO_SOURCE_DIR\build\CrashDumps" -Recurse -ErrorAction SilentlyContinue
+
+artifacts:
+    crash_dumps:
+        paths:
+        - build/CrashDumps/**
+    reported_artifacts:
+        paths:
+        - build/ReportedArtifacts/**
+
+interpreter: powershell
+timeout_options:
+  stages:
+    distribution: 12
+    preparation: 1
+    execution: 4
+    reporting: 1
