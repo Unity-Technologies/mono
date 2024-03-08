@@ -808,6 +808,9 @@ namespace System.Diagnostics
 #else
 				var stdinEncoding = startInfo.StandardInputEncoding ?? Console.InputEncoding;
 #endif
+	            if(stdinEncoding?.GetPreamble()?.Length > 0)
+	                stdinEncoding = new UTF8Encoding(false);
+
 				standardInput = new StreamWriter (new FileStream (stdin_write, FileAccess.Write, true, 8192), stdinEncoding) {
 					AutoFlush = true
 				};
