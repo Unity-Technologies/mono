@@ -34,8 +34,6 @@ commands:
         cd $env:YAMATO_WORK_DIR
 
         git clone git@github.cds.internal.unity3d.com:unity/prtools.git
-        cd prtools
-        git checkout add-TestMonoIl2cppDeps-option
 
     # Step 2 - clone unity/il2cpp into $env:PRTOOLS_BUILD_DIR\il2cpp (C:\buildslave\unity\il2cpp)
     - command: |
@@ -113,5 +111,5 @@ timeout_options:
   stages:
     distribution: 12
     preparation: 1
-    execution: 4
+    execution: 6
     reporting: 1
