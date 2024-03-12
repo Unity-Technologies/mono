@@ -717,21 +717,6 @@ mono_arch_unwind_add_save_reg (guint8* unwind_codes, guint32* unwind_code_size, 
 }
 
 static void
-mono_arch_unwind_add_save_reg_x (guint8* unwind_codes, guint32* unwind_code_size, guint32 reg, guint32 offset, gboolean reverse) {
-
-	mono_arch_unwind_add_assert (2, 256, *unwind_code_size, offset);
-
-	guint8 reg_offset = reg - ARMREG_R19;
-	int order = reverse ? 1 : 0;
-
-	// save_reg_x: 1101010x'xxxzzzzz: save reg x(19+#X) at [sp-(#Z+1)*8]!, pre-indexed offset >= -256
-	unwind_codes[*unwind_code_size + order] = 0b11010100 | reg_offset / 8;
-	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x7) << 5 | (offset / 8);
-
-	*(unwind_code_size) += 2;
-}
-
-static void
 mono_arch_unwind_add_save_regp (guint8* unwind_codes, guint32* unwind_code_size, guint32 reg, guint32 offset, gboolean reverse) {
 
 	mono_arch_unwind_add_assert (2, 504, *unwind_code_size, offset);
@@ -742,23 +727,6 @@ mono_arch_unwind_add_save_regp (guint8* unwind_codes, guint32* unwind_code_size,
 	// save_regp: 110010xx'xxzzzzzz: save x(19+#X) pair at [sp+#Z*8], offset <= 504
 	unwind_codes[*unwind_code_size + order] = 0b11001000 | reg_offset / 4;
 	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x3) << 6 | (offset / 8);
-	*(unwind_code_size) += 2;
-}
-
-static void
-mono_arch_unwind_add_save_regp_x (guint8* unwind_codes, guint32* unwind_code_size, guint32 reg, guint32 offset, gboolean reverse) {
-
-	mono_arch_unwind_add_assert (2, 256, *unwind_code_size, offset);
-
-	guint8 reg_offset = reg - ARMREG_R19;
-	int order = reverse ? 1 : 0;
-
-	g_assert(offset % 8 == 0);
-
-	// save_regp_x 110011xx'xxzzzzzz: save pair x(19+#X) at [sp-(#Z+1)*8]!, pre-indexed offset >= -512
-	unwind_codes[*unwind_code_size + order] = 0b11001100 | reg_offset / 4;
-	unwind_codes[*unwind_code_size + 1 - order] = (reg_offset & 0x3) << 6 | (offset / 8);
-
 	*(unwind_code_size) += 2;
 }
 
@@ -873,7 +841,7 @@ mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gin
 		mono_arch_unwind_add_save_reg (unwind_codes, unwind_code_size, unwind_op_data->reg, offset, processing_prolog_codes);
 	}
 	else {
-		// Mono emits this add a mov xip0, #offset; str rn,[sp+xip0]
+		// Mono emits this an a mov xip0, #offset; str rn,[sp+xip0]
 		// There doesn't appear to be any way to encode this in the unwind codes, so just emit nops
 		mono_arch_unwind_add_nop (unwind_codes, unwind_code_size);
 		mono_arch_unwind_add_nop (unwind_codes, unwind_code_size);
