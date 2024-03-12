@@ -827,7 +827,7 @@ mono_arch_unwind_add_alloc_x (guint8* unwind_codes, guint32* unwind_code_size, g
 }
 
 static int
-mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gint stack_offset, guint8 *unwind_codes, guint32 *unwind_code_size, MonoUnwindOp** last_saved_regp, gboolean reverse) {
+mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gint stack_offset, guint8 *unwind_codes, guint32 *unwind_code_size, MonoUnwindOp** last_saved_regp, gboolean processing_prolog_codes) {
 
 	if (unwind_op_data->reg == ARMREG_SP) {
 		g_assert("I don't believe there is a way to encode this in the unwind info");
@@ -853,14 +853,15 @@ mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gin
 	if (next && next->data)
 		next_unwind_op_data = (MonoUnwindOp*)next->data;
 
-	if (next_unwind_op_data && unwind_op_data->reg % 2 && next_unwind_op_data->op == DW_CFA_offset && next_unwind_op_data->reg == unwind_op_data->reg + 1 && next_unwind_op_data->val == unwind_op_data->val + sizeof(host_mgreg_t)) {
+	gint next_reg_dir = processing_prolog_codes ? 1 : -1;
+	guint8 op = processing_prolog_codes ? DW_CFA_offset : DW_CFA_mono_restore_offset_win64_arm64;
 
-		if (*last_saved_regp && (*last_saved_regp)->reg == unwind_op_data->reg - 2 && unwind_op_data->val == (*last_saved_regp)->val + 2*sizeof(host_mgreg_t))
-			mono_arch_unwind_add_save_next(unwind_codes, unwind_code_size);
-		else if (offset)
-			mono_arch_unwind_add_save_regp_x(unwind_codes, unwind_code_size, unwind_op_data->reg, offset, reverse);
-		else
-			mono_arch_unwind_add_save_regp(unwind_codes, unwind_code_size, unwind_op_data->reg, offset, reverse);
+	if (next_unwind_op_data && next_unwind_op_data->op == op && next_unwind_op_data->reg == unwind_op_data->reg + next_reg_dir && next_unwind_op_data->val == unwind_op_data->val + next_reg_dir * sizeof(host_mgreg_t)) {
+
+		if (*last_saved_regp && (*last_saved_regp)->reg == unwind_op_data->reg - 2*next_reg_dir && unwind_op_data->val == (*last_saved_regp)->val + 2*next_reg_dir*sizeof(host_mgreg_t))
+			mono_arch_unwind_add_save_next (unwind_codes, unwind_code_size);
+		else 
+			mono_arch_unwind_add_save_regp (unwind_codes, unwind_code_size, unwind_op_data->reg, offset, processing_prolog_codes);
 
 		*last_saved_regp = unwind_op_data;
 		return 2;
@@ -868,10 +869,15 @@ mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gin
 
 	*last_saved_regp = NULL;
 
-	if (offset)
-		mono_arch_unwind_add_save_reg_x(unwind_codes, unwind_code_size, unwind_op_data->reg, offset, reverse);
-	else
-		mono_arch_unwind_add_save_reg(unwind_codes, unwind_code_size, unwind_op_data->reg, offset, reverse);
+	if (arm_is_strx_imm(offset)) {
+		mono_arch_unwind_add_save_reg (unwind_codes, unwind_code_size, unwind_op_data->reg, offset, processing_prolog_codes);
+	}
+	else {
+		// Mono emits this add a mov xip0, #offset; str rn,[sp+xip0]
+		// There doesn't appear to be any way to encode this in the unwind codes, so just emit nops
+		mono_arch_unwind_add_nop (unwind_codes, unwind_code_size);
+		mono_arch_unwind_add_nop (unwind_codes, unwind_code_size);
+	}
 
 	return 1;
 }

@@ -5193,7 +5193,7 @@ emit_load_regset_cfa (MonoCompile* cfg, guint8* code, guint64 stored_regs, guint
 			{
 				for (j = 0; j < nregs; ++j) {
 					if (cfa_regset & (1 << (i - j)))
-						mono_emit_unwind_op_restore_offset(cfg, code, i + j, (-cfa_offset) + offset + ((pos + j) * 8));
+						mono_emit_unwind_op_restore_offset(cfg, code, i - j, (-cfa_offset) + offset + ((pos - j) * 8));
 				}
 			}
 
