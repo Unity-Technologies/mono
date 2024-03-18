@@ -683,6 +683,9 @@ mono_arch_unwind_add_end_c (guint8* unwind_codes, guint32* unwind_code_size) {
 	unwind_codes[(*unwind_code_size)++] = 0b11100101;
 }
 
+#define WIN_ARM64_SAVE_REG_MAX_OFFSET 504
+#define WIN_ARM64_SAVE_REGP_MAX_OFFSET 512
+
 static void
 mono_arch_unwind_add_save_fplr (guint8* unwind_codes, guint32* unwind_code_size, gint32 offset) {
 
@@ -824,7 +827,10 @@ mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gin
 	gint next_reg_dir = processing_prolog_codes ? 1 : -1;
 	guint8 op = processing_prolog_codes ? DW_CFA_offset : DW_CFA_mono_restore_offset_win64_arm64;
 
-	if (next_unwind_op_data && next_unwind_op_data->op == op && next_unwind_op_data->reg == unwind_op_data->reg + next_reg_dir && next_unwind_op_data->val == unwind_op_data->val + next_reg_dir * sizeof(host_mgreg_t)) {
+	// Mono emits paired reg loads/stores (stp/ldp) for adjacent regs, but still emits seperate MonoUnwindOp foreach
+	// Detect those cases and emit a single unwind code so to match the emitted assembly
+	// The 256 value is from mini-arm64.c::emit_store_regset_cfa, when we exeed that mono won't emit regp stores/loads
+	if (offset < 256 && next_unwind_op_data && next_unwind_op_data->op == op && next_unwind_op_data->reg == unwind_op_data->reg + next_reg_dir && next_unwind_op_data->val == unwind_op_data->val + next_reg_dir * sizeof(host_mgreg_t)) {
 
 		if (*last_saved_regp && (*last_saved_regp)->reg == unwind_op_data->reg - 2*next_reg_dir && unwind_op_data->val == (*last_saved_regp)->val + 2*next_reg_dir*sizeof(host_mgreg_t))
 			mono_arch_unwind_add_save_next (unwind_codes, unwind_code_size);
@@ -837,8 +843,14 @@ mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gin
 
 	*last_saved_regp = NULL;
 
+	// The Windows ARM64 unwind codes are setup assuming that the preserved registers are stored at the bottom of the frame, but Mono places them at the top.
+	// So we end up with offsets we can't encode, so we'll just emit nops for those (we emit nops to so we correctly encode the size of the prolog)
+	// Saving the preserved regs allows unwinding in the prolog/epilog which insn't needed for correct stack traces, so there doesn't seem to be a critical issue
 	if (arm_is_strx_imm(offset)) {
-		mono_arch_unwind_add_save_reg (unwind_codes, unwind_code_size, unwind_op_data->reg, offset, processing_prolog_codes);
+		if (offset < WIN_ARM64_SAVE_REG_MAX_OFFSET)
+			mono_arch_unwind_add_save_reg (unwind_codes, unwind_code_size, unwind_op_data->reg, offset, processing_prolog_codes);
+		else
+			mono_arch_unwind_add_nop (unwind_codes, unwind_code_size); // There is no way to encode an offset this large
 	}
 	else {
 		// Mono emits this an a mov xip0, #offset; str rn,[sp+xip0]
