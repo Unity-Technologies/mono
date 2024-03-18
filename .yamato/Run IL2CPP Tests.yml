@@ -3,7 +3,7 @@
 # bee-update-verification tests on it 'locally'.
 # Intended to be used for testing Mono changes when used within IL2CPP (i.e. to test what 'Update Il2cpp-deps'
 # will do when run 'for real').
-name: Test Mono Il2cpp-deps [Manual] [Existing-Branch]
+name: Run IL2CPP Tests Against This Mono Branch
 
 agent:
   type: Unity::VM
