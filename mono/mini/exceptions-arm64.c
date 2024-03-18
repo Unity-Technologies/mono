@@ -630,16 +630,26 @@ mono_arch_do_ip_adjustment (MonoContext *ctx)
 
 #ifdef MONO_ARCH_HAVE_UNWIND_TABLE
 
-static void 
+static gboolean 
 mono_arch_unwind_add_assert (guint32 unwind_code_size, guint32 max_offset, guint32 unwind_codes_buffer_size, guint32 offset) {
-	g_assert(offset <= max_offset);
-	if (unwind_codes_buffer_size + unwind_code_size > MONO_ARM64_MAX_UNWIND_CODE_SIZE)
-		g_error ("Larger allocation needed for the unwind information.");
+
+	if (offset > max_offset) {
+		g_debug("Unwind code max offset exceeded %d > %d", offset, max_offset);
+		return FALSE;
+	}
+
+	if (unwind_codes_buffer_size + unwind_code_size > MONO_ARM64_MAX_UNWIND_CODE_SIZE) {
+		g_debug("Larger allocation needed for the unwind information.");
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static void
 mono_arch_unwind_add_nop (guint8* unwind_codes, guint32* unwind_code_size) {
-	mono_arch_unwind_add_assert(1, 0, *unwind_code_size, 0);
+	if (!mono_arch_unwind_add_assert(1, 0, *unwind_code_size, 0))
+		return;
 
 	// nop: 11100011: no unwind operation is required.
 	unwind_codes[(*unwind_code_size)++] = 0b11100011;
@@ -653,7 +663,8 @@ mono_arch_unwind_add_nops (guint8* unwind_codes, guint32* unwind_code_size, int 
 
 static void
 mono_arch_unwind_add_set_fp (guint8* unwind_codes, guint32* unwind_code_size) {
-	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+	if (!mono_arch_unwind_add_assert(1, 0, *unwind_code_size, 0))
+		return;
 
 	// set_fp: 11100001: set up x29 with mov x29,sp
 	unwind_codes[(*unwind_code_size)++] = 0b11100001;
@@ -661,7 +672,8 @@ mono_arch_unwind_add_set_fp (guint8* unwind_codes, guint32* unwind_code_size) {
 
 static void
 mono_arch_unwind_add_pac_sign_lr (guint8* unwind_codes, guint32* unwind_code_size) {
-	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+	if (!mono_arch_unwind_add_assert(1, 0, *unwind_code_size, 0))
+		return;
 
 	// pac_sign_lr: 11111100: sign the return address in lr with pacibsp
 	unwind_codes[(*unwind_code_size)++] = 0b11111100;
@@ -669,7 +681,8 @@ mono_arch_unwind_add_pac_sign_lr (guint8* unwind_codes, guint32* unwind_code_siz
 
 static void
 mono_arch_unwind_add_end (guint8* unwind_codes, guint32* unwind_code_size) {
-	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+	if (!mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0))
+		return;
 
 	// end: 11100100: end of unwind code. Implies ret in epilog.
 	unwind_codes[(*unwind_code_size)++] = 0b11100100;
@@ -677,7 +690,8 @@ mono_arch_unwind_add_end (guint8* unwind_codes, guint32* unwind_code_size) {
 
 static void
 mono_arch_unwind_add_end_c (guint8* unwind_codes, guint32* unwind_code_size) {
-	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+	if (!mono_arch_unwind_add_assert(1, 0, *unwind_code_size, 0))
+		return;
 
 	// end_c: 11100101: end of unwind code in current chained scope.
 	unwind_codes[(*unwind_code_size)++] = 0b11100101;
@@ -688,8 +702,8 @@ mono_arch_unwind_add_end_c (guint8* unwind_codes, guint32* unwind_code_size) {
 
 static void
 mono_arch_unwind_add_save_fplr (guint8* unwind_codes, guint32* unwind_code_size, gint32 offset) {
-
-	mono_arch_unwind_add_assert (1, 504, *unwind_code_size, offset);
+	if (!mono_arch_unwind_add_assert(1, WIN_ARM64_SAVE_REG_MAX_OFFSET, *unwind_code_size, offset))
+		return;
 
 	// save_fplr: 01zzzzzz: save <x29,lr> pair at [sp+#Z*8], offset <= 504.
 	unwind_codes[(*unwind_code_size)++] = 0b01000000 | offset / 8;
@@ -697,8 +711,8 @@ mono_arch_unwind_add_save_fplr (guint8* unwind_codes, guint32* unwind_code_size,
 
 static void
 mono_arch_unwind_add_save_fplr_x (guint8* unwind_codes, guint32* unwind_code_size, gint32 offset) {
-
-	mono_arch_unwind_add_assert (1, 512, *unwind_code_size, offset);
+	if (!mono_arch_unwind_add_assert(1, WIN_ARM64_SAVE_REGP_MAX_OFFSET, *unwind_code_size, offset))
+		return;
 
 	// save_fplr_x: 10zzzzzz: save <x29, lr> pair at[sp - (#Z + 1) * 8]!, pre - indexed offset >= -512
 	unwind_codes[(*unwind_code_size)++] = 0b10000000 | (offset-8) / 8;
@@ -706,8 +720,8 @@ mono_arch_unwind_add_save_fplr_x (guint8* unwind_codes, guint32* unwind_code_siz
 
 static void
 mono_arch_unwind_add_save_reg (guint8* unwind_codes, guint32* unwind_code_size, guint32 reg, guint32 offset, gboolean reverse) {
-
-	mono_arch_unwind_add_assert (2, 504, *unwind_code_size, offset);
+	if (!mono_arch_unwind_add_assert(2, WIN_ARM64_SAVE_REG_MAX_OFFSET, *unwind_code_size, offset))
+		return;
 
 	guint8 reg_offset = reg - ARMREG_R19;
 	int order = reverse ? 1 : 0;
@@ -721,8 +735,8 @@ mono_arch_unwind_add_save_reg (guint8* unwind_codes, guint32* unwind_code_size, 
 
 static void
 mono_arch_unwind_add_save_regp (guint8* unwind_codes, guint32* unwind_code_size, guint32 reg, guint32 offset, gboolean reverse) {
-
-	mono_arch_unwind_add_assert (2, 504, *unwind_code_size, offset);
+	if (!mono_arch_unwind_add_assert(2, WIN_ARM64_SAVE_REG_MAX_OFFSET, *unwind_code_size, offset))
+		return;
 
 	guint8 reg_offset = reg - ARMREG_R19;
 	int order = reverse ? 1 : 0;
@@ -735,8 +749,8 @@ mono_arch_unwind_add_save_regp (guint8* unwind_codes, guint32* unwind_code_size,
 
 static void 
 mono_arch_unwind_add_save_next(guint8* unwind_codes, guint32* unwind_code_size) {
-
-	mono_arch_unwind_add_assert (1, 0, *unwind_code_size, 0);
+	if (!mono_arch_unwind_add_assert(1, 0, *unwind_code_size, 0))
+		return;
 
 	// save_next: 11100110: save next non-volatile Int or FP register pair.
 	unwind_codes[(*unwind_code_size)++] = 0b11100110;
@@ -744,8 +758,9 @@ mono_arch_unwind_add_save_next(guint8* unwind_codes, guint32* unwind_code_size) 
 
 static void
 mono_arch_unwind_add_alloc_s (guint8* unwind_codes, guint32* unwind_code_size, guint32 size) {
+	if (!mono_arch_unwind_add_assert(1, 511, *unwind_code_size, size))
+		return;
 
-	mono_arch_unwind_add_assert (1, 511, *unwind_code_size, size);
 	g_assert(size % MONO_ARCH_FRAME_ALIGNMENT == 0);
 
 	// alloc_s: 000xxxxx: allocate small stack with size < 512 (2^5 * 16).
@@ -755,7 +770,9 @@ mono_arch_unwind_add_alloc_s (guint8* unwind_codes, guint32* unwind_code_size, g
 static void
 mono_arch_unwind_add_alloc_m (guint8* unwind_codes, guint32* unwind_code_size, guint32 size, gboolean reverse) {
 
-	mono_arch_unwind_add_assert (2, 0x7FFF, *unwind_code_size, size);
+	if (!mono_arch_unwind_add_assert(2, 0x7FFF, *unwind_code_size, size))
+		return;
+
 	g_assert(size % MONO_ARCH_FRAME_ALIGNMENT == 0);
 
 	int order = reverse ? 1 : 0;
@@ -770,8 +787,9 @@ mono_arch_unwind_add_alloc_m (guint8* unwind_codes, guint32* unwind_code_size, g
 
 static void
 mono_arch_unwind_add_alloc_l (guint8* unwind_codes, guint32* unwind_code_size, guint32 size, gboolean reverse) {
+	if (!mono_arch_unwind_add_assert(4, 0x0FFFFFFF, *unwind_code_size, size))
+		return;
 
-	mono_arch_unwind_add_assert (4, 0x0FFFFFFF, *unwind_code_size, size);
 	g_assert(size % MONO_ARCH_FRAME_ALIGNMENT == 0);
 
 	int order = reverse ? 1 : 0;
@@ -801,19 +819,19 @@ static int
 mono_arch_unwind_add_reg_offset (MonoUnwindOp* unwind_op_data, GSList* next, gint stack_offset, guint8 *unwind_codes, guint32 *unwind_code_size, MonoUnwindOp** last_saved_regp, gboolean processing_prolog_codes) {
 
 	if (unwind_op_data->reg == ARMREG_SP) {
-		g_assert("I don't believe there is a way to encode this in the unwind info");
+		g_debug("I don't believe there is a way to encode this in the unwind info");
 		return 0;
 	}
 
 	if (unwind_op_data->reg == ARMREG_FP || unwind_op_data->reg == ARMREG_LR) {
-		// FP and LR are handled seperately
+		// FP and LR are handled seperately, see mono_arch_uwwind_add_frame_setup
 		return 0;
 	}
 
 	if (unwind_op_data->reg < ARMREG_R19 && unwind_op_data->reg > ARMREG_R28) {
 		// Only the presreved registers have unwind codes
 		// We shouldn't hit here, but emit a nop if we do
-		g_assert(unwind_op_data->reg >= ARMREG_R19 && unwind_op_data->reg <= ARMREG_R28);
+		g_debug("Non preserved register stored in unwind info %d", unwind_op_data->reg);
 		mono_arch_unwind_add_nop(unwind_codes, unwind_code_size);
 		return 1;
 	}
