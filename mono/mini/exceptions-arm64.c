@@ -880,11 +880,9 @@ static void
 mono_arch_uwwind_add_frame_setup(guint cfa_offset, guint8* unwind_codes, guint32* unwind_code_size, gboolean reverse) {
 
 	// Frame Setup
+	// This matches the logic in mini-arm64.c::mono_arch_emit_prolog
 	if (arm_is_ldpx_imm(-cfa_offset)) {
-		if (cfa_offset > 0)
-			mono_arch_unwind_add_save_fplr_x(unwind_codes, unwind_code_size, cfa_offset);
-		else
-			mono_arch_unwind_add_save_fplr(unwind_codes, unwind_code_size, 0);
+		mono_arch_unwind_add_save_fplr_x(unwind_codes, unwind_code_size, cfa_offset);
 	}
 	else {
 		mono_arch_unwind_add_emit_subx_sp_imm(cfa_offset, unwind_codes, unwind_code_size, reverse);
