@@ -895,7 +895,7 @@ mono_arch_unwind_add_emit_subx_sp_imm (gint offset, guint8* unwind_codes, guint3
 }
 
 static void 
-mono_arch_uwwind_add_frame_setup(guint cfa_offset, guint8* unwind_codes, guint32* unwind_code_size, gboolean reverse) {
+mono_arch_uwwind_add_frame_setup(gint cfa_offset, guint8* unwind_codes, guint32* unwind_code_size, gboolean reverse) {
 
 	// Frame Setup
 	// This matches the logic in mini-arm64.c::mono_arch_emit_prolog
@@ -929,7 +929,7 @@ initialize_unwind_info_prolog (GSList* unwind_ops, guint8 *unwind_codes, guint32
 
 	gint32 last_saved_in_order_reg = -1;
 	guint32 last_saved_reg_offset = -1;
-	guint cfa_offset = -1;
+	gint cfa_offset = -1;
 	
 	MonoUnwindOp* unwind_op_data;
 	MonoUnwindOp* last_saved_regp = NULL;;
