@@ -874,7 +874,8 @@ void*
 mono_gc_make_descr_from_bitmap (gsize *bitmap, int numbits)
 {
 	/* It seems there are issues when the bitmap doesn't fit: play it safe */
-	if (numbits >= 30)
+	#define MAX_GC_DESCR_BITS (sizeof(void*) * 8 - GC_DS_TAG_BITS)
+	if (numbits >= MAX_GC_DESCR_BITS)
 		return GC_NO_DESCRIPTOR;
 	else
 		return (gpointer)GC_make_descriptor ((GC_bitmap)bitmap, numbits);
