@@ -37,7 +37,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if WIN_PLATFORM || XAMMAC_4_5
+#if WIN_PLATFORM || XAMMAC_4_5 || UNITY_JIT
 
 using System;
 using System.Collections;
