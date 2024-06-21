@@ -268,7 +268,7 @@ namespace Microsoft.Win32
 
 		static RegistryKey ()
 		{
-#if !XAMMAC_4_5
+#if PLATFORM_WIN
 			if (Path.DirectorySeparatorChar == '\\')
 				RegistryApi = new Win32RegistryApi ();
 			else
