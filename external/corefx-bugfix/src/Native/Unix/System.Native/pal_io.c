@@ -341,6 +341,52 @@ int32_t SystemNative_ShmUnlink(const char* name)
 #endif
 }
 
+static void CopyDirentRecordToWrapper(const struct dirent* entry, struct DIRWrapper* dirWrapper, size_t index)
+{
+#if READDIR_SORT
+    struct DirectoryEntry* outputEntry = &dirWrapper->result[index];
+
+    // We use Marshal.PtrToStringAnsi on the managed side, which takes a pointer to
+    // the start of the unmanaged string. Give the caller back a pointer to the
+    // location of the start of the string that exists in their own byte buffer.
+#if HAVE_DIRENT_NAME_LEN
+    size_t lengthToCopy = entry->d_namlen + 1;
+#else
+    size_t lengthToCopy = strlen(entry->d_name) + 1;
+#endif
+
+    uint64_t usedStorageAfterCopy = dirWrapper->entryNameStorageUsed + lengthToCopy;
+
+    if (usedStorageAfterCopy > dirWrapper->entryNameStorageCapacity)
+    {
+        uint64_t newCapacity = (usedStorageAfterCopy * 3) / 2;
+        dirWrapper->entryNameStorage = (char*)realloc(dirWrapper->entryNameStorage, newCapacity);
+        dirWrapper->entryNameStorageCapacity = newCapacity;
+    }
+
+    char* copyDestination = dirWrapper->entryNameStorage + dirWrapper->entryNameStorageUsed;
+    memcpy(copyDestination, entry->d_name, lengthToCopy);
+    dirWrapper->entryNameStorageUsed = usedStorageAfterCopy;
+    outputEntry->Name = copyDestination;
+    
+#if !defined(DT_UNKNOWN)
+    // AIX has no d_type, and since we can't get the directory that goes with
+    // the filename from ReadDir, we can't stat the file. Return unknown and
+    // hope that managed code can properly stat the file.
+    outputEntry->InodeType = PAL_DT_UNKNOWN;
+#else
+    outputEntry->InodeType = (int32_t)entry->d_type;
+#endif
+
+#if HAVE_DIRENT_NAME_LEN
+    outputEntry->NameLength = entry->d_namlen;
+#else
+    outputEntry->NameLength = -1; // sentinel value to mean we have to walk to find the first \0
+#endif
+#endif
+}
+
+>>>>>>> d42be713ee0 (Use separate storage for strings to avoid reading unallocated pages on MacOS (it doesn't always allocate the full 1024 chars for a dirent).)
 static void ConvertDirent(const struct dirent* entry, struct DirectoryEntry* outputEntry)
 {
     // We use Marshal.PtrToStringAnsi on the managed side, which takes a pointer to
@@ -465,6 +511,10 @@ int32_t SystemNative_ReadDirR(struct DIRWrapper* dirWrapper, uint8_t* buffer, in
         {
             dirWrapper->result = malloc(numEntries * sizeof(struct dirent));
             dirWrapper->curIndex = 0;
+            dirWrapper->entryNameStorageUsed = 0;
+            dirWrapper->entryNameStorageCapacity = numEntries * (uint64_t)256 * sizeof(char);
+            dirWrapper->entryNameStorage = (char*)malloc(dirWrapper->entryNameStorageCapacity);
+            
 #if HAVE_REWINDDIR
             rewinddir (dirWrapper->dir);
 #else
@@ -485,7 +535,7 @@ int32_t SystemNative_ReadDirR(struct DIRWrapper* dirWrapper, uint8_t* buffer, in
 
     if (dirWrapper->curIndex < dirWrapper->numEntries)
     {
-        entry = &((struct dirent*)dirWrapper->result)[dirWrapper->curIndex];
+        memcpy(outputEntry, &dirWrapper->result[dirWrapper->curIndex], sizeof(*outputEntry));
         dirWrapper->curIndex++;
     }
 
@@ -527,6 +577,9 @@ struct DIRWrapper* SystemNative_OpenDir(const char* path)
     ret->result = NULL;
     ret->curIndex = 0;
     ret->numEntries = 0;
+    ret->entryNameStorage = NULL;
+    ret->entryNameStorageUsed = 0;
+    ret->entryNameStorageCapacity = 0;
 #if !HAVE_REWINDDIR
     ret->dirPath = strdup(path);
 #endif
@@ -540,8 +593,16 @@ int32_t SystemNative_CloseDir(struct DIRWrapper* dirWrapper)
     int32_t ret = closedir(dirWrapper->dir);
 #if READDIR_SORT
     if (dirWrapper->result)
+    {
         free (dirWrapper->result);
-    dirWrapper->result = NULL;
+        dirWrapper->result = NULL;
+    }
+    
+    if (dirWrapper->entryNameStorage)
+    {
+        free (dirWrapper->entryNameStorage);
+        dirWrapper->entryNameStorage = NULL;
+    }
 #if !HAVE_REWINDDIR
     if (dirWrapper->dirPath)
         free(dirWrapper->dirPath);
