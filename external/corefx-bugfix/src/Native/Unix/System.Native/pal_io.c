@@ -341,6 +341,28 @@ int32_t SystemNative_ShmUnlink(const char* name)
 #endif
 }
 
+static void ConvertDirent(const struct dirent* entry, struct DirectoryEntry* outputEntry)
+{
+    // We use Marshal.PtrToStringAnsi on the managed side, which takes a pointer to
+    // the start of the unmanaged string. Give the caller back a pointer to the
+    // location of the start of the string that exists in their own byte buffer.
+    outputEntry->Name = entry->d_name;
+#if !defined(DT_UNKNOWN)
+    // AIX has no d_type, and since we can't get the directory that goes with
+    // the filename from ReadDir, we can't stat the file. Return unknown and
+    // hope that managed code can properly stat the file.
+    outputEntry->InodeType = PAL_DT_UNKNOWN;
+#else
+    outputEntry->InodeType = (int32_t)entry->d_type;
+#endif
+
+#if HAVE_DIRENT_NAME_LEN
+    outputEntry->NameLength = entry->d_namlen;
+#else
+    outputEntry->NameLength = -1; // sentinel value to mean we have to walk to find the first \0
+#endif
+}
+
 static void CopyDirentRecordForSorting(const struct dirent* entry, struct DIRWrapper* dirWrapper, size_t destinationIndex)
 {
 #if READDIR_SORT
@@ -369,28 +391,6 @@ static void CopyDirentRecordForSorting(const struct dirent* entry, struct DIRWra
 #endif
 }
 
-static void ConvertDirent(const struct dirent* entry, struct DirectoryEntry* outputEntry)
-{
-    // We use Marshal.PtrToStringAnsi on the managed side, which takes a pointer to
-    // the start of the unmanaged string. Give the caller back a pointer to the
-    // location of the start of the string that exists in their own byte buffer.
-    outputEntry->Name = entry->d_name;
-#if !defined(DT_UNKNOWN)
-    // AIX has no d_type, and since we can't get the directory that goes with
-    // the filename from ReadDir, we can't stat the file. Return unknown and
-    // hope that managed code can properly stat the file.
-    outputEntry->InodeType = PAL_DT_UNKNOWN;
-#else
-    outputEntry->InodeType = (int32_t)entry->d_type;
-#endif
-
-#if HAVE_DIRENT_NAME_LEN
-    outputEntry->NameLength = entry->d_namlen;
-#else
-    outputEntry->NameLength = -1; // sentinel value to mean we have to walk to find the first \0
-#endif
-}
-
 #if IL2CPP_HAVE_READDIR_R_DEPRECATED_DO_NOT_USE
 // struct dirent typically contains 64-bit numbers (e.g. d_ino), so we align it at 8-byte.
 static const size_t dirent_alignment = 8;
@@ -411,7 +411,7 @@ int32_t SystemNative_GetReadDirRBufferSize(void)
 #if READDIR_SORT
 static int cmpstring(const void *p1, const void *p2)
 {
-    return strcmp(((struct dirent*) p1)->d_name, ((struct dirent*) p2)->d_name);
+    return strcmp(((struct DirectoryEntry*) p1)->Name, ((struct DirectoryEntry*) p2)->Name);
 }
 #endif
 
@@ -511,7 +511,7 @@ int32_t SystemNative_ReadDirR(struct DIRWrapper* dirWrapper, uint8_t* buffer, in
             }
 
             dirWrapper->numEntries = index;
-            qsort(dirWrapper->result, dirWrapper->numEntries, sizeof(struct dirent), cmpstring);
+            qsort(dirWrapper->result, dirWrapper->numEntries, sizeof(*dirWrapper->result), cmpstring);
         }
     }
 

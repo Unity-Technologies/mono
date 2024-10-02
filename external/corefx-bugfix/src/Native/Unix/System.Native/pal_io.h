@@ -344,7 +344,7 @@ struct DIRWrapper
 {
     DIR* dir;
 #if READDIR_SORT
-    void* result;
+    struct DirectoryEntry* result;
     size_t curIndex;
     size_t numEntries;
     char* entryNameStorage;
