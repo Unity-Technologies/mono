@@ -341,14 +341,12 @@ int32_t SystemNative_ShmUnlink(const char* name)
 #endif
 }
 
-static void CopyDirentRecordToWrapper(const struct dirent* entry, struct DIRWrapper* dirWrapper, size_t index)
+static void CopyDirentRecordForSorting(const struct dirent* entry, struct DIRWrapper* dirWrapper, size_t destinationIndex)
 {
 #if READDIR_SORT
-    struct DirectoryEntry* outputEntry = &dirWrapper->result[index];
+    struct DirectoryEntry* outputEntry = &dirWrapper->result[destinationIndex];
+    ConvertDirent(entry, outputEntry); // copy other fields, we'll overwrite the name below
 
-    // We use Marshal.PtrToStringAnsi on the managed side, which takes a pointer to
-    // the start of the unmanaged string. Give the caller back a pointer to the
-    // location of the start of the string that exists in their own byte buffer.
 #if HAVE_DIRENT_NAME_LEN
     size_t lengthToCopy = entry->d_namlen + 1;
 #else
@@ -368,25 +366,9 @@ static void CopyDirentRecordToWrapper(const struct dirent* entry, struct DIRWrap
     memcpy(copyDestination, entry->d_name, lengthToCopy);
     dirWrapper->entryNameStorageUsed = usedStorageAfterCopy;
     outputEntry->Name = copyDestination;
-    
-#if !defined(DT_UNKNOWN)
-    // AIX has no d_type, and since we can't get the directory that goes with
-    // the filename from ReadDir, we can't stat the file. Return unknown and
-    // hope that managed code can properly stat the file.
-    outputEntry->InodeType = PAL_DT_UNKNOWN;
-#else
-    outputEntry->InodeType = (int32_t)entry->d_type;
-#endif
-
-#if HAVE_DIRENT_NAME_LEN
-    outputEntry->NameLength = entry->d_namlen;
-#else
-    outputEntry->NameLength = -1; // sentinel value to mean we have to walk to find the first \0
-#endif
 #endif
 }
 
->>>>>>> d42be713ee0 (Use separate storage for strings to avoid reading unallocated pages on MacOS (it doesn't always allocate the full 1024 chars for a dirent).)
 static void ConvertDirent(const struct dirent* entry, struct DirectoryEntry* outputEntry)
 {
     // We use Marshal.PtrToStringAnsi on the managed side, which takes a pointer to
@@ -524,12 +506,12 @@ int32_t SystemNative_ReadDirR(struct DIRWrapper* dirWrapper, uint8_t* buffer, in
             size_t index = 0;
             while ((entry = readdir(dirWrapper->dir)) && index < numEntries)
             {
-                memcpy(&((struct dirent*)dirWrapper->result)[index], entry, sizeof(struct dirent));
+                CopyDirentRecordForSorting(entry, dirWrapper, index);
                 index++;
             }
 
-            qsort(dirWrapper->result, numEntries, sizeof(struct dirent), cmpstring);
-            dirWrapper->numEntries = index; 
+            dirWrapper->numEntries = index;
+            qsort(dirWrapper->result, dirWrapper->numEntries, sizeof(struct dirent), cmpstring);
         }
     }
 
@@ -537,6 +519,8 @@ int32_t SystemNative_ReadDirR(struct DIRWrapper* dirWrapper, uint8_t* buffer, in
     {
         memcpy(outputEntry, &dirWrapper->result[dirWrapper->curIndex], sizeof(*outputEntry));
         dirWrapper->curIndex++;
+        
+        return 0;
     }
 
     else
