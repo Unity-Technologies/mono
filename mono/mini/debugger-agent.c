@@ -1680,10 +1680,10 @@ transport_handshake (void)
 	if (conn_fd) {
 		int flag = 1;
 		int result = setsockopt (conn_fd,
-                                 IPPROTO_TCP,
-                                 TCP_NODELAY,
-                                 (char *) &flag,
-                                 sizeof(int));
+				 IPPROTO_TCP,
+				 TCP_NODELAY,
+				 (char *) &flag,
+				 sizeof(int));
 		g_assert (result >= 0);
 	}
 
@@ -1703,16 +1703,25 @@ wait_for_debugger_thread_to_stop ()
 	 * If we continue with the shutdown without waiting for it, then the client might
 	 * not receive an answer to its last command like a resume.
 	 */
+
+	/*
+	* Institute a time limit for waiting to exit.
+	*
+	* If we don't set a time limit, some users will be stuck indefinitely in CleanupMono()
+	* and won't be able to close Unity
+	* 
+	* It can be set to a total wait time of approximately 10 minutes, which MONO_CLEANUP_WAIT is 15498*20.
+	*/
+	
 	if (!is_debugger_thread ()) {
-		do {
-			mono_coop_mutex_lock (&debugger_thread_exited_mutex);
-			if (!debugger_thread_exited)
-				mono_coop_cond_wait (&debugger_thread_exited_cond, &debugger_thread_exited_mutex);
-			mono_coop_mutex_unlock (&debugger_thread_exited_mutex);
-		} while (!debugger_thread_exited);
+		mono_coop_mutex_lock (&debugger_thread_exited_mutex);
+		if (!debugger_thread_exited)
+			mono_coop_cond_timedwait(&debugger_thread_exited_cond, &debugger_thread_exited_mutex, MONO_CLEANUP_WAIT);
+		mono_coop_mutex_unlock (&debugger_thread_exited_mutex);
+
 
 		if (debugger_thread_handle)
-			mono_thread_info_wait_one_handle (debugger_thread_handle, MONO_INFINITE_WAIT, TRUE);
+			mono_thread_info_wait_one_handle (debugger_thread_handle, MONO_CLEANUP_WAIT, TRUE);
 	}
 }
 
@@ -3131,7 +3140,7 @@ suspend_current (void)
 		return;
 	}
 
- 	tls = (DebuggerTlsData *)mono_native_tls_get_value (debugger_tls_id);
+	tls = (DebuggerTlsData *)mono_native_tls_get_value (debugger_tls_id);
 	g_assert (tls);
 
 	gboolean do_resume = FALSE;
@@ -8013,65 +8022,65 @@ assembly_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		break;
 	}
     case CMD_ASSEMBLY_GET_METADATA_BLOB: {
-        MonoImage* image = ass->image;
-        if (ass->dynamic) {
-            return ERR_NOT_IMPLEMENTED;
-        }
-        buffer_add_byte_array (buf, (guint8*)image->raw_data, image->raw_data_len);
-        break;
+	MonoImage* image = ass->image;
+	if (ass->dynamic) {
+	    return ERR_NOT_IMPLEMENTED;
+	}
+	buffer_add_byte_array (buf, (guint8*)image->raw_data, image->raw_data_len);
+	break;
     }
     case CMD_ASSEMBLY_GET_IS_DYNAMIC: {
-        buffer_add_byte (buf, ass->dynamic);
-        break;
+	buffer_add_byte (buf, ass->dynamic);
+	break;
     }
     case CMD_ASSEMBLY_GET_PDB_BLOB: {
-        MonoImage* image = ass->image;
-        MonoDebugHandle* handle = mono_debug_get_handle (image); 
-        if (!handle) {
-            return ERR_INVALID_ARGUMENT;
-        }
-        MonoPPDBFile* ppdb = handle->ppdb;
-        if (ppdb) {
-            image = mono_ppdb_get_image (ppdb);
-            buffer_add_byte_array (buf, (guint8*)image->raw_data, image->raw_data_len);
-        } else {
-            buffer_add_byte_array (buf, NULL, 0);
-        }
-        break;
+	MonoImage* image = ass->image;
+	MonoDebugHandle* handle = mono_debug_get_handle (image); 
+	if (!handle) {
+	    return ERR_INVALID_ARGUMENT;
+	}
+	MonoPPDBFile* ppdb = handle->ppdb;
+	if (ppdb) {
+	    image = mono_ppdb_get_image (ppdb);
+	    buffer_add_byte_array (buf, (guint8*)image->raw_data, image->raw_data_len);
+	} else {
+	    buffer_add_byte_array (buf, NULL, 0);
+	}
+	break;
     }
     case CMD_ASSEMBLY_GET_TYPE_FROM_TOKEN: {
-        if (ass->dynamic) {
-            return ERR_NOT_IMPLEMENTED;
-        }
-        guint32 token = decode_int (p, &p, end);
-        ERROR_DECL (error);
-        error_init (error);
-        MonoClass* mono_class = mono_class_get_checked (ass->image, token, error);
-        if (!is_ok (error)) {
-            add_error_string (buf, mono_error_get_message (error));
-            mono_error_cleanup (error);
-            return ERR_INVALID_ARGUMENT;
-        }
-        buffer_add_typeid (buf, domain, mono_class);
-        mono_error_cleanup (error);
-        break;
+	if (ass->dynamic) {
+	    return ERR_NOT_IMPLEMENTED;
+	}
+	guint32 token = decode_int (p, &p, end);
+	ERROR_DECL (error);
+	error_init (error);
+	MonoClass* mono_class = mono_class_get_checked (ass->image, token, error);
+	if (!is_ok (error)) {
+	    add_error_string (buf, mono_error_get_message (error));
+	    mono_error_cleanup (error);
+	    return ERR_INVALID_ARGUMENT;
+	}
+	buffer_add_typeid (buf, domain, mono_class);
+	mono_error_cleanup (error);
+	break;
     }
     case CMD_ASSEMBLY_GET_METHOD_FROM_TOKEN: {
-        if (ass->dynamic) {
-            return ERR_NOT_IMPLEMENTED;
-        }
-        guint32 token = decode_int (p, &p, end);
-        ERROR_DECL (error);
-        error_init (error);
-        MonoMethod* mono_method = mono_get_method_checked (ass->image, token, NULL, NULL, error);
-        if (!is_ok (error)) {
-            add_error_string (buf, mono_error_get_message (error));
-            mono_error_cleanup (error);
-            return ERR_INVALID_ARGUMENT;
-        }
-        buffer_add_methodid (buf, domain, mono_method);
-        mono_error_cleanup (error);
-        break;
+	if (ass->dynamic) {
+	    return ERR_NOT_IMPLEMENTED;
+	}
+	guint32 token = decode_int (p, &p, end);
+	ERROR_DECL (error);
+	error_init (error);
+	MonoMethod* mono_method = mono_get_method_checked (ass->image, token, NULL, NULL, error);
+	if (!is_ok (error)) {
+	    add_error_string (buf, mono_error_get_message (error));
+	    mono_error_cleanup (error);
+	    return ERR_INVALID_ARGUMENT;
+	}
+	buffer_add_methodid (buf, domain, mono_method);
+	mono_error_cleanup (error);
+	break;
     }
 	case CMD_ASSEMBLY_HAS_DEBUG_INFO: {
 		buffer_add_byte (buf, !ass->dynamic && mono_debug_image_has_debug_info (ass->image));
