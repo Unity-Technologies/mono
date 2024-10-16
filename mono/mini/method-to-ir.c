@@ -4601,7 +4601,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	guint32 prev_cil_offset_to_bb_len;
 	MonoMethod *prev_current_method;
 	MonoGenericContext *prev_generic_context;
-	gboolean ret_var_set, prev_ret_var_set, prev_disable_inline, virtual_ = FALSE;
+	gboolean ret_var_set, prev_ret_var_set, prev_disable_inline, emit_check_this = FALSE;
 	MonoProfilerCoverageInfo *prev_coverage_info;
 
 	g_assert (cfg->exception_type == MONO_EXCEPTION_NONE);
@@ -4681,10 +4681,15 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	cfg->ret_var_set = FALSE;
 	cfg->inline_depth ++;
 
-	if (ip && *ip == CEE_CALLVIRT && !(cmethod->flags & METHOD_ATTRIBUTE_STATIC))
-		virtual_ = TRUE;
+	if (ip && *ip == CEE_CALLVIRT && !(cmethod->flags & METHOD_ATTRIBUTE_STATIC) &&
+		// Only perform a null check on 'this' arguments for methods on:
+		// 1. Reference types
+		// 2. System.ValueType and System.Enum as those will have a boxed 'this' argument.
+		// NOTE: klass->valuetype is FALSE for System.ValueType so we only need to check System.Enum.
+		(!m_class_is_valuetype(cmethod->klass) || m_class_is_enumtype(cmethod->klass)))
+		emit_check_this = TRUE;
 
-	costs = mono_method_to_ir (cfg, cmethod, sbblock, ebblock, rvar, sp, real_offset, virtual_);
+	costs = mono_method_to_ir (cfg, cmethod, sbblock, ebblock, rvar, sp, real_offset, emit_check_this);
 
 	ret_var_set = cfg->ret_var_set;
 
@@ -6116,7 +6121,7 @@ branch_target:
  * @return_var: if not NULL, the place where the return value is stored, used during inlining.   
  * @inline_args: if not NULL, contains the arguments to the inline call
  * @inline_offset: if not zero, the real offset from the inline call, or zero otherwise.
- * @is_virtual_call: whether this method is being called as a result of a call to callvirt
+ * @emit_check_this: whether this method needs to perform an explicit this null check.
  *
  * This method is used to turn ECMA IL into Mono's internal Linear IR
  * reprensetation.  It is used both for entire methods, as well as
@@ -6129,7 +6134,7 @@ branch_target:
 int
 mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_bblock, MonoBasicBlock *end_bblock, 
 		   MonoInst *return_var, MonoInst **inline_args, 
-		   guint inline_offset, gboolean is_virtual_call)
+		   guint inline_offset, gboolean emit_check_this)
 {
 	ERROR_DECL (error);
 	// Buffer to hold parameters to mono_new_array, instead of varargs.
@@ -6603,7 +6608,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 	}
 
 	/* add a check for this != NULL to inlined methods */
-	if (is_virtual_call) {
+	if (emit_check_this) {
 		MonoInst *arg_ins;
 
 		NEW_ARGLOAD (cfg, arg_ins, 0);
