@@ -3,7 +3,7 @@ Unity
 This is Unity Technologies fork of the open source mono project.
 
 ### Versions
-Each Unity release upto 2019.2 contains two versions of Mono. One older version (Mono) is embedded into the Editor and Players. Another newer version (MonoBleedingEdge) is used to run tools and tests.
+Each Unity release up to 2019.2 contains two versions of Mono. One older version (Mono) is embedded into the Editor and Players. Another newer version (MonoBleedingEdge) is used to run tools and tests.
 
 In newer Unity versions (2017.1+) this MonoBleedingEdge version can be used in the Editor and Players via enabling an Experimental player setting.
 
@@ -18,7 +18,16 @@ Branches for released Unity versions are of the form unity-\<version\>\[-mbe\]. 
 ### Branches
 
 #### Trunk
-* [unity-main (PR to this branch for MonoBleedingEdge)](https://github.com/Unity-Technologies/mono/tree/unity-main)
+* [unity-6000.1-mbe (PR to this branch for MonoBleedingEdge)](https://github.com/Unity-Technologies/mono/tree/unity-6000.1-mbe)
+
+#### 6000.0
+* [unity-6000.0-mbe](https://github.com/Unity-Technologies/mono/tree/unity-6000.0-mbe)
+
+#### 2022.3
+* [unity-2022.3-mbe](https://github.com/Unity-Technologies/mono/tree/unity-2022.3-mbe)
+
+#### 2021.3
+* [unity-2021.3-mbe](https://github.com/Unity-Technologies/mono/tree/unity-2021.3-mbe)
 
 #### 2021.2 pre-upgrade
 * [unity-2021.2-mbe-pre-upgrade](https://github.com/Unity-Technologies/mono/tree/unity-2021.2-mbe-pre-upgrade)
