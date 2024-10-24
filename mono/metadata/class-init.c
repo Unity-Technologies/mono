@@ -634,8 +634,9 @@ mono_class_create_from_typedef (MonoImage *image, guint32 type_token, MonoError 
 
 	if (tt->rows > tidx){		
 		mono_metadata_decode_row (tt, tidx, cols_next, MONO_TYPEDEF_SIZE);
-		field_last  = cols_next [MONO_TYPEDEF_FIELD_LIST] - 1;
-		method_last = cols_next [MONO_TYPEDEF_METHOD_LIST] - 1;
+		// check if the next row has fields at all, if not, then continue run till the end of the table
+		field_last  = cols_next [MONO_TYPEDEF_FIELD_LIST] ? cols_next [MONO_TYPEDEF_FIELD_LIST] - 1 : image->tables [MONO_TABLE_FIELD].rows;
+		method_last = cols_next [MONO_TYPEDEF_METHOD_LIST] ? cols_next [MONO_TYPEDEF_METHOD_LIST] - 1 : image->tables [MONO_TABLE_METHOD].rows;
 	} else {
 		field_last  = image->tables [MONO_TABLE_FIELD].rows;
 		method_last = image->tables [MONO_TABLE_METHOD].rows;
