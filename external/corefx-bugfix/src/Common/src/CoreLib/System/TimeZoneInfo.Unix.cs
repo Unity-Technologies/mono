@@ -1011,7 +1011,7 @@ namespace System
 
                 // pulled in from this fix
                 // https://github.com/dotnet/runtime/pull/458/
-                AdjustmentRule? r = !string.IsNullOrEmpty(futureTransitionsPosixFormat) ?
+                AdjustmentRule r = !string.IsNullOrEmpty(futureTransitionsPosixFormat) ?
                     TZif_CreateAdjustmentRuleForPosixFormat(futureTransitionsPosixFormat, startTransitionDate, timeZoneBaseUtcOffset) :
                     null;
                 if (r == null)
