@@ -1214,7 +1214,7 @@ legacy_probe_for_module (MonoImage *image, const char *new_scope, char **load_er
 		else
 			new_scope = g_strdup (unity_new_scope);
 
-		if (hasError == 1)
+		if (hasError)
 			*load_error = mono_dl_current_error_string ();
 	}
 
