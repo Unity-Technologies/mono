@@ -73,7 +73,7 @@ MONO_API extern void burst_mono_update_tracking_pointers(MonoDomain* domain,Mono
 MONO_API gboolean
 unity_mono_method_is_generic (MonoMethod* method);
 
-typedef const char*(*UnityFindPluginCallback)(const char*, const char**);
+typedef const char*(*UnityFindPluginCallback)(const char*, gboolean*);
 
 MONO_API void
 mono_set_find_plugin_callback(UnityFindPluginCallback find);

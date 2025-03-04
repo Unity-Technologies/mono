@@ -1202,10 +1202,11 @@ legacy_probe_for_module (MonoImage *image, const char *new_scope, char **load_er
 
 	if (mono_get_find_plugin_callback ())
 	{
-		const char* unity_new_scope = mono_get_find_plugin_callback () (new_scope, load_error);
+		gboolean hasError = FALSE;
+		const char* unity_new_scope = mono_get_find_plugin_callback () (new_scope, &hasError);
 		if (unity_new_scope == NULL || !unity_new_scope[0])
 		{
-			if (load_error != NULL && load_error[0])
+			if (hasError == 1)
 			{
 				mono_trace (G_LOG_LEVEL_WARNING, MONO_TRACE_DLLIMPORT,
 					"DllImport unable to load unity mapped library '%s' : '%s'.",
@@ -1221,6 +1222,9 @@ legacy_probe_for_module (MonoImage *image, const char *new_scope, char **load_er
 
 		else
 			new_scope = g_strdup (unity_new_scope);
+
+		if (hasError == 1)
+			*load_error = g_strdup (mono_dl_current_error_string ());
 	}
 
 	/*
