@@ -51,6 +51,8 @@ typedef struct _MonoStackFrameDetails
     size_t classNameLen;
     char* assemblyName;
     size_t assemblyNameLen;
+    char* assemblyFileName;      
+    size_t assemblyFileNameLen;
 } MonoStackFrameDetails;
 
 typedef gboolean(*ReadMemoryCallback)(void* buffer, gsize* read, const void* address, gsize size, void* userdata);
@@ -424,6 +426,11 @@ mono_unity_oop_get_stack_frame_details(
             frameDetails->assemblyName,
             frameDetails->assemblyNameLen,
             read_pointer(OFFSET_MEMBER(MonoImage, image, assembly_name)));
+
+	frameDetails->assemblyNameLen = read_nt_string(
+		frameDetails->assemblyFileName,
+		frameDetails->assemblyFileNameLen,
+		read_pointer(OFFSET_MEMBER(MonoImage, image, filename)));
 
         free(className);
         free(nsName);
