@@ -22,14 +22,14 @@ extern "C" {
 /**
  * Opaque structure that holds decoder state.
  *
- * Allocated and initialized with ::BrotliDecoderCreateInstance.
- * Cleaned up and deallocated with ::BrotliDecoderDestroyInstance.
+ * Allocated and initialized with ::MonoBrotliDecoderCreateInstance.
+ * Cleaned up and deallocated with ::MonoBrotliDecoderDestroyInstance.
  */
 typedef struct BrotliDecoderStateStruct BrotliDecoderState;
 
 /**
- * Result type for ::BrotliDecoderDecompress and
- * ::BrotliDecoderDecompressStream functions.
+ * Result type for ::MonoBrotliDecoderDecompress and
+ * ::MonoBrotliDecoderDecompressStream functions.
  */
 typedef enum {
   /** Decoding error, e.g. corrupted input or memory allocation problem. */
@@ -158,7 +158,7 @@ BROTLI_DEC_API BROTLI_BOOL BrotliDecoderSetParameter(
  * Creates an instance of ::BrotliDecoderState and initializes it.
  *
  * The instance can be used once for decoding and should then be destroyed with
- * ::BrotliDecoderDestroyInstance, it cannot be reused for a new decoding
+ * ::MonoBrotliDecoderDestroyInstance, it cannot be reused for a new decoding
  * session.
  *
  * @p alloc_func and @p free_func @b MUST be both zero or both non-zero. In the
@@ -172,7 +172,7 @@ BROTLI_DEC_API BROTLI_BOOL BrotliDecoderSetParameter(
  * @returns @c 0 if instance can not be allocated or initialized
  * @returns pointer to initialized ::BrotliDecoderState otherwise
  */
-BROTLI_DEC_API BrotliDecoderState* BrotliDecoderCreateInstance(
+BROTLI_DEC_API BrotliDecoderState* MonoBrotliDecoderCreateInstance(
     brotli_alloc_func alloc_func, brotli_free_func free_func, void* opaque);
 
 /**
@@ -180,7 +180,7 @@ BROTLI_DEC_API BrotliDecoderState* BrotliDecoderCreateInstance(
  *
  * @param state decoder instance to be cleaned up and deallocated
  */
-BROTLI_DEC_API void BrotliDecoderDestroyInstance(BrotliDecoderState* state);
+BROTLI_DEC_API void MonoBrotliDecoderDestroyInstance(BrotliDecoderState* state);
 
 /**
  * Performs one-shot memory-to-memory decompression.
@@ -199,7 +199,7 @@ BROTLI_DEC_API void BrotliDecoderDestroyInstance(BrotliDecoderState* state);
  *          allocation failed, or @p decoded_buffer is not large enough;
  * @returns ::BROTLI_DECODER_RESULT_SUCCESS otherwise
  */
-BROTLI_DEC_API BrotliDecoderResult BrotliDecoderDecompress(
+BROTLI_DEC_API BrotliDecoderResult MonoBrotliDecoderDecompress(
     size_t encoded_size,
     const uint8_t encoded_buffer[BROTLI_ARRAY_PARAM(encoded_size)],
     size_t* decoded_size,
@@ -243,7 +243,7 @@ BROTLI_DEC_API BrotliDecoderResult BrotliDecoderDecompress(
  * @returns ::BROTLI_DECODER_RESULT_SUCCESS decoding is finished, no more
  *          input might be consumed and no more output will be produced
  */
-BROTLI_DEC_API BrotliDecoderResult BrotliDecoderDecompressStream(
+BROTLI_DEC_API BrotliDecoderResult MonoBrotliDecoderDecompressStream(
   BrotliDecoderState* state, size_t* available_in, const uint8_t** next_in,
   size_t* available_out, uint8_t** next_out, size_t* total_out);
 
@@ -261,7 +261,7 @@ BROTLI_DEC_API BROTLI_BOOL BrotliDecoderHasMoreOutput(
  * Acquires pointer to internal output buffer.
  *
  * This method is used to make language bindings easier and more efficient:
- *  -# push data to ::BrotliDecoderDecompressStream,
+ *  -# push data to ::MonoBrotliDecoderDecompressStream,
  *     until ::BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT is reported
  *  -# use ::BrotliDecoderTakeOutput to peek bytes and copy to language-specific
  *     entity
@@ -308,13 +308,13 @@ BROTLI_DEC_API BROTLI_BOOL BrotliDecoderIsUsed(const BrotliDecoderState* state);
  *          the input and produced all of the output
  * @returns ::BROTLI_FALSE otherwise
  */
-BROTLI_DEC_API BROTLI_BOOL BrotliDecoderIsFinished(
+BROTLI_DEC_API BROTLI_BOOL MonoBrotliDecoderIsFinished(
     const BrotliDecoderState* state);
 
 /**
  * Acquires a detailed error code.
  *
- * Should be used only after ::BrotliDecoderDecompressStream returns
+ * Should be used only after ::MonoBrotliDecoderDecompressStream returns
  * ::BROTLI_DECODER_RESULT_ERROR.
  *
  * See also ::BrotliDecoderErrorString

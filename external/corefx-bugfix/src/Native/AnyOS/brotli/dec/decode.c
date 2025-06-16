@@ -74,7 +74,7 @@ BROTLI_BOOL BrotliDecoderSetParameter(
   }
 }
 
-DLLEXPORT BrotliDecoderState* BrotliDecoderCreateInstance(
+DLLEXPORT BrotliDecoderState* MonoBrotliDecoderCreateInstance(
     brotli_alloc_func alloc_func, brotli_free_func free_func, void* opaque) {
   BrotliDecoderState* state = 0;
   if (!alloc_func && !free_func) {
@@ -99,7 +99,7 @@ DLLEXPORT BrotliDecoderState* BrotliDecoderCreateInstance(
 }
 
 /* Deinitializes and frees BrotliDecoderState instance. */
-DLLEXPORT void BrotliDecoderDestroyInstance(BrotliDecoderState* state) {
+DLLEXPORT void MonoBrotliDecoderDestroyInstance(BrotliDecoderState* state) {
   if (!state) {
     return;
   } else {
@@ -2032,7 +2032,7 @@ static BROTLI_NOINLINE BrotliDecoderErrorCode SafeProcessCommands(
   return ProcessCommandsInternal(1, s);
 }
 
-DLLEXPORT BrotliDecoderResult BrotliDecoderDecompress(
+DLLEXPORT BrotliDecoderResult MonoBrotliDecoderDecompress(
     size_t encoded_size, const uint8_t* encoded_buffer, size_t* decoded_size,
     uint8_t* decoded_buffer) {
   BrotliDecoderState s;
@@ -2045,7 +2045,7 @@ DLLEXPORT BrotliDecoderResult BrotliDecoderDecompress(
   if (!BrotliDecoderStateInit(&s, 0, 0, 0)) {
     return BROTLI_DECODER_RESULT_ERROR;
   }
-  result = BrotliDecoderDecompressStream(
+  result = MonoBrotliDecoderDecompressStream(
       &s, &available_in, &next_in, &available_out, &next_out, &total_out);
   *decoded_size = total_out;
   BrotliDecoderStateCleanup(&s);
@@ -2066,7 +2066,7 @@ DLLEXPORT BrotliDecoderResult BrotliDecoderDecompress(
       buffer ahead of time
     - when result is "success" decoder MUST return all unused data back to input
       buffer; this is possible because the invariant is held on enter */
-DLLEXPORT BrotliDecoderResult BrotliDecoderDecompressStream(
+DLLEXPORT BrotliDecoderResult MonoBrotliDecoderDecompressStream(
     BrotliDecoderState* s, size_t* available_in, const uint8_t** next_in,
     size_t* available_out, uint8_t** next_out, size_t* total_out) {
   BrotliDecoderErrorCode result = BROTLI_DECODER_SUCCESS;
@@ -2565,7 +2565,7 @@ const uint8_t* BrotliDecoderTakeOutput(BrotliDecoderState* s, size_t* size) {
     *size = requested_out - available_out;
   } else {
     /* ... or stream is broken. Normally this should be caught by
-       BrotliDecoderDecompressStream, this is just a safeguard. */
+       MonoBrotliDecoderDecompressStream, this is just a safeguard. */
     if ((int)status < 0) SaveErrorCode(s, status);
     *size = 0;
     result = 0;
@@ -2578,7 +2578,7 @@ BROTLI_BOOL BrotliDecoderIsUsed(const BrotliDecoderState* s) {
       BrotliGetAvailableBits(&s->br) != 0);
 }
 
-DLLEXPORT BROTLI_BOOL BrotliDecoderIsFinished(const BrotliDecoderState* s) {
+DLLEXPORT BROTLI_BOOL MonoBrotliDecoderIsFinished(const BrotliDecoderState* s) {
   return TO_BROTLI_BOOL(s->state == BROTLI_STATE_DONE) &&
       !BrotliDecoderHasMoreOutput(s);
 }

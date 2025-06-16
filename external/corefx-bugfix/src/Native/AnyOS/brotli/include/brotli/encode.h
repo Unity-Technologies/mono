@@ -77,7 +77,7 @@ typedef enum BrotliEncoderOperation {
    * Actual flush is performed when input stream is depleted and there is enough
    * space in output stream. This means that client should repeat
    * ::BROTLI_OPERATION_FLUSH operation until @p available_in becomes @c 0, and
-   * ::BrotliEncoderHasMoreOutput returns ::BROTLI_FALSE. If output is acquired
+   * ::MonoBrotliEncoderHasMoreOutput returns ::BROTLI_FALSE. If output is acquired
    * via ::BrotliEncoderTakeOutput, then operation should be repeated after
    * output buffer is drained.
    *
@@ -94,7 +94,7 @@ typedef enum BrotliEncoderOperation {
    * Actual finalization is performed when input stream is depleted and there is
    * enough space in output stream. This means that client should repeat
    * ::BROTLI_OPERATION_FINISH operation until @p available_in becomes @c 0, and
-   * ::BrotliEncoderHasMoreOutput returns ::BROTLI_FALSE. If output is acquired
+   * ::MonoBrotliEncoderHasMoreOutput returns ::BROTLI_FALSE. If output is acquired
    * via ::BrotliEncoderTakeOutput, then operation should be repeated after
    * output buffer is drained.
    *
@@ -130,7 +130,7 @@ typedef enum BrotliEncoderOperation {
   BROTLI_OPERATION_EMIT_METADATA = 3
 } BrotliEncoderOperation;
 
-/** Options to be used with ::BrotliEncoderSetParameter. */
+/** Options to be used with ::MonoBrotliEncoderSetParameter. */
 typedef enum BrotliEncoderParameter {
   /**
    * Tune encoder for specific input.
@@ -177,7 +177,7 @@ typedef enum BrotliEncoderParameter {
    */
   BROTLI_PARAM_DISABLE_LITERAL_CONTEXT_MODELING = 4,
   /**
-   * Estimated total input size for all ::BrotliEncoderCompressStream calls.
+   * Estimated total input size for all ::MonoBrotliEncoderCompressStream calls.
    *
    * The default value is 0, which means that the total input size is unknown.
    */
@@ -223,8 +223,8 @@ typedef enum BrotliEncoderParameter {
 /**
  * Opaque structure that holds encoder state.
  *
- * Allocated and initialized with ::BrotliEncoderCreateInstance.
- * Cleaned up and deallocated with ::BrotliEncoderDestroyInstance.
+ * Allocated and initialized with ::MonoBrotliEncoderCreateInstance.
+ * Cleaned up and deallocated with ::MonoBrotliEncoderDestroyInstance.
  */
 typedef struct BrotliEncoderStateStruct BrotliEncoderState;
 
@@ -242,7 +242,7 @@ typedef struct BrotliEncoderStateStruct BrotliEncoderState;
  * @warning invalid values might be accepted in case they would not break
  *          encoding process.
  */
-BROTLI_ENC_API BROTLI_BOOL BrotliEncoderSetParameter(
+BROTLI_ENC_API BROTLI_BOOL MonoBrotliEncoderSetParameter(
     BrotliEncoderState* state, BrotliEncoderParameter param, uint32_t value);
 
 /**
@@ -259,7 +259,7 @@ BROTLI_ENC_API BROTLI_BOOL BrotliEncoderSetParameter(
  * @returns @c 0 if instance can not be allocated or initialized
  * @returns pointer to initialized ::BrotliEncoderState otherwise
  */
-BROTLI_ENC_API BrotliEncoderState* BrotliEncoderCreateInstance(
+BROTLI_ENC_API BrotliEncoderState* MonoBrotliEncoderCreateInstance(
     brotli_alloc_func alloc_func, brotli_free_func free_func, void* opaque);
 
 /**
@@ -267,13 +267,13 @@ BROTLI_ENC_API BrotliEncoderState* BrotliEncoderCreateInstance(
  *
  * @param state decoder instance to be cleaned up and deallocated
  */
-BROTLI_ENC_API void BrotliEncoderDestroyInstance(BrotliEncoderState* state);
+BROTLI_ENC_API void MonoBrotliEncoderDestroyInstance(BrotliEncoderState* state);
 
 /**
  * Calculates the output size bound for the given @p input_size.
  *
  * @warning Result is only valid if quality is at least @c 2 and, in
- *          case ::BrotliEncoderCompressStream was used, no flushes
+ *          case ::MonoBrotliEncoderCompressStream was used, no flushes
  *          (::BROTLI_OPERATION_FLUSH) were performed.
  *
  * @param input_size size of projected input
@@ -309,7 +309,7 @@ BROTLI_ENC_API size_t BrotliEncoderMaxCompressedSize(size_t input_size);
  * @returns ::BROTLI_FALSE if output buffer is too small
  * @returns ::BROTLI_TRUE otherwise
  */
-BROTLI_ENC_API BROTLI_BOOL BrotliEncoderCompress(
+BROTLI_ENC_API BROTLI_BOOL MonoBrotliEncoderCompress(
     int quality, int lgwin, BrotliEncoderMode mode, size_t input_size,
     const uint8_t input_buffer[BROTLI_ARRAY_PARAM(input_size)],
     size_t* encoded_size,
@@ -348,17 +348,17 @@ BROTLI_ENC_API BROTLI_BOOL BrotliEncoderCompress(
  * completing the current output block, so it could be fully decoded by stream
  * decoder. To perform flush set @p op to ::BROTLI_OPERATION_FLUSH.
  * Under some circumstances (e.g. lack of output stream capacity) this operation
- * would require several calls to ::BrotliEncoderCompressStream. The method must
+ * would require several calls to ::MonoBrotliEncoderCompressStream. The method must
  * be called again until both input stream is depleted and encoder has no more
- * output (see ::BrotliEncoderHasMoreOutput) after the method is called.
+ * output (see ::MonoBrotliEncoderHasMoreOutput) after the method is called.
  *
  * Finishing the stream means encoding of all input passed to encoder and
  * adding specific "final" marks, so stream decoder could determine that stream
  * is complete. To perform finish set @p op to ::BROTLI_OPERATION_FINISH.
  * Under some circumstances (e.g. lack of output stream capacity) this operation
- * would require several calls to ::BrotliEncoderCompressStream. The method must
+ * would require several calls to ::MonoBrotliEncoderCompressStream. The method must
  * be called again until both input stream is depleted and encoder has no more
- * output (see ::BrotliEncoderHasMoreOutput) after the method is called.
+ * output (see ::MonoBrotliEncoderHasMoreOutput) after the method is called.
  *
  * @warning When flushing and finishing, @p op should not change until operation
  *          is complete; input stream should not be swapped, reduced or
@@ -377,7 +377,7 @@ BROTLI_ENC_API BROTLI_BOOL BrotliEncoderCompress(
  * @returns ::BROTLI_FALSE if there was an error
  * @returns ::BROTLI_TRUE otherwise
  */
-BROTLI_ENC_API BROTLI_BOOL BrotliEncoderCompressStream(
+BROTLI_ENC_API BROTLI_BOOL MonoBrotliEncoderCompressStream(
     BrotliEncoderState* state, BrotliEncoderOperation op, size_t* available_in,
     const uint8_t** next_in, size_t* available_out, uint8_t** next_out,
     size_t* total_out);
@@ -399,15 +399,15 @@ BROTLI_ENC_API BROTLI_BOOL BrotliEncoderIsFinished(BrotliEncoderState* state);
  * @returns ::BROTLI_TRUE, if encoder has some unconsumed output
  * @returns ::BROTLI_FALSE otherwise
  */
-BROTLI_ENC_API BROTLI_BOOL BrotliEncoderHasMoreOutput(
+BROTLI_ENC_API BROTLI_BOOL MonoBrotliEncoderHasMoreOutput(
     BrotliEncoderState* state);
 
 /**
  * Acquires pointer to internal output buffer.
  *
  * This method is used to make language bindings easier and more efficient:
- *  -# push data to ::BrotliEncoderCompressStream,
- *     until ::BrotliEncoderHasMoreOutput returns BROTL_TRUE
+ *  -# push data to ::MonoBrotliEncoderCompressStream,
+ *     until ::MonoBrotliEncoderHasMoreOutput returns BROTL_TRUE
  *  -# use ::BrotliEncoderTakeOutput to peek bytes and copy to language-specific
  *     entity
  *

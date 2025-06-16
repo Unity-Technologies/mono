@@ -143,7 +143,7 @@ static size_t RemainingInputBlockSize(BrotliEncoderState* s) {
   return block_size - (size_t)delta;
 }
 
-DLLEXPORT BROTLI_BOOL BrotliEncoderSetParameter(
+DLLEXPORT BROTLI_BOOL MonoBrotliEncoderSetParameter(
     BrotliEncoderState* state, BrotliEncoderParameter p, uint32_t value) {
   /* Changing parameters on the fly is not implemented yet. */
   if (state->is_initialized_) return BROTLI_FALSE;
@@ -794,7 +794,7 @@ static void BrotliEncoderInitState(BrotliEncoderState* s) {
   memcpy(s->saved_dist_cache_, s->dist_cache_, sizeof(s->saved_dist_cache_));
 }
 
-DLLEXPORT BrotliEncoderState* BrotliEncoderCreateInstance(
+DLLEXPORT BrotliEncoderState* MonoBrotliEncoderCreateInstance(
     brotli_alloc_func alloc_func, brotli_free_func free_func, void* opaque) {
   BrotliEncoderState* state = 0;
   if (!alloc_func && !free_func) {
@@ -828,7 +828,7 @@ static void BrotliEncoderCleanupState(BrotliEncoderState* s) {
 }
 
 /* Deinitializes and frees BrotliEncoderState instance. */
-DLLEXPORT void BrotliEncoderDestroyInstance(BrotliEncoderState* state) {
+DLLEXPORT void MonoBrotliEncoderDestroyInstance(BrotliEncoderState* state) {
   if (!state) {
     return;
   } else {
@@ -1468,7 +1468,7 @@ static size_t MakeUncompressedStream(
   return result;
 }
 
-DLLEXPORT BROTLI_BOOL BrotliEncoderCompress(
+DLLEXPORT BROTLI_BOOL MonoBrotliEncoderCompress(
     int quality, int lgwin, BrotliEncoderMode mode, size_t input_size,
     const uint8_t* input_buffer, size_t* encoded_size,
     uint8_t* encoded_buffer) {
@@ -1499,7 +1499,7 @@ DLLEXPORT BROTLI_BOOL BrotliEncoderCompress(
     return BROTLI_TRUE;
   }
 
-  s = BrotliEncoderCreateInstance(0, 0, 0);
+  s = MonoBrotliEncoderCreateInstance(0, 0, 0);
   if (!s) {
     return BROTLI_FALSE;
   } else {
@@ -1509,18 +1509,18 @@ DLLEXPORT BROTLI_BOOL BrotliEncoderCompress(
     uint8_t* next_out = encoded_buffer;
     size_t total_out = 0;
     BROTLI_BOOL result = BROTLI_FALSE;
-    BrotliEncoderSetParameter(s, BROTLI_PARAM_QUALITY, (uint32_t)quality);
-    BrotliEncoderSetParameter(s, BROTLI_PARAM_LGWIN, (uint32_t)lgwin);
-    BrotliEncoderSetParameter(s, BROTLI_PARAM_MODE, (uint32_t)mode);
-    BrotliEncoderSetParameter(s, BROTLI_PARAM_SIZE_HINT, (uint32_t)input_size);
+    MonoBrotliEncoderSetParameter(s, BROTLI_PARAM_QUALITY, (uint32_t)quality);
+    MonoBrotliEncoderSetParameter(s, BROTLI_PARAM_LGWIN, (uint32_t)lgwin);
+    MonoBrotliEncoderSetParameter(s, BROTLI_PARAM_MODE, (uint32_t)mode);
+    MonoBrotliEncoderSetParameter(s, BROTLI_PARAM_SIZE_HINT, (uint32_t)input_size);
     if (lgwin > BROTLI_MAX_WINDOW_BITS) {
-      BrotliEncoderSetParameter(s, BROTLI_PARAM_LARGE_WINDOW, BROTLI_TRUE);
+      MonoBrotliEncoderSetParameter(s, BROTLI_PARAM_LARGE_WINDOW, BROTLI_TRUE);
     }
-    result = BrotliEncoderCompressStream(s, BROTLI_OPERATION_FINISH,
+    result = MonoBrotliEncoderCompressStream(s, BROTLI_OPERATION_FINISH,
         &available_in, &next_in, &available_out, &next_out, &total_out);
     if (!BrotliEncoderIsFinished(s)) result = 0;
     *encoded_size = total_out;
-    BrotliEncoderDestroyInstance(s);
+    MonoBrotliEncoderDestroyInstance(s);
     if (!result || (max_out_size && *encoded_size > max_out_size)) {
       goto fallback;
     }
@@ -1801,7 +1801,7 @@ static void UpdateSizeHint(BrotliEncoderState* s, size_t available_in) {
   }
 }
 
-DLLEXPORT BROTLI_BOOL BrotliEncoderCompressStream(
+DLLEXPORT BROTLI_BOOL MonoBrotliEncoderCompressStream(
     BrotliEncoderState* s, BrotliEncoderOperation op, size_t* available_in,
     const uint8_t** next_in, size_t* available_out,uint8_t** next_out,
     size_t* total_out) {
@@ -1892,10 +1892,10 @@ DLLEXPORT BROTLI_BOOL BrotliEncoderCompressStream(
 
 BROTLI_BOOL BrotliEncoderIsFinished(BrotliEncoderState* s) {
   return TO_BROTLI_BOOL(s->stream_state_ == BROTLI_STREAM_FINISHED &&
-      !BrotliEncoderHasMoreOutput(s));
+      !MonoBrotliEncoderHasMoreOutput(s));
 }
 
-DLLEXPORT BROTLI_BOOL BrotliEncoderHasMoreOutput(BrotliEncoderState* s) {
+DLLEXPORT BROTLI_BOOL MonoBrotliEncoderHasMoreOutput(BrotliEncoderState* s) {
   return TO_BROTLI_BOOL(s->available_out_ != 0);
 }
 
