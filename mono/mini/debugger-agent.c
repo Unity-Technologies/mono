@@ -3696,6 +3696,7 @@ dbg_path_get_basename (const char *filename)
 static GENERATE_TRY_GET_CLASS_WITH_CACHE(hidden_klass, "System.Diagnostics", "DebuggerHiddenAttribute")
 static GENERATE_TRY_GET_CLASS_WITH_CACHE(step_through_klass, "System.Diagnostics", "DebuggerStepThroughAttribute")
 static GENERATE_TRY_GET_CLASS_WITH_CACHE(non_user_klass, "System.Diagnostics", "DebuggerNonUserCodeAttribute")
+static GENERATE_TRY_GET_CLASS_WITH_CACHE(debugger_browsable_klass, "System.Diagnostics", "DebuggerBrowsableAttribute")
 
 static void
 init_jit_info_dbg_attrs (MonoJitInfo *ji)
@@ -6463,6 +6464,104 @@ add_thread (gpointer key, gpointer value, gpointer user_data)
 	buffer_add_objid (buf, (MonoObject*)thread);
 }
 
+/*
+ * check_debugger_browsable_never:
+ *
+ * Checks if an attribute collection contains [DebuggerBrowsable(DebuggerBrowsableState.Never)].
+ *
+ * Note: We manually iterate and parse the binary attribute data rather than using
+ * mono_custom_attrs_get_attr_checked because:
+ * 1. We need the enum value (Never=0, Collapsed=2, RootHidden=3), not just presence
+ * 2. mono_custom_attrs_get_attr_checked allocates a managed object and parses all fields
+ * 3. Direct binary parsing is much faster - we only read the 6 bytes we need
+ * 4. This runs on every property evaluation during debugging, so performance matters
+ */
+static gboolean
+check_debugger_browsable_never (MonoCustomAttrInfo *ainfo, MonoClass *debugger_browsable_class)
+{
+	if (!ainfo)
+		return FALSE;
+	
+	for (int i = 0; i < ainfo->num_attrs; ++i) {
+		MonoCustomAttrEntry *cattr = &ainfo->attrs[i];
+		if (cattr->ctor == NULL)
+			continue;
+		MonoClass *klass = cattr->ctor->klass;
+		/* Use same comparison logic as mono_custom_attrs_has_attr for robustness */
+		if ((klass == debugger_browsable_class || 
+		     mono_class_has_parent (klass, debugger_browsable_class) ||
+		     (MONO_CLASS_IS_INTERFACE_INTERNAL (debugger_browsable_class) && 
+		      mono_class_is_assignable_from_internal (debugger_browsable_class, klass))) &&
+		    cattr->data && cattr->data_size >= 6) {
+			guint8 *data = cattr->data;
+			/*
+			 * Parse custom attribute binary format per ECMA-335 spec (II.23.3):
+			 * Prolog: 0x01 0x00 (2 bytes)
+			 * Followed by constructor arguments in little-endian format
+			 */
+			if (data[0] == 0x01 && data[1] == 0x00) {
+				/* Read DebuggerBrowsableState enum value (int32, little-endian) */
+				gint32 state = data[2] | (data[3] << 8) | (data[4] << 16) | (data[5] << 24);
+				if (state == 0) { /* DebuggerBrowsableState.Never */
+					return TRUE;
+				}
+			}
+		}
+	}
+	
+	return FALSE;
+}
+
+static gboolean
+should_skip_property_evaluation (MonoMethod *method, MonoClass *debugger_browsable_class)
+{
+	/* Find the property corresponding to this getter */
+	MonoProperty *prop = NULL;
+	gpointer iter = NULL;
+	
+	while ((prop = mono_class_get_properties (method->klass, &iter))) {
+		if (prop->get == method)
+			break;
+	}
+	
+	if (!prop)
+		return FALSE;
+	
+	ERROR_DECL (error);
+	
+	/* Check 1: Check if the declaring type has [DebuggerBrowsable(Never)] */
+	MonoCustomAttrInfo *class_ainfo = mono_custom_attrs_from_class_checked (method->klass, error);
+	if (is_ok (error) && check_debugger_browsable_never (class_ainfo, debugger_browsable_class)) {
+		PRINT_DEBUG_MSG (1, "[%p] Type '%s' has [DebuggerBrowsable(Never)], skipping property '%s'.\n",
+			(gpointer) (gsize) mono_native_thread_id_get (),
+			m_class_get_name (method->klass),
+			mono_property_get_name (prop));
+		if (class_ainfo)
+			mono_custom_attrs_free (class_ainfo);
+		mono_error_cleanup (error);
+		return TRUE;
+	}
+	if (class_ainfo)
+		mono_custom_attrs_free (class_ainfo);
+	mono_error_cleanup (error);
+	
+	/* Check 2: Check if the property itself has [DebuggerBrowsable(Never)] */
+	MonoCustomAttrInfo *prop_ainfo = mono_custom_attrs_from_property_checked (method->klass, prop, error);
+	if (is_ok (error) && check_debugger_browsable_never (prop_ainfo, debugger_browsable_class)) {
+		PRINT_DEBUG_MSG (1, "[%p] Property '%s' has [DebuggerBrowsable(Never)].\n",
+			(gpointer) (gsize) mono_native_thread_id_get (),
+			mono_property_get_name (prop));
+		if (prop_ainfo)
+			mono_custom_attrs_free (prop_ainfo);
+		mono_error_cleanup (error);
+		return TRUE;
+	}
+	if (prop_ainfo)
+		mono_custom_attrs_free (prop_ainfo);
+	mono_error_cleanup (error);
+	
+	return FALSE;
+}
 
 static ErrorCode
 do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 *p, guint8 **endp)
@@ -6564,6 +6663,18 @@ do_invoke_method (DebuggerTlsData *tls, Buffer *buf, InvokeData *invoke, guint8 
 	}
 
 	PRINT_DEBUG_MSG (1, "[%p] Invoking method '%s' on receiver '%s'.\n", (gpointer) (gsize) mono_native_thread_id_get (), mono_method_full_name (m, TRUE), this_arg ? m_class_get_name (this_arg->vtable->klass) : "<null>");
+
+	/* Check if this is a property getter that should be hidden from debugger */
+	if ((invoke->flags & INVOKE_FLAG_DISABLE_BREAKPOINTS) &&
+	    (m->flags & METHOD_ATTRIBUTE_SPECIAL_NAME) &&
+	    strstr (m->name, "get_") == m->name) {
+		/* This is a property getter during debugger evaluation */
+		MonoClass *debugger_browsable_class = mono_class_try_get_debugger_browsable_klass_class ();
+		
+		if (debugger_browsable_class && should_skip_property_evaluation (m, debugger_browsable_class)) {
+			return ERR_NOT_IMPLEMENTED;
+		}
+	}
 
 	if (this_arg && this_arg->vtable->domain != domain)
 		NOT_IMPLEMENTED;
