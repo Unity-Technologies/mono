@@ -2781,6 +2781,13 @@ mono_gchandle_new_internal (MonoObject *obj, gboolean pinned)
 	return MONO_GC_HANDLE_FROM_UINT (sgen_gchandle_new (obj, pinned));
 }
 
+MonoGCHandle
+mono_gchandle_new_late_internal(MonoObject* obj)
+{
+	g_assert_not_reached ();
+	return 0;
+}
+
 /**
  * mono_gchandle_new_weakref_internal:
  * \param obj managed object to get a handle for

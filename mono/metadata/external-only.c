@@ -51,6 +51,12 @@ mono_gchandle_new_v2 (MonoObject *obj, mono_bool pinned)
 	MONO_EXTERNAL_ONLY_GC_UNSAFE (MonoGCHandle, mono_gchandle_new_internal (obj, pinned));
 }
 
+MonoGCHandle
+mono_gchandle_new_late_v2(MonoObject* obj)
+{
+	MONO_EXTERNAL_ONLY_GC_UNSAFE(MonoGCHandle, mono_gchandle_new_late_internal(obj));
+}
+
 /**
  * mono_gchandle_new_weakref:
  * \param obj managed object to get a handle for

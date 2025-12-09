@@ -376,9 +376,21 @@ MONO_API MONO_RT_EXTERNAL_ONLY void         mono_gchandle_free        (uint32_t 
 UNITY_MONO_API MONO_RT_EXTERNAL_ONLY mono_bool mono_gchandle_is_in_domain (uint32_t gchandle, MonoDomain* domain);
 
 MONO_API MONO_RT_EXTERNAL_ONLY MonoGCHandle mono_gchandle_new_v2         (MonoObject *obj, mono_bool pinned);
+MONO_API MONO_RT_EXTERNAL_ONLY MonoGCHandle mono_gchandle_new_late_v2    (MonoObject *obj);
 MONO_API MONO_RT_EXTERNAL_ONLY MonoGCHandle mono_gchandle_new_weakref_v2 (MonoObject *obj, mono_bool track_resurrection);
 MONO_API MONO_RT_EXTERNAL_ONLY MonoObject*  mono_gchandle_get_target_v2  (MonoGCHandle gchandle);
 MONO_API MONO_RT_EXTERNAL_ONLY void         mono_gchandle_free_v2        (MonoGCHandle gchandle);
+
+
+typedef void (*OnThreadsSuspendedCallback)(void* arg);
+typedef mono_bool(*OnHandleFoundCallback)(void* arg, void* handle, mono_bool marked);
+typedef void (*OnProcessCallback)(void* arg);
+MONO_API MONO_RT_EXTERNAL_ONLY void mono_gc_collect_assets(
+	OnThreadsSuspendedCallback onThreadsSuspended, void* onThreadsSuspendedArg,
+	OnHandleFoundCallback onHandleFound, void* onHandleFoundArg,
+	OnProcessCallback onProcess, void* onProcessArg);
+
+MONO_API MONO_RT_EXTERNAL_ONLY void mono_gchandle_mark_object(MonoObject* obj);
 
 /* make sure the gchandle was allocated for an object in domain */
 UNITY_MONO_API MONO_RT_EXTERNAL_ONLY mono_bool mono_gchandle_is_in_domain_v2 (MonoGCHandle gchandle, MonoDomain* domain);
