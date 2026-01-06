@@ -46,6 +46,8 @@
 
 #include <private/gc_pmark.h>
 #include <gc_vector.h>
+/* Internal Boehm API: wait for ongoing GC (used to avoid deregistering roots mid-mark). */
+extern void GC_wait_for_gc_completion(GC_bool wait_for_all);
 
 #if defined(HOST_DARWIN) && defined(HAVE_PTHREAD_GET_STACKADDR_NP)
 void *pthread_get_stackaddr_np(pthread_t);
@@ -711,6 +713,12 @@ mono_gc_register_root_wbarrier (char *start, size_t size, MonoGCDescriptor descr
 static gpointer
 deregister_root (gpointer arg)
 {
+	/* Wait for GC to complete to ensure any references to this root
+	 * are not on the mark stack. Similar to GC_unregister_my_thread usage
+	 * where we acquire the allocation lock and then wait for GC to complete
+	 * before manipulating the mark stack. 
+	 */
+	GC_wait_for_gc_completion (TRUE /* wait_for_all */);
 	gboolean removed = g_hash_table_remove (roots, arg);
 	g_assert (removed);
 	return NULL;
