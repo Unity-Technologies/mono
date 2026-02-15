@@ -15,6 +15,19 @@
 #include <glib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdio.h>
+
+/* min/max macros for non-Windows platforms */
+#ifndef _WIN32
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+/* Use snprintf instead of sprintf_s on non-Windows */
+#define sprintf_s(buf, size, ...) snprintf(buf, size, __VA_ARGS__)
+#endif
 
 #include <mono/utils/mono-compiler.h>
 #include <mono/utils/mono-logger.h>
@@ -476,7 +489,8 @@ mono_unity_oop_get_stack_frame_details(
 
 	frameDetails->methodToken = read_dword(OFFSET_MEMBER(MonoMethod, method, token));
 
-	// IL offset
+#ifdef _WIN32
+	// IL offset (g_hash_table_lookup_oop is only available on Windows)
 	DebugDomainInfo* debug_info = read_pointer(OFFSET_MEMBER(MonoDomain, domain, debug_info));
 	if (debug_info != NULL)
 	{
@@ -511,6 +525,7 @@ mono_unity_oop_get_stack_frame_details(
 			}
 		}
 	}
+#endif
 
         return TRUE;
     }
