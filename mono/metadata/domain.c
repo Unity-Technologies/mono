@@ -1052,8 +1052,16 @@ mono_domain_foreach (MonoDomainFunc func, gpointer user_data)
 void
 mono_unity_domain_foreach_locked(MonoDomainFunc func, gpointer user_data)
 {
+	int i;
 	mono_coop_mutex_lock(&mono_domain_unload_mutex);
-	mono_domain_foreach(func, user_data);
+
+	mono_appdomains_lock();
+	for (i = 0; i < appdomain_list_size; ++i) {
+		if (appdomains_list[i])
+			func(appdomains_list[i], user_data);
+	}
+	mono_appdomains_unlock();
+
 	mono_coop_mutex_unlock(&mono_domain_unload_mutex);
 }
 

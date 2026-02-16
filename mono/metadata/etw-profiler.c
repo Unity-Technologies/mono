@@ -274,11 +274,18 @@ on_enumerate_domain (MonoDomain *domain, void *user_data)
 	struct JITEnumerationData *enumerationData = (struct JITEnumerationData *)user_data;
 	enumerationData->mNumDomains++;
 
+	mono_loader_lock();
+
+	mono_domain_lock(domain);
 	// Iterate through each assembly
 	mono_domain_assembly_foreach (domain, on_enumerate_assembly, enumerationData);
 
 	// Iterate through each JIT'ed method
 	mono_domain_jit_foreach (domain, on_enumerate_jit_method, enumerationData);
+
+	mono_domain_unlock(domain);
+
+	mono_loader_unlock();
 }
 
 static void
