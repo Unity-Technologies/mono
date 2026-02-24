@@ -348,8 +348,6 @@ g_hash_table_lookup_extended (GHashTable *hash, gconstpointer key, gpointer *ori
 	}
 	return FALSE;
 }
-#ifdef G_OS_WIN32
-
 #define OFFSET_MEMBER(type, base, member) ((gpointer)((gchar*)(base) + offsetof(type, member)))
 
 gpointer
@@ -376,8 +374,6 @@ g_hash_table_lookup_oop(GHashTable* hash, gconstpointer key, GReadPointerFunc re
 
 	return NULL;
 }
-
-#endif
 
 void
 g_hash_table_foreach (GHashTable *hash, GHFunc func, gpointer user_data)

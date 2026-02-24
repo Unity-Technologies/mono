@@ -489,8 +489,7 @@ mono_unity_oop_get_stack_frame_details(
 
 	frameDetails->methodToken = read_dword(OFFSET_MEMBER(MonoMethod, method, token));
 
-#ifdef _WIN32
-	// IL offset (g_hash_table_lookup_oop is only available on Windows)
+	// IL offset
 	DebugDomainInfo* debug_info = read_pointer(OFFSET_MEMBER(MonoDomain, domain, debug_info));
 	if (debug_info != NULL)
 	{
@@ -525,7 +524,6 @@ mono_unity_oop_get_stack_frame_details(
 			}
 		}
 	}
-#endif
 
         return TRUE;
     }
