@@ -577,6 +577,7 @@ mono_gc_walk_heap (int flags, MonoGCReferences callback, void *data)
 }
 
 static gint64 gc_start_time;
+static mono_bool s_should_pushed_late_handles = FALSE;
 
 static void
 on_gc_notification (GC_EventType event)
@@ -608,6 +609,7 @@ on_gc_notification (GC_EventType event)
 
 	case GC_EVENT_START:
 		e = MONO_GC_EVENT_START;
+		s_should_pushed_late_handles = TRUE;
 		MONO_GC_BEGIN (1);
 #ifndef DISABLE_PERFCOUNTERS
 		if (mono_perfcounters)
@@ -619,6 +621,7 @@ on_gc_notification (GC_EventType event)
 
 	case GC_EVENT_END:
 		e = MONO_GC_EVENT_END;
+		s_should_pushed_late_handles = FALSE;
 		MONO_GC_END (1);
 #if defined(ENABLE_DTRACE) && defined(__sun__)
 		/* This works around a dtrace -G problem on Solaris.
@@ -723,8 +726,8 @@ typedef struct {
 static gpointer
 register_late_handles(gpointer arg)
 {
-	RootData* root_data = (RootData*)arg;
-	g_hash_table_insert(late_handles, root_data->start, root_data->end);
+	LateHandleData* late_handle_data = (LateHandleData*)arg;
+	g_hash_table_insert(late_handles, late_handle_data->start, (void*)late_handle_data->count);
 	return NULL;
 }
 
@@ -2293,7 +2296,7 @@ mono_push_ephemerons (struct GC_ms_entry* mark_stack_ptr, struct GC_ms_entry* ma
 	}
 
 	/* mark all handles, as we want to keep all targets alive like a strong handle */
-	if (mark_stack_ptr_orig == mark_stack_ptr) {
+	if (s_should_pushed_late_handles && mark_stack_ptr_orig == mark_stack_ptr) {
 		GHashTableIter iter;
 		g_hash_table_iter_init(&iter, late_handles);
 
@@ -2309,6 +2312,7 @@ mono_push_ephemerons (struct GC_ms_entry* mark_stack_ptr, struct GC_ms_entry* ma
 		s_on_handle_found = NULL;
 		s_on_process = NULL;
 		s_on_threads_suspended = NULL;
+		s_should_pushed_late_handles = FALSE;
 	}
 
 
