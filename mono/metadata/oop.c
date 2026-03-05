@@ -15,19 +15,6 @@
 #include <glib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <stdio.h>
-
-/* min/max macros for non-Windows platforms */
-#ifndef _WIN32
-#ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#endif
-#ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
-/* Use snprintf instead of sprintf_s on non-Windows */
-#define sprintf_s(buf, size, ...) snprintf(buf, size, __VA_ARGS__)
-#endif
 
 #include <mono/utils/mono-compiler.h>
 #include <mono/utils/mono-logger.h>
@@ -123,7 +110,7 @@ gsize read_nt_string(char* buffer, gsize max_size, const void* address)
     }
 
     // Ensure there's a null-terminator
-    buffer[min(read, max_size-1)] = '\0';
+    buffer[MIN(read, max_size-1)] = '\0';
 
     return read;
 }
@@ -438,7 +425,7 @@ mono_unity_oop_get_stack_frame_details(
         const MonoMethod* method = read_pointer(OFFSET_MEMBER(MonoJitInfo, ji, d.method));
         const MonoClass* klass = read_pointer(OFFSET_MEMBER(MonoMethod, method, klass));
         const MonoImage* image = read_pointer(OFFSET_MEMBER(MonoClass, klass, image));
-        size_t classNameLen = max(frameDetails->classNameLen, 256);
+        size_t classNameLen = MAX(frameDetails->classNameLen, 256);
         char* className = (char*)malloc(classNameLen);
         char* nsName = (char*)malloc(classNameLen);
 
@@ -459,14 +446,14 @@ mono_unity_oop_get_stack_frame_details(
                 read_pointer(OFFSET_MEMBER(MonoClass, klass, name)));
             
             if (*nsName) {
-                frameDetails->classNameLen = sprintf_s(
+                frameDetails->classNameLen = g_snprintf(
                     frameDetails->className,
                     frameDetails->classNameLen,
                     "%s.%s",
                     nsName,
                     className);
             } else {
-                frameDetails->classNameLen = sprintf_s(
+                frameDetails->classNameLen = g_snprintf(
                     frameDetails->className,
                     frameDetails->classNameLen,
                     "%s",
