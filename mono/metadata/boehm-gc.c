@@ -83,6 +83,7 @@ struct LateHandleState
 };
 
 static LateHandleState* s_late_handle_state;
+static gboolean s_need_to_push_late_handles;
 
 static void
 mono_push_other_roots(void);
@@ -845,6 +846,7 @@ GC_roots_proc (word* addr, mse* mark_stack_ptr,	mse* mark_stack_limit, word env)
 static void
 mono_push_other_roots (void)
 {
+	s_need_to_push_late_handles = TRUE;
 	if (GC_roots_proc_index) {
 		GC_mark_stack_top++;
 		GC_mark_stack_top->mse_descr.w = GC_MAKE_PROC (GC_roots_proc_index, 0 /* continue processing */);
@@ -2307,7 +2309,7 @@ mono_push_ephemerons (struct GC_ms_entry* mark_stack_ptr, struct GC_ms_entry* ma
 	}
 
 	/* mark all handles, as we want to keep all targets alive like a strong handle */
-	if (mark_stack_ptr_orig == mark_stack_ptr) {
+	if (s_need_to_push_late_handles && mark_stack_ptr_orig == mark_stack_ptr) {
 		GHashTableIter iter;
 		g_hash_table_iter_init(&iter, late_handles);
 
@@ -2334,6 +2336,7 @@ mono_push_ephemerons (struct GC_ms_entry* mark_stack_ptr, struct GC_ms_entry* ma
 			// }
 		}
 		s_late_handle_state = NULL;
+		s_need_to_push_late_handles = FALSE;
 	}
 
 
