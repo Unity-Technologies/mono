@@ -493,11 +493,9 @@ typedef void     (*GDestroyNotify) (gpointer data);
 typedef guint    (*GHashFunc)      (gconstpointer key);
 typedef gboolean (*GEqualFunc)     (gconstpointer a, gconstpointer b);
 typedef void     (*GFreeFunc)      (gpointer       data);
-#ifdef G_OS_WIN32
 /* oop support*/
 typedef gpointer (*GReadPointerFunc)(gconstpointer address);
 typedef guint32  (*GReadUInt32Func) (gconstpointer address);
-#endif
 
 /*
  * Lists
@@ -635,9 +633,7 @@ gboolean        g_hash_table_contains (GHashTable *hash, gconstpointer key);
 G_EXTERN_C // Used by MonoPosixHelper or MonoSupportW, at least.
 gpointer        g_hash_table_lookup          (GHashTable *hash, gconstpointer key);
 gboolean        g_hash_table_lookup_extended (GHashTable *hash, gconstpointer key, gpointer *orig_key, gpointer *value);
-#ifdef G_OS_WIN32
 gpointer        g_hash_table_lookup_oop      (GHashTable* hash, gconstpointer key, GReadPointerFunc read_pointer, GReadUInt32Func read_uint32);
-#endif
 G_EXTERN_C // Used by MonoPosixHelper or MonoSupportW, at least.
 void            g_hash_table_foreach         (GHashTable *hash, GHFunc func, gpointer user_data);
 gpointer        g_hash_table_find            (GHashTable *hash, GHRFunc predicate, gpointer user_data);
