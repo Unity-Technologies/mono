@@ -1710,13 +1710,13 @@ handle_data_find_slot(HandleData* handles)
 static MonoGCHandle
 handle_tag_weak (MonoGCHandle handle)
 {
-	return (MonoGCHandle)((uintptr_t)handle | (uintptr_t)1);
+	return (MonoGCHandle)((uintptr_t)handle | (uintptr_t)2);
 }
 
 static MonoGCHandle
 handle_untag_weak (MonoGCHandle handle)
 {
-	return (MonoGCHandle)((uintptr_t)handle & ~(uintptr_t)1);
+	return (MonoGCHandle)((uintptr_t)handle & ~(uintptr_t)2);
 }
 
 static HandleData*

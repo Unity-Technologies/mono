@@ -90,7 +90,7 @@ namespace System.Runtime.InteropServices
 		internal static bool CanDereferenceHandle(IntPtr handle)
 		{
 			// weak handles have lowest bit set
-			return ((nint)handle & 1) == 0;
+			return ((nint)handle & 2) == 0;
 		}
 
 		public object Target
