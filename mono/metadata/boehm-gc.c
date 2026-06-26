@@ -1708,15 +1708,27 @@ handle_data_find_slot(HandleData* handles)
 }
 
 static MonoGCHandle
-handle_tag_weak (MonoGCHandle handle)
+handle_tag_normal (MonoGCHandle handle)
 {
 	return (MonoGCHandle)((uintptr_t)handle | (uintptr_t)2);
 }
 
 static MonoGCHandle
-handle_untag_weak (MonoGCHandle handle)
+handle_tag_pinned (MonoGCHandle handle)
 {
-	return (MonoGCHandle)((uintptr_t)handle & ~(uintptr_t)2);
+	return (MonoGCHandle)((uintptr_t)handle | (uintptr_t)1);
+}
+
+static MonoGCHandle
+handle_tag_weak (MonoGCHandle handle)
+{
+	return (MonoGCHandle)((uintptr_t)handle | (uintptr_t)3);
+}
+
+static MonoGCHandle
+handle_untag (MonoGCHandle handle)
+{
+	return (MonoGCHandle)((uintptr_t)handle & ~(uintptr_t)3);
 }
 
 static HandleData*
@@ -1731,7 +1743,7 @@ handle_lookup (MonoGCHandle handle, guint* slot)
 {
 	HandleData* handles = get_handle_data_from_handle (handle);
 	if (slot)
-		*slot = (int)(ptrdiff_t)((gpointer*)handle_untag_weak (handle) - &handles->entries[0]);
+		*slot = (int)(ptrdiff_t)((gpointer*)handle_untag (handle) - &handles->entries[0]);
 	return handles;
 }
 
@@ -1776,6 +1788,11 @@ alloc_handle (int type, MonoObject *obj, gboolean track)
 		 * when the bit is not set.
 		*/
 		res = handle_tag_weak (res);
+	} else {
+		if (handles->type == HANDLE_PINNED)
+			res = handle_tag_pinned (res);
+		else
+			res = handle_tag_normal (res);
 	}
 	/*
 	 * TODO: We now require the full pointer sized representation of GCHandle on 64-bit,
