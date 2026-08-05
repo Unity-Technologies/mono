@@ -2909,12 +2909,19 @@ process_suspend (DebuggerTlsData *tls, MonoContext *ctx)
 	PRINT_DEBUG_MSG (1, "[%p] Received single step event for suspending.\n", (gpointer) (gsize) mono_native_thread_id_get ());
 
 	if (suspend_count - tls->resume_count == 0) {
-		/* 
-		 * We are executing a single threaded invoke but the single step for 
+		/*
+		 * We are executing a single threaded invoke but the single step for
 		 * suspending is still active.
 		 * FIXME: This slows down single threaded invokes.
 		 */
 		PRINT_DEBUG_MSG (1, "[%p] Ignored during single threaded invoke.\n", (gpointer) (gsize) mono_native_thread_id_get ());
+		/*
+		 * We are not going to reach suspend_current (), which is the only place that
+		 * clears tls->suspending. Leaving it set makes thread_interrupt () refuse to
+		 * ever account this thread as suspended, so wait_for_suspend () would block on
+		 * it forever once it parks in native code. See the matching reset below.
+		 */
+		tls->suspending = FALSE;
 		return;
 	}
 
@@ -2922,8 +2929,11 @@ process_suspend (DebuggerTlsData *tls, MonoContext *ctx)
 	g_assert (ji);
 	/* Can't suspend in these methods */
 	method = jinfo_get_method (ji);
-	if (method->klass == mono_defaults.string_class && (!strcmp (method->name, "memset") || strstr (method->name, "memcpy")))
+	if (method->klass == mono_defaults.string_class && (!strcmp (method->name, "memset") || strstr (method->name, "memcpy"))) {
+		/* Same as above: no suspend_current () on this path, so don't leave the flag set. */
+		tls->suspending = FALSE;
 		return;
+	}
 
 	save_thread_context (ctx);
 
@@ -4039,9 +4049,28 @@ process_event (EventKind event, gpointer arg, gint32 il_offset, MonoContext *ctx
 		}
 	}
 	
-	if (event == EVENT_KIND_VM_START) 
-		suspend_policy = agent_config.suspend ? SUSPEND_POLICY_ALL : SUSPEND_POLICY_NONE;	
-	
+	if (event == EVENT_KIND_VM_START)
+		suspend_policy = agent_config.suspend ? SUSPEND_POLICY_ALL : SUSPEND_POLICY_NONE;
+
+	/*
+	 * Never stop the VM for a thread that is already gone. thread_end () has set
+	 * tls->terminated and cleared tls->thread before we get here, so there is nothing
+	 * left to inspect. Worse, this runs on the dying thread itself from
+	 * mono_thread_detach_internal (), a path with no suspend point ahead of it, so it
+	 * fires even while the VM is already suspended for an unrelated stop. Each one then
+	 * bumps suspend_count and obliges the client to send one more CMD_VM_RESUME that it
+	 * has no stopped thread to associate with; a burst of exiting threads leaves
+	 * suspend_count permanently above zero and every managed thread parked in
+	 * suspend_current () with the debugger thread idle in transport_recv ().
+	 *
+	 * The event itself is still delivered, just without the suspend policy.
+	 *
+	 * Note this has to happen before the suspend_policy byte is written into buf below,
+	 * so the client is told the policy we actually apply.
+	 */
+	if (event == EVENT_KIND_THREAD_DEATH)
+		suspend_policy = SUSPEND_POLICY_NONE;
+
 	nevents = g_slist_length (events);
 	buffer_init (&buf, 128);
 	buffer_add_byte (&buf, suspend_policy);
