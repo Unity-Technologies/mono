@@ -156,9 +156,6 @@ inline static int ToFileDescriptorUnchecked(intptr_t fd)
 */
 inline static int ToFileDescriptor(intptr_t fd)
 {
-    assert(0 <= fd);
-    assert(fd < sysconf(_SC_OPEN_MAX) && "Requested file descriptor exceeds maximum number of files allowed to be open at a time.");
-
     return ToFileDescriptorUnchecked(fd);
 }
 
