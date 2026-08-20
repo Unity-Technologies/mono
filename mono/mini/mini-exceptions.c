@@ -62,6 +62,7 @@
 #include <mono/metadata/environment.h>
 #include <mono/metadata/mono-mlist.h>
 #include <mono/metadata/handle.h>
+#include <mono/metadata/unity-utils.h>
 #include <mono/utils/mono-merp.h>
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-logger-internals.h>
@@ -3483,25 +3484,30 @@ mono_handle_native_crash (const char *signal, MonoContext *mctx, MONO_SIG_HANDLE
 	 * with ones which have a greater chance of working.
 	 */
 
-	g_async_safe_printf("\n=================================================================\n");
-	g_async_safe_printf("\tNative Crash Reporting\n");
-	g_async_safe_printf("=================================================================\n");
-	g_async_safe_printf("Got a %s while executing native code. This usually indicates\n", signal);
-	g_async_safe_printf("a fatal error in the mono runtime or one of the native libraries \n");
-	g_async_safe_printf("used by your application.\n");
-	g_async_safe_printf("=================================================================\n");
-	mono_dump_native_crash_info (signal, mctx, info);
+	/* When embedded in a host application (e.g. Unity), skip Mono's own crash
+	 * diagnostics; the host has its own crash reporting. We still chain to the
+	 * host handler below. */
+	if (!mono_unity_embedding_host_name_is_set ()) {
+		g_async_safe_printf("\n=================================================================\n");
+		g_async_safe_printf("\tNative Crash Reporting\n");
+		g_async_safe_printf("=================================================================\n");
+		g_async_safe_printf("Got a %s while executing native code. This usually indicates\n", signal);
+		g_async_safe_printf("a fatal error in the mono runtime or one of the native libraries \n");
+		g_async_safe_printf("used by your application.\n");
+		g_async_safe_printf("=================================================================\n");
+		mono_dump_native_crash_info (signal, mctx, info);
 
-	/* !jit_tls means the thread was not registered with the runtime */
-	// This must be below the native crash dump, because we can't safely
-	// do runtime state probing after we have walked the managed stack here.
-	if (jit_tls && mono_thread_internal_current () && mctx) {
-		g_async_safe_printf ("\n=================================================================\n");
-		g_async_safe_printf ("\tManaged Stacktrace:\n");
-		g_async_safe_printf ("=================================================================\n");
+		/* !jit_tls means the thread was not registered with the runtime */
+		// This must be below the native crash dump, because we can't safely
+		// do runtime state probing after we have walked the managed stack here.
+		if (jit_tls && mono_thread_internal_current () && mctx) {
+			g_async_safe_printf ("\n=================================================================\n");
+			g_async_safe_printf ("\tManaged Stacktrace:\n");
+			g_async_safe_printf ("=================================================================\n");
 
-		mono_walk_stack_full (print_stack_frame_signal_safe, mctx, mono_domain_get (), jit_tls, mono_get_lmf (), MONO_UNWIND_LOOKUP_IL_OFFSET, NULL, TRUE);
-		g_async_safe_printf ("=================================================================\n");
+			mono_walk_stack_full (print_stack_frame_signal_safe, mctx, mono_domain_get (), jit_tls, mono_get_lmf (), MONO_UNWIND_LOOKUP_IL_OFFSET, NULL, TRUE);
+			g_async_safe_printf ("=================================================================\n");
+		}
 	}
 
 	mono_post_native_crash_handler (signal, mctx, info, mono_do_crash_chaining);

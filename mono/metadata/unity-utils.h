@@ -55,6 +55,8 @@ void unity_mono_close_output(void);
 
 extern MonoString* mono_unity_get_embeddinghostname(void);
 
+extern gboolean mono_unity_embedding_host_name_is_set (void);
+
 #ifdef WIN32
 FILE* unity_fopen( const char *name, const char *mode );
 #endif
