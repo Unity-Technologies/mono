@@ -65,10 +65,25 @@ static gboolean gc_strict_wbarriers = FALSE;
 static mono_mutex_t mono_gc_lock;
 
 static GC_push_other_roots_proc default_push_other_roots;
-static GHashTable *roots;
+static GHashTable* roots;
+static GHashTable* late_handles;
 
 typedef struct ephemeron_node ephemeron_node;
 static ephemeron_node* ephemeron_list;
+
+typedef struct LateHandleState LateHandleState;
+struct LateHandleState
+{
+	OnThreadsSuspendedCallback on_threads_suspended;
+	void* on_threads_suspended_arg;
+	OnHandleFoundCallback on_handle_found;
+	void* on_handle_found_arg;
+	OnProcessCallback on_process;
+	void* on_process_arg;
+};
+
+static LateHandleState* s_late_handle_state;
+static gboolean s_need_to_push_late_handles;
 
 static void
 mono_push_other_roots(void);
@@ -124,12 +139,12 @@ struct HandleData {
 	gpointer  entries[HANDLE_COUNT];
 };
 
-#define GC_HANDLE_TYPE_IS_WEAK(x) ((x) <= HANDLE_WEAK_TRACK)
+#define GC_HANDLE_TYPE_IS_WEAK(x) (((x) == HANDLE_WEAK) ||((x) == HANDLE_WEAK_TRACK) ||((x) == HANDLE_WEAK_FIELDS))
 
-#define MONO_GC_HANDLE_TYPE_IS_WEAK(x) ((x) <= HANDLE_WEAK_TRACK)
+#define MONO_GC_HANDLE_TYPE_IS_WEAK(x) (((x) == HANDLE_WEAK) ||((x) == HANDLE_WEAK_TRACK) ||((x) == HANDLE_WEAK_FIELDS))
 
-static HandleData* gc_handles[4];
-static HandleData* gc_handles_free[4];
+static HandleData* gc_handles[HANDLE_TYPE_MAX];
+static HandleData* gc_handles_free[HANDLE_TYPE_MAX];
 
 static void
 mono_gc_warning (char *msg, GC_word arg)
@@ -204,6 +219,7 @@ mono_gc_base_init (void)
 #endif
 
 	roots = g_hash_table_new (NULL, NULL);
+	late_handles = g_hash_table_new(NULL, NULL);
 	default_push_other_roots = GC_get_push_other_roots ();
 	GC_set_push_other_roots (mono_push_other_roots);
 	GC_set_mark_stack_empty (mono_push_ephemerons);
@@ -583,6 +599,8 @@ on_gc_notification (GC_EventType event)
 	case GC_EVENT_POST_STOP_WORLD:
 		e = MONO_GC_EVENT_POST_STOP_WORLD;
 		MONO_GC_WORLD_STOP_END ();
+		if (s_late_handle_state && s_late_handle_state->on_threads_suspended)
+			s_late_handle_state->on_threads_suspended(s_late_handle_state->on_threads_suspended_arg);
 		break;
 
 	case GC_EVENT_PRE_START_WORLD:
@@ -704,6 +722,30 @@ mono_gc_register_root (char *start, size_t size, void *descr, MonoGCRootSource s
 	return TRUE;
 }
 
+typedef struct {
+	gpointer *start;
+	size_t count;
+} LateHandleData;
+
+static gpointer
+register_late_handles(gpointer arg)
+{
+	RootData* root_data = (RootData*)arg;
+	g_hash_table_insert(late_handles, root_data->start, root_data->end);
+	return NULL;
+}
+
+int
+mono_gc_register_late_handles(gpointer* start, size_t count)
+{
+	LateHandleData root_data;
+	root_data.start = start;
+	root_data.count = count;
+	GC_call_with_alloc_lock(register_late_handles, &root_data);
+	//MONO_PROFILER_RAISE(gc_root_register, ((const mono_byte*)start, size, source, key, msg));
+	return TRUE;
+}
+
 int
 mono_gc_register_root_wbarrier (char *start, size_t size, MonoGCDescriptor descr, MonoGCRootSource source, void *key, const char *msg)
 {
@@ -804,6 +846,7 @@ GC_roots_proc (word* addr, mse* mark_stack_ptr,	mse* mark_stack_limit, word env)
 static void
 mono_push_other_roots (void)
 {
+	s_need_to_push_late_handles = TRUE;
 	if (GC_roots_proc_index) {
 		GC_mark_stack_top++;
 		GC_mark_stack_top->mse_descr.w = GC_MAKE_PROC (GC_roots_proc_index, 0 /* continue processing */);
@@ -1660,7 +1703,10 @@ handle_data_alloc_entries(int type)
 	if (MONO_GC_HANDLE_TYPE_IS_WEAK (handles->type)) {
 		handles->domain_ids = (guint16 *)g_malloc0 (sizeof (*handles->domain_ids) * handles->size);
 	} else {
-		mono_gc_register_root((char*) &handles->entries[0], HANDLE_COUNT * sizeof(gpointer), MONO_GC_DESCRIPTOR_NULL, MONO_ROOT_SOURCE_GC_HANDLE, NULL, "GC Handle Data");
+		if (handles->type == HANDLE_LATE)
+			mono_gc_register_late_handles(&handles->entries[0], HANDLE_COUNT);
+		else
+			mono_gc_register_root((char*) &handles->entries[0], HANDLE_COUNT * sizeof(gpointer), MONO_GC_DESCRIPTOR_NULL, MONO_ROOT_SOURCE_GC_HANDLE, NULL, "GC Handle Data");
 	}
 	handles->bitmap = (guint32 *)g_malloc0 (handles->size / CHAR_BIT);
 
@@ -1807,6 +1853,12 @@ MonoGCHandle
 mono_gchandle_new_internal (MonoObject *obj, gboolean pinned)
 {
 	return alloc_handle (pinned? HANDLE_PINNED: HANDLE_NORMAL, obj, FALSE);
+}
+
+MonoGCHandle
+mono_gchandle_new_late_internal(MonoObject* obj)
+{
+	return alloc_handle(HANDLE_LATE, obj, FALSE);
 }
 
 /**
@@ -2044,7 +2096,7 @@ mono_gchandle_free_domain (MonoDomain *domain)
 {
 	guint type;
 
-	for (type = HANDLE_TYPE_MIN; type <= HANDLE_PINNED; ++type) {
+	for (type = HANDLE_TYPE_MIN; type < HANDLE_TYPE_MAX; ++type) {
 		guint slot;
 		HandleData *handles = gc_handles [type];
 		lock_handles (handles);
@@ -2167,9 +2219,127 @@ mono_clear_ephemerons (void)
 	}
 }
 
+static gpointer
+wait_for_pending_gc(gpointer arg)
+{
+	GC_wait_for_gc_completion(TRUE);
+	return NULL;
+}
+
+void
+mono_gc_collect_assets(
+	OnThreadsSuspendedCallback on_threads_suspended, void* on_threads_suspended_arg,
+	OnHandleFoundCallback on_handle_found, void* on_handle_found_arg,
+	OnProcessCallback on_process, void* on_process_arg)
+{
+
+	LateHandleState state;
+	state.on_threads_suspended = on_threads_suspended;
+	state.on_threads_suspended_arg = on_threads_suspended_arg;
+	state.on_handle_found = on_handle_found;
+	state.on_handle_found_arg = on_handle_found_arg;
+	state.on_process = on_process;
+	state.on_process_arg = on_process_arg;
+
+	GC_call_with_alloc_lock(wait_for_pending_gc, NULL);
+
+	s_late_handle_state = &state;
+
+	mono_gc_collect(mono_gc_max_generation());
+
+	s_late_handle_state = NULL;
+}
+
+typedef struct {
+	struct GC_ms_entry* mark_stack_ptr;
+	struct GC_ms_entry* mark_stack_limit;
+} MarkHandleData;
+
+void mono_gchandle_mark_handle(void* arg, uintptr_t handle)
+{
+	MarkHandleData* mark_data = (MarkHandleData*)arg;
+	g_assert(mark_data);
+	mark_data->mark_stack_ptr = GC_mark_and_push(*(MonoObject**)handle, mark_data->mark_stack_ptr, mark_data->mark_stack_limit, NULL);
+}
+
 static struct GC_ms_entry*
 mono_push_ephemerons (struct GC_ms_entry* mark_stack_ptr, struct GC_ms_entry* mark_stack_limit)
 {
+	struct GC_ms_entry* mark_stack_ptr_orig = mark_stack_ptr;
+	/* push late GC handles */
+	if (s_late_handle_state)
+	{
+		GHashTableIter iter;
+		g_hash_table_iter_init(&iter, late_handles);
+
+		gpointer key;
+		gpointer value;
+
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			/* process handles */
+			gpointer* handles = key;
+			size_t length = (size_t)value;
+			for (size_t i = 0; i < length; ++i) {
+				MonoObject** handle = (MonoObject**)(handles + i);
+				MonoObject* object = *handle;
+
+				if (!object)
+					continue;
+
+				/* avoid objects we've already processed before */
+				// if ((size_t)object & 1)
+				// 	continue;
+
+				if (GC_is_marked(object)) {
+					s_late_handle_state->on_handle_found(s_late_handle_state->on_handle_found_arg, handle);
+
+					// *handle = (MonoObject*)((size_t)object | 1);
+				}
+			}
+		}
+
+		/* callback to allow client to process a batch of handles */
+		if (s_late_handle_state->on_process) {
+			MarkHandleData data;
+			data.mark_stack_ptr = mark_stack_ptr;
+			data.mark_stack_limit = mark_stack_limit;
+			s_late_handle_state->on_process(s_late_handle_state->on_process_arg, mono_gchandle_mark_handle, &data);
+			mark_stack_ptr = data.mark_stack_ptr;
+		}
+	}
+
+	/* mark all handles, as we want to keep all targets alive like a strong handle */
+	if (s_need_to_push_late_handles && mark_stack_ptr_orig == mark_stack_ptr) {
+		GHashTableIter iter;
+		g_hash_table_iter_init(&iter, late_handles);
+
+		gpointer key;
+		gpointer value;
+
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			/* process handles */
+			gpointer* handles = key;
+			size_t length = (size_t)value;
+			mark_stack_ptr = GC_custom_push_range((char**)handles, (char**)(handles + length), mark_stack_ptr, mark_stack_limit);
+			// for (size_t i = 0; i < length; ++i) {
+			// 	MonoObject** handle = (MonoObject**)(handles + i);
+
+			// 	/* remove the bit we set to indicate processing */
+			// 	if ((size_t)*handle & 1)
+			// 		*handle = (MonoObject*)((size_t)*handle & ~(size_t)1);
+
+			// 	MonoObject* object = *handle;
+			// 	if (!object)
+			// 		continue;
+
+			// 	mark_stack_ptr = GC_mark_and_push(object, mark_stack_ptr, mark_stack_limit, handle);
+			// }
+		}
+		s_late_handle_state = NULL;
+		s_need_to_push_late_handles = FALSE;
+	}
+
+
 	ephemeron_node* prev_node = NULL;
 	ephemeron_node* current_node = NULL;
 
@@ -2265,8 +2435,10 @@ mono_gc_strong_handle_foreach(GFunc func, gpointer user_data)
 
 	lock_handles(handles);
 
-	for (gcHandleTypeIndex = HANDLE_NORMAL; gcHandleTypeIndex <= HANDLE_PINNED; gcHandleTypeIndex++)
+	for (gcHandleTypeIndex = HANDLE_TYPE_MIN; gcHandleTypeIndex < HANDLE_TYPE_MAX; gcHandleTypeIndex++)
 	{
+		if (GC_HANDLE_TYPE_IS_WEAK(gcHandleTypeIndex))
+			continue;
 		HandleData* handles = gc_handles[gcHandleTypeIndex];
 
 		while (handles != NULL) {
