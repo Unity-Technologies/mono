@@ -295,6 +295,7 @@ MONO_API int mono_unity_get_attr_type_arg_as_int(MonoAttrArgsInfo *ainfo, int in
 MONO_API void* mono_unity_get_attr_type_arg(MonoAttrArgsInfo *ainfo, int index);
 MONO_API uint64_t mono_unity_get_attr_type_arg_as_uint64(MonoAttrArgsInfo *ainfo, int index);
 MONO_API const char* mono_unity_class_get_assembly_name_cstring(MonoClass *klass);
+MONO_API mono_byte* mono_unity_class_get_assembly_pubkeytokens(MonoClass *klass);
 MONO_API gboolean mono_unity_type_is_unmanaged(MonoType *type);
 
 #endif

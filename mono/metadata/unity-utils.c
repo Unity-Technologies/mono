@@ -2141,6 +2141,12 @@ const char* mono_unity_class_get_assembly_name_cstring(MonoClass *klass)
 	return (const char*)mono_stringify_assembly_name (&ta->aname);
 }
 
+mono_byte* mono_unity_class_get_assembly_pubkeytokens(MonoClass *klass)
+{
+	MonoAssembly *ta = m_class_get_image (klass)->assembly;
+	return mono_assembly_name_get_pubkeytoken (&ta->aname);
+}
+
 gboolean mono_unity_type_is_blittable_primitive(MonoType *type)
 {
 	return (type->type >= MONO_TYPE_BOOLEAN && type->type <= MONO_TYPE_R8) ||
