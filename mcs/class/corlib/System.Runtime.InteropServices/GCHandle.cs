@@ -93,6 +93,16 @@ namespace System.Runtime.InteropServices
 			return ((nint)handle & 1) == 0;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static void ThrowIfInvalid(IntPtr handle)
+		{
+			// Check if the handle was never initialized or was freed.
+			if (handle == IntPtr.Zero)
+			{
+				throw new InvalidOperationException("Handle is not initialized.");
+			}
+		}
+
 		public object Target
 		{ 
 
@@ -100,8 +110,7 @@ namespace System.Runtime.InteropServices
 
 			get
 			{
-				if (!IsAllocated)
-					throw new InvalidOperationException ("Handle is not allocated");
+				ThrowIfInvalid (handle);
 
 				if (CanDereferenceHandle(handle))
 					return GetRef(handle);
@@ -113,6 +122,7 @@ namespace System.Runtime.InteropServices
 
 			set
 			{
+				ThrowIfInvalid (handle);
 
 				if (CanDereferenceHandle(handle))
 					SetRef(handle, value);
@@ -124,6 +134,8 @@ namespace System.Runtime.InteropServices
 		// Methods
 		public IntPtr AddrOfPinnedObject()
 		{
+			ThrowIfInvalid (handle);
+
 			IntPtr res = GetAddrOfPinnedObject(handle);
 			if (res == (IntPtr)(-1))
 				throw new ArgumentException ("Object contains non-primitive or non-blittable data.");
