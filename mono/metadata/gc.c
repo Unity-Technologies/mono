@@ -789,7 +789,7 @@ ves_icall_System_GCHandle_GetAddrOfPinnedObject (MonoGCHandle handle)
 
 	MonoObject *obj;
 
-	if (mono_gchandle_get_type_internal (handle) != HANDLE_PINNED)
+	if (!handle || mono_gchandle_get_type_internal (handle) != HANDLE_PINNED)
 		return (gpointer)-2;
 
 	obj = mono_gchandle_get_target_internal (handle);
