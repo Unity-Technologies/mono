@@ -1911,11 +1911,6 @@ mono_gc_is_null (void)
 GCHandleType
 mono_gchandle_get_type_internal (MonoGCHandle gchandle)
 {
-	// Reject NULL handles so that we don't dereference them.
-	// Returning HANDLE_TYPE_MAX is a workaround.
-	if (!gchandle)
-		return HANDLE_TYPE_MAX;
-
 	HandleData* handles = handle_lookup (gchandle, NULL);
 	return handles->type;
 }
