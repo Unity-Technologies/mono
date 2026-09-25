@@ -244,6 +244,7 @@ endif
 common_sources = \
 	$(platform_sources)	\
 	$(unity_sources)	\
+	oop.c	\
 	appdomain.c	\
 	assembly-load-context.c	\
 	domain.c	\

@@ -110,7 +110,7 @@ gsize read_nt_string(char* buffer, gsize max_size, const void* address)
     }
 
     // Ensure there's a null-terminator
-    buffer[min(read, max_size-1)] = '\0';
+    buffer[MIN(read, max_size-1)] = '\0';
 
     return read;
 }
@@ -425,7 +425,7 @@ mono_unity_oop_get_stack_frame_details(
         const MonoMethod* method = read_pointer(OFFSET_MEMBER(MonoJitInfo, ji, d.method));
         const MonoClass* klass = read_pointer(OFFSET_MEMBER(MonoMethod, method, klass));
         const MonoImage* image = read_pointer(OFFSET_MEMBER(MonoClass, klass, image));
-        size_t classNameLen = max(frameDetails->classNameLen, 256);
+        size_t classNameLen = MAX(frameDetails->classNameLen, 256);
         char* className = (char*)malloc(classNameLen);
         char* nsName = (char*)malloc(classNameLen);
 
@@ -446,14 +446,14 @@ mono_unity_oop_get_stack_frame_details(
                 read_pointer(OFFSET_MEMBER(MonoClass, klass, name)));
             
             if (*nsName) {
-                frameDetails->classNameLen = sprintf_s(
+                frameDetails->classNameLen = g_snprintf(
                     frameDetails->className,
                     frameDetails->classNameLen,
                     "%s.%s",
                     nsName,
                     className);
             } else {
-                frameDetails->classNameLen = sprintf_s(
+                frameDetails->classNameLen = g_snprintf(
                     frameDetails->className,
                     frameDetails->classNameLen,
                     "%s",
