@@ -33,6 +33,7 @@
 #endif
 
 #define MONO_INFINITE_WAIT ((guint32) 0xFFFFFFFF)
+#define MONO_CLEANUP_WAIT ((guint32) 309960)
 
 #if !defined(HOST_WIN32)
 
