@@ -1849,6 +1849,9 @@ mono_gchandle_new_weakref_internal (MonoObject *obj, gboolean track_resurrection
 MonoObject*
 mono_gchandle_get_target_internal (MonoGCHandle gchandle)
 {
+	if (!gchandle)
+		return NULL;
+
 	guint slot = 0;
 	HandleData* handles = handle_lookup (gchandle, &slot);
 	MonoObject *obj = NULL;
@@ -1925,6 +1928,9 @@ mono_gchandle_get_type_internal (MonoGCHandle gchandle)
 gboolean
 mono_gchandle_is_in_domain_internal (MonoGCHandle gchandle, MonoDomain *domain)
 {
+	if (!gchandle)
+		return FALSE;
+
 	guint slot = 0;
 	HandleData* handles = handle_lookup (gchandle, &slot);
 	gboolean result = FALSE;
