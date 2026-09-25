@@ -6952,11 +6952,41 @@ mono_string_new_size_handle (MonoDomain *domain, gint32 len, MonoError *error)
 	return s;
 }
 
+static MonoString*
+mono_string_new_size_nohandle(MonoDomain* domain, gint32 len, MonoError* error)
+{
+	MONO_REQ_GC_UNSAFE_MODE;
+
+	MonoString* s;
+	MonoVTable* vtable;
+	size_t size;
+
+	error_init(error);
+
+	/* check for overflow */
+	if (len < 0 || len >((SIZE_MAX - G_STRUCT_OFFSET(MonoString, chars) - 8) / 2)) {
+		mono_error_set_out_of_memory(error, "Could not allocate %i bytes", -1);
+		return NULL;
+	}
+
+	size = (G_STRUCT_OFFSET(MonoString, chars) + (((size_t)len + 1) * 2));
+	g_assert(size > 0);
+
+	vtable = mono_class_vtable_checked(domain, mono_defaults.string_class, error);
+	return_val_if_nok(error, NULL);
+
+	s = mono_gc_alloc_string(vtable, size, len);
+
+	if (G_UNLIKELY(!s))
+		mono_error_set_out_of_memory(error, "Could not allocate %" G_GSIZE_FORMAT " bytes", size);
+
+	return s;
+}
+
 MonoString *
 mono_string_new_size_checked (MonoDomain *domain, gint32 length, MonoError *error)
 {
-	HANDLE_FUNCTION_ENTER ();
-	HANDLE_FUNCTION_RETURN_OBJ (mono_string_new_size_handle (domain, length, error));
+	return mono_string_new_size_nohandle(domain, length, error);
 }
 
 /**
@@ -6968,16 +6998,66 @@ mono_string_new_size_checked (MonoDomain *domain, gint32 length, MonoError *erro
 MonoString*
 mono_string_new_len (MonoDomain *domain, const char *text, guint length)
 {
-	HANDLE_FUNCTION_ENTER ();
 	ERROR_DECL (error);
-	MonoStringHandle result;
 
-	MONO_ENTER_GC_UNSAFE;
-	result = mono_string_new_utf8_len (domain, text, length, error);
-	MONO_EXIT_GC_UNSAFE;
+	MONO_REQ_GC_UNSAFE_MODE;
+	const guint fast_length = 1024;
+
+	error_init(error);
+
+	GError* eg_error = NULL;
+	MonoString* o = NULL;
+	gunichar2* ut = NULL;
+	glong items_written;
+
+	if (length < 1024 / 4)
+	{
+		char fast_buffer[1024];
+		GFixedBufferCustomAllocatorData custom_alloc_data;
+		custom_alloc_data.buffer = fast_buffer;
+		custom_alloc_data.buffer_size = fast_length;
+		custom_alloc_data.req_buffer_size = 0;
+
+
+
+		//ut = eg_utf8_to_utf16_with_nuls(text, length, NULL, &items_written, &eg_error);
+		ut = g_utf8_to_utf16_custom_alloc(text, length, NULL, &items_written, g_fixed_buffer_custom_allocator, &custom_alloc_data, &eg_error);
+
+		if (eg_error) {
+			o = NULL;
+			// Like mono_ldstr_utf8:
+			mono_error_set_argument(error, "string", eg_error->message);
+			// FIXME? See mono_string_new_checked.
+			//mono_error_set_execution_engine (error, "String conversion error: %s", eg_error->message);
+			g_error_free(eg_error);
+		}
+		else {
+			o = mono_string_new_utf16_checked(domain, ut, items_written, error);
+		}
+	}
+	else
+	{
+
+		ut = eg_utf8_to_utf16_with_nuls(text, length, NULL, &items_written, &eg_error);
+
+		if (eg_error) {
+			o = NULL;
+			// Like mono_ldstr_utf8:
+			mono_error_set_argument(error, "string", eg_error->message);
+			// FIXME? See mono_string_new_checked.
+			//mono_error_set_execution_engine (error, "String conversion error: %s", eg_error->message);
+			g_error_free(eg_error);
+		}
+		else {
+			o = mono_string_new_utf16_checked(domain, ut, items_written, error);
+		}
+
+		g_free(ut);
+	}
 
 	mono_error_cleanup (error);
-	HANDLE_FUNCTION_RETURN_OBJ (result);
+
+	return o;
 }
 
 /**
@@ -6992,6 +7072,7 @@ MonoStringHandle
 mono_string_new_utf8_len (MonoDomain *domain, const char *text, guint length, MonoError *error)
 {
 	MONO_REQ_GC_UNSAFE_MODE;
+	const guint fast_length = 1024;
 
 	error_init (error);
 
@@ -7000,20 +7081,50 @@ mono_string_new_utf8_len (MonoDomain *domain, const char *text, guint length, Mo
 	gunichar2 *ut = NULL;
 	glong items_written;
 
-	ut = eg_utf8_to_utf16_with_nuls (text, length, NULL, &items_written, &eg_error);
+	if (length < 1024 / 4)
+	{
+		char fast_buffer[1024];
+		GFixedBufferCustomAllocatorData custom_alloc_data;
+		custom_alloc_data.buffer = fast_buffer;
+		custom_alloc_data.buffer_size = fast_length;
+		custom_alloc_data.req_buffer_size = 0;
 
-	if (eg_error) {
-		o = NULL_HANDLE_STRING;
-		// Like mono_ldstr_utf8:
-		mono_error_set_argument (error, "string", eg_error->message);
-		// FIXME? See mono_string_new_checked.
-		//mono_error_set_execution_engine (error, "String conversion error: %s", eg_error->message);
-		g_error_free (eg_error);
-	} else {
-		o = mono_string_new_utf16_handle (domain, ut, items_written, error);
+
+
+		//ut = eg_utf8_to_utf16_with_nuls(text, length, NULL, &items_written, &eg_error);
+		ut = g_utf8_to_utf16_custom_alloc(text, length, NULL, &items_written, g_fixed_buffer_custom_allocator, &custom_alloc_data, &eg_error);
+
+		if (eg_error) {
+			o = NULL_HANDLE_STRING;
+			// Like mono_ldstr_utf8:
+			mono_error_set_argument(error, "string", eg_error->message);
+			// FIXME? See mono_string_new_checked.
+			//mono_error_set_execution_engine (error, "String conversion error: %s", eg_error->message);
+			g_error_free(eg_error);
+		}
+		else {
+			o = mono_string_new_utf16_handle(domain, ut, items_written, error);
+		}
 	}
+	else
+	{
 
-	g_free (ut);
+		ut = eg_utf8_to_utf16_with_nuls(text, length, NULL, &items_written, &eg_error);
+
+		if (eg_error) {
+			o = NULL_HANDLE_STRING;
+			// Like mono_ldstr_utf8:
+			mono_error_set_argument(error, "string", eg_error->message);
+			// FIXME? See mono_string_new_checked.
+			//mono_error_set_execution_engine (error, "String conversion error: %s", eg_error->message);
+			g_error_free(eg_error);
+		}
+		else {
+			o = mono_string_new_utf16_handle(domain, ut, items_written, error);
+		}
+
+		g_free(ut);
+	}
 
 	return o;
 }
