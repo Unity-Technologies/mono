@@ -37,6 +37,40 @@ namespace MonoTests.System.Runtime.InteropServices
 		}
 
 		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void DefaultZeroValue_SetTarget ()
+		{
+			GCHandle gch = default (GCHandle);
+			gch.Target = new object ();
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void DefaultZeroValue_AddrOfPinnedObject ()
+		{
+			GCHandle gch = default (GCHandle);
+			gch.AddrOfPinnedObject ();
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void AddrOfPinnedObjectAfterFree ()
+		{
+			GCHandle gch = GCHandle.Alloc (new byte [16], GCHandleType.Pinned);
+			gch.Free ();
+			gch.AddrOfPinnedObject ();
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void TargetAfterFree ()
+		{
+			GCHandle gch = GCHandle.Alloc (new object ());
+			gch.Free ();
+			Assert.IsNull (gch.Target, "Target");
+		}
+
+		[Test]
 		public void AllocNull ()
 		{
 			IntPtr ptr = (IntPtr) GCHandle.Alloc (null);
