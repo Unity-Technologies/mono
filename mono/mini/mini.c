@@ -4035,18 +4035,31 @@ mono_cfg_set_exception_invalid_program (MonoCompile *cfg, char *msg)
 
 #endif /* DISABLE_JIT */
 
+/*
+ * mono_time_track_start:
+ *
+ *   Returns a start timestamp for mono_time_track_end (), or -1 when JIT statistics are
+ * disabled. The JIT times every compiler pass with this, and nothing reads the results
+ * unless statistics are enabled. Reading the clock is not free: on Windows VMs without an
+ * invariant TSC, QueryPerformanceCounter traps into the kernel.
+ */
 gint64 mono_time_track_start ()
 {
+	if (!UnlockedReadBool (&mono_jit_stats.enabled))
+		return -1;
 	return mono_100ns_ticks ();
 }
 
 /*
  * mono_time_track_end:
  *
- *   Uses UnlockedAddDouble () to update \param time.
+ *   Adds the time elapsed since \param start to \param time using UnlockedAdd64 ().
+ * Does nothing if mono_time_track_start () returned -1.
  */
 void mono_time_track_end (gint64 *time, gint64 start)
 {
+	if (start == -1)
+		return;
 	UnlockedAdd64 (time, mono_100ns_ticks () - start);
 }
 
