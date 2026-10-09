@@ -4040,8 +4040,7 @@ mono_cfg_set_exception_invalid_program (MonoCompile *cfg, char *msg)
  *
  *   Returns a start timestamp for mono_time_track_end (), or -1 when JIT statistics are
  * disabled. The JIT times every compiler pass with this, and nothing reads the results
- * unless statistics are enabled. Reading the clock is not free: on Windows VMs without an
- * invariant TSC, QueryPerformanceCounter traps into the kernel.
+ * unless statistics are enabled.
  */
 gint64 mono_time_track_start ()
 {
