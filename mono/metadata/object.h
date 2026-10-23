@@ -117,6 +117,12 @@ mono_array_addr_with_size   (MonoArray *array, int size, uintptr_t idx);
 MONO_API MONO_RT_EXTERNAL_ONLY uintptr_t
 mono_array_length           (MonoArray *array);
 
+MONO_API MONO_RT_EXTERNAL_ONLY void
+mono_unity_array_set_range(MonoArray* dest, uintptr_t destidx, void* src, uintptr_t byteSize);
+
+MONO_API MONO_RT_EXTERNAL_ONLY void
+mono_unity_array_get_range(MonoArray* src, uintptr_t srcidx, void* dest, uintptr_t byteSize);
+
 MONO_API MONO_RT_EXTERNAL_ONLY MonoString*
 mono_string_empty	      (MonoDomain *domain);
 
@@ -346,6 +352,12 @@ mono_field_static_get_value (MonoVTable *vt, MonoClassField *field, void *value)
 
 MONO_API MONO_RT_EXTERNAL_ONLY MonoObject *
 mono_field_get_value_object (MonoDomain *domain, MonoClassField *field, MonoObject *obj);
+
+MONO_API MONO_RT_EXTERNAL_ONLY void
+mono_unity_field_set_value_offset (MonoObject* obj, MonoClassField* field, int declaring_field_offset, void* value);
+
+MONO_API MONO_RT_EXTERNAL_ONLY void
+mono_unity_field_get_value_offset (MonoObject* obj, MonoClassField* field, int declaring_field_offset, void* value);
 
 MONO_API MONO_RT_EXTERNAL_ONLY void
 mono_property_set_value (MonoProperty *prop, void *obj, void **params, MonoObject **exc);
