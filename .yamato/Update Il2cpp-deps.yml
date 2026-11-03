@@ -1,7 +1,7 @@
 name: 'Update Il2cpp-deps'
 agent:
   type: Unity::VM
-  image: platform-foundation/windows-vs2019-prtools-bokken:latest
+  image: vm/prtools-windows-vs2019:v1.1.0
   flavor: b1.xlarge 
 variables:
   MONO_REV: "latest"
