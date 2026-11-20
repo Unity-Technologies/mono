@@ -74,23 +74,16 @@ namespace System.Runtime.InteropServices
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal static unsafe object GetRef(IntPtr handle)
+		internal static unsafe ref object GetRef(IntPtr handle)
 		{
-			return Unsafe.As<IntPtr, object>(ref *(IntPtr*)handle);
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal static unsafe void SetRef(IntPtr handle, object value)
-		{
-			// this returns a ref object that we can store safely into
-			Unsafe.As<IntPtr, object>(ref *(IntPtr*)handle) = value;
+			return ref Unsafe.As<IntPtr, object>(ref *(IntPtr*)((nuint)handle & ~(nuint)3));
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		internal static bool CanDereferenceHandle(IntPtr handle)
 		{
-			// weak handles have lowest bit set
-			return ((nint)handle & 1) == 0;
+			// weak handles have lowest two bits set
+			return ((nuint)handle & 3) == 0;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -125,7 +118,7 @@ namespace System.Runtime.InteropServices
 				ThrowIfInvalid (handle);
 
 				if (CanDereferenceHandle(handle))
-					SetRef(handle, value);
+					GetRef(handle) = value;
 				else
 					handle = GetTargetHandle (value, handle, (GCHandleType)(-1));
 			} 
