@@ -124,8 +124,8 @@ get_win32_restore_stack (void)
 	amd64_push_reg (code, AMD64_RBP);
 	amd64_mov_reg_reg (code, AMD64_RBP, AMD64_RSP, 8);
 
-	/* push 32 bytes of stack space for Win64 calling convention */
-	amd64_alu_reg_imm (code, X86_SUB, AMD64_RSP, 32);
+	/* Align stack for Win64 calling convention */
+	amd64_alu_reg_imm (code, X86_SUB, AMD64_RSP, 40);
 
 	/* restore guard page */
 	amd64_mov_reg_imm (code, AMD64_R11, _resetstkoflw);
