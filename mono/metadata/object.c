@@ -3447,6 +3447,28 @@ mono_field_set_value (MonoObject *obj, MonoClassField *field, void *value)
 }
 
 void
+mono_field_set_value_offset_internal (MonoObject* obj, MonoClassField* field, int declaring_field_offset, void* value)
+{
+	void* dest;
+
+	if ((field->type->attrs & FIELD_ATTRIBUTE_STATIC))
+		return;
+
+	dest = (char*)obj + field->offset + declaring_field_offset - MONO_ABI_SIZEOF(MonoObject);
+#if ENABLE_NETCORE
+	mono_copy_value (field->type, dest, value, value && field->type->type == MONO_TYPE_PTR);
+#else
+	mono_copy_value (field->type, dest, value, FALSE);
+#endif
+}
+
+void
+mono_unity_field_set_value_offset (MonoObject* obj, MonoClassField* field, int declaring_field_offset, void* value)
+{
+	MONO_EXTERNAL_ONLY_GC_UNSAFE_VOID (mono_field_set_value_offset_internal (obj, field, declaring_field_offset, value));
+}
+
+void
 mono_field_static_set_value_internal (MonoVTable *vt, MonoClassField *field, void *value)
 {
 	void *dest;
@@ -3572,6 +3594,27 @@ mono_field_get_value_internal (MonoObject *obj, MonoClassField *field, void *val
 
 	src = (char*)obj + field->offset;
 	mono_copy_value (field->type, value, src, TRUE);
+}
+
+void
+mono_field_get_value_offset_internal(MonoObject* obj, MonoClassField* field, int declaring_field_offset, void* value)
+{
+	MONO_REQ_GC_UNSAFE_MODE;
+
+	void* src;
+
+	g_assert (obj);
+
+	g_return_if_fail (!(field->type->attrs & FIELD_ATTRIBUTE_STATIC));
+
+	src = (char*)obj + field->offset + declaring_field_offset - MONO_ABI_SIZEOF(MonoObject);
+	mono_copy_value (field->type, value, src, TRUE);
+}
+
+void
+mono_unity_field_get_value_offset(MonoObject* obj, MonoClassField* field, int declaring_field_offset, void* value)
+{
+	MONO_EXTERNAL_ONLY_GC_UNSAFE_VOID (mono_field_get_value_offset_internal (obj, field, declaring_field_offset, value));
 }
 
 /**
@@ -9408,6 +9451,22 @@ uintptr_t
 mono_array_length (MonoArray *array)
 {
 	MONO_EXTERNAL_ONLY (uintptr_t, mono_array_length_internal (array));
+}
+
+void
+mono_unity_array_set_range(MonoArray* dest, uintptr_t destidx, void* src, uintptr_t byteSize)
+{
+	int32_t element_size = mono_array_element_size (dest->obj.vtable->klass);
+	char* start = mono_array_addr_with_size_fast (dest, element_size, destidx);
+	memcpy(start, src, byteSize);
+}
+
+void
+mono_unity_array_get_range(MonoArray* src, uintptr_t srcidx, void* dest, uintptr_t byteSize)
+{
+	int32_t element_size = mono_array_element_size(src->obj.vtable->klass);
+	char* start = mono_array_addr_with_size_fast(src, element_size, srcidx);
+	memcpy(dest, start, byteSize);
 }
 
 #ifdef ENABLE_CHECKED_BUILD_GC
