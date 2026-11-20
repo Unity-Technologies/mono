@@ -2373,6 +2373,9 @@ MonoGCHandle
 mono_gchandle_new_internal (MonoObject *obj, mono_bool pinned);
 
 MonoGCHandle
+mono_gchandle_new_late_internal(MonoObject* obj);
+
+MonoGCHandle
 mono_gchandle_new_weakref_internal (MonoObject *obj, mono_bool track_resurrection);
 
 ICALL_EXTERN_C
