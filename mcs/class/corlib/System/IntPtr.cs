@@ -199,6 +199,7 @@ namespace System
 		}
 
 		[CLSCompliant (false)]
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		unsafe public static explicit operator void * (IntPtr value)
 		{
 			return value.m_value;
