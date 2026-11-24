@@ -110,24 +110,40 @@ namespace System.Runtime.InteropServices
 
 			get
 			{
-				ThrowIfInvalid (handle);
+				IntPtr h = handle;
 
-				if (CanDereferenceHandle(handle))
-					return GetRef(handle);
+				// Hot path. Read `handle` once: the Mono JIT reloads the field for
+				// every use. Only the strong branch can see a zero handle (weak
+				// handles have the lowest bit set), so check for zero there, as an
+				// integer compare rather than ThrowIfInvalid, whose bool result the
+				// Mono JIT materializes before branching. Keep the throw inline:
+				// IL2CPP raises through a noreturn function, which clang moves out
+				// of loops.
+				if (CanDereferenceHandle(h))
+				{
+					if ((nint)h == 0)
+						throw new InvalidOperationException(SR.InvalidOperation_HandleIsNotInitialized);
+					return GetRef(h);
+				}
 
-				return GetTarget (handle);
+				return GetTarget (h);
 			} 
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 
 			set
 			{
-				ThrowIfInvalid (handle);
+				IntPtr h = handle;
 
-				if (CanDereferenceHandle(handle))
-					SetRef(handle, value);
+				// See the getter.
+				if (CanDereferenceHandle(h))
+				{
+					if ((nint)h == 0)
+						throw new InvalidOperationException(SR.InvalidOperation_HandleIsNotInitialized);
+					SetRef(h, value);
+				}
 				else
-					handle = GetTargetHandle (value, handle, (GCHandleType)(-1));
+					handle = GetTargetHandle (value, h, (GCHandleType)(-1));
 			} 
 		}
 
